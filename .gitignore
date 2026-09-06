@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .wrangler/
+*.tsbuildinfo
 
 # 서비스 계정이 들어가는 파일. 절대 커밋하지 않는다.
 .env
