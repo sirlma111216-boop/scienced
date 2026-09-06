@@ -15,6 +15,7 @@
     "verify:content": "node --import ./scripts/_loader.mjs scripts/verify-content.mjs",
     "verify:standards": "node --import ./scripts/_loader.mjs scripts/verify-standards.mjs",
     "verify:games": "node --import ./scripts/_loader.mjs scripts/verify-games.mjs",
+    "verify:modules": "node --import ./scripts/_loader.mjs scripts/verify-modules.mjs",
     "verify:wall": "node --import ./scripts/_loader.mjs scripts/verify-wall.mjs",
     "verify:a11y": "node --import ./scripts/_loader.mjs scripts/verify-a11y.mjs",
     "verify:publish": "node --import ./scripts/_loader.mjs scripts/verify-publish.mjs",

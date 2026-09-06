@@ -16,6 +16,7 @@ import type { GameId, LessonId } from '@/content/types'
 import { COURSE_ID } from './firebase'
 import type { Repo } from './repo'
 import type {
+  AiProposal,
   AppUser,
   Group,
   LadderState,
@@ -334,6 +335,38 @@ export function createFirestoreRepo(db: Firestore): Repo {
         { published, publishedAt: published ? Date.now() : null },
         { merge: true },
       )
+    },
+
+    /* ── AI 제안 ── */
+    async addAiProposal(p) {
+      // 언제나 pending 으로 들어간다. 규칙에서도 create 시 status 를 검사한다.
+      await setDoc(d(db, 'aiProposals', p.id), {
+        ...p,
+        status: 'pending',
+        reviewedAt: null,
+        reviewedBy: null,
+      })
+    },
+
+    watchAiProposals(cb) {
+      return onSnapshot(
+        c(db, 'aiProposals'),
+        (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as AiProposal), id: s.id }))),
+        () => cb([]),
+      )
+    },
+
+    async reviewAiProposal(id, patch, reviewedBy) {
+      // original 은 보내지 않는다. 규칙에서도 original 변경을 막는다.
+      const next: Record<string, unknown> = {}
+      if (patch.edited !== undefined) next.edited = patch.edited
+      if (patch.rejectedReason !== undefined) next.rejectedReason = patch.rejectedReason
+      if (patch.status) {
+        next.status = patch.status
+        next.reviewedAt = Date.now()
+        next.reviewedBy = reviewedBy
+      }
+      await updateDoc(d(db, 'aiProposals', id), next)
     },
   }
 }

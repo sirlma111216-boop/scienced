@@ -249,6 +249,7 @@ export const lesson08: Lesson = {
         },
       ],
       gameId: '08-variable-dice',
+      component: 'dataStudio',
       wallPrompt: '이 통제가 없으면 남는 대안 설명',
       printable:
         '활동지 3면: 가상 자료표 3종(표본 5/20/50) + 조사 유형 표 + 조작적 정의 칸 + 세 칸 불확실성 표. ' +
@@ -505,6 +506,7 @@ export const lesson09: Lesson = {
         },
       ],
       gameId: '09-bracket',
+      component: 'nodeCanvas',
       wallPrompt: '내 모형이 설명하지 못하는 것',
       printable:
         '활동지 3면: v1 그림 칸 + 예측 칸 + (뒷면) 추가 자료 + v2 그림 칸 + 수정 주석 칸. ' +
@@ -1027,6 +1029,7 @@ export const lesson11: Lesson = {
         },
       ],
       gameId: '11-representation-roulette',
+      component: 'cardSorter',
       wallPrompt: '내 비유의 비대응점과 멈춰야 할 지점',
       printable:
         '활동지 3면: 네 표상 인쇄 + 번역 칸 + 겹쳐 보기용 반투명 격자 + 비유 대응표(대응/비대응 2열). ' +
@@ -1287,6 +1290,7 @@ export const lesson12: Lesson = {
         { key: 'certainty', kind: 'confidence', label: '반론을 검토한 뒤의 확신도' },
       ],
       gameId: '12-jury-roles',
+      component: 'nodeCanvas',
       wallPrompt: '내 주장에 대한 가장 강한 반론과 그에 따른 수정',
       printable:
         '활동지 3면: 노드 카드(주장/증거/추론/반론) + 연결선 그리는 빈 판 + 연결선마다 한 줄 칸. ' +
@@ -1563,6 +1567,7 @@ export const lesson13: Lesson = {
         { key: 'certainty', kind: 'confidence', label: '이 결론에 대한 확신도' },
       ],
       gameId: '13-stakeholder-lots',
+      component: 'cardSorter',
       wallPrompt: '내 조건부 결론과, 그것이 바뀌려면 필요한 자료',
       printable:
         '활동지 3면: 자료 ⓐ~ⓔ 인쇄 + 사실/가치 2열 표 + 가중치 5칸(합 100) + 이익·부담 표 + 조건부 결론 칸. ' +

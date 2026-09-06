@@ -784,6 +784,7 @@ export const lesson16: Lesson = {
         },
       ],
       gameId: '16-boundary-pair',
+      component: 'rubricStudio',
       wallPrompt: '내가 고친 기술어와, 그 말이 왜 모호했는가',
       printable:
         '활동지 3면: 학생 보고서 전문 + 원본 루브릭 + 모호 표현 표시 칸 + 고쳐 쓴 기술어 표 + 앵커 칸. ' +
@@ -1053,6 +1054,7 @@ export const lesson17: Lesson = {
         },
       ],
       gameId: '17-sentence-audit',
+      component: 'aiAuditBoard',
       wallPrompt: '내가 맡은 문장의 판정과 그 근거',
       printable:
         '활동지 3면: AI 응답 인쇄(문장 번호 부여) + 판정 표시 표(5열) + 원출처 칸 + 고쳐 쓴 설명 칸. ' +
@@ -1325,6 +1327,7 @@ export const lesson18: Lesson = {
         },
       ],
       gameId: '18-reteach-order',
+      component: 'videoAnnotator',
       wallPrompt: '수정 전후 학생 반응의 차이와 그 증거',
       printable:
         '활동지 3~4면: 관찰 코드 표 + 시간축 기록지(2분 간격) + 재수업 계획 칸 + 전후 비교 칸 + ' +

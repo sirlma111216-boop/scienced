@@ -139,6 +139,12 @@ export function AppShell({
           <NavLink to="/concept-map" className="caption">
             개념 지도
           </NavLink>
+          <NavLink to="/curriculum" className="caption">
+            교육과정
+          </NavLink>
+          <NavLink to="/microteaching" className="caption">
+            마이크로티칭
+          </NavLink>
           <a
             className="caption"
             href="https://labbitory.com"

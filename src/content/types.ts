@@ -161,6 +161,21 @@ export interface FieldDef {
   sentenceStarters?: string[]
 }
 
+/**
+ * 차시별 핵심 모듈의 전용 화면.
+ *
+ * 일반 입력 칸(fields)만으로는 안 되는 활동에 붙인다.
+ * 붙이면 fields 위에 전용 화면이 먼저 그려지고, 결과는 같은 응답 버전에 함께 저장된다.
+ */
+export type ModuleComponent =
+  | 'nodeCanvas'      // 모형 캔버스 · 논증 지도 (9·12강)
+  | 'dataStudio'      // 실험 설계 샌드박스 · 표－그래프－주장 (8강)
+  | 'cardSorter'      // 정렬·순위·배분 (11·13강)
+  | 'rubricStudio'    // 루브릭 스튜디오 (16강)
+  | 'aiAuditBoard'    // AI 응답 검증 보드 (17강)
+  | 'videoAnnotator'  // 마이크로티칭 주석 (18강)
+  | 'curriculumMap'   // 교육과정 맵 (6강)
+
 export interface Step {
   id: string
   order: number
@@ -170,6 +185,8 @@ export interface Step {
   /** 학생 화면 안내 */
   lead: string
   fields: FieldDef[]
+  /** 전용 모듈 화면. 없으면 fields 만 그린다. */
+  moduleComponent?: ModuleComponent
   /** 이 단계에서 쓰는 개념 카드 id (type === 'concepts') */
   conceptIds?: string[]
   /** 이 단계에서 쓰는 읽기 자료 */

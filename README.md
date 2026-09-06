@@ -36,10 +36,16 @@ npm run verify
 | `verify:lessons` | 18차시 메타데이터, 개념 카드 여섯 층, 강사 대본이 전부 채워졌는지 |
 | `verify:content` | 교재 OCR 오독과 72회 반복 템플릿 문구가 화면 문구에 새어 들어왔는지 |
 | `verify:standards` | 원문 대조 전 성취기준에 「대표 예시」 라벨이 붙어 있는지 |
-| `verify:games` | 18개 게임 등록, mode 고유, 1강이 ladder, 정답 기준 추첨 없음 |
+| `verify:games` | 18개 게임 등록, mode 고유, 1강이 ladder, 정답 기준 추첨 없음, **18종 화면이 실제로 구현됐는지** |
+| `verify:modules` | 핵심 모듈이 지정된 차시에 붙었는지, **AI가 교사 검토를 우회하는 경로가 없는지** |
 | `verify:wall` | 의견 광장이 차시마다 2단계 이상, 인기순 정렬 코드가 없는지 |
 | `verify:a11y` | 드래그 전용 없음, 포커스 표시, 대체 텍스트, reduced-motion, 인쇄 활동지 |
 | `verify:publish` | 시드에서 1강만 공개, 보안 규칙에 published 조건과 강사 문서 판정이 있는지 |
+
+검증기는 문자열이 아니라 **실제 불변식**을 본다. 예를 들어 `verify:games` 는 손으로 관리하는
+목록이 아니라 `PickerVisual.tsx` 의 `case '…':` 를 직접 읽고, `verify:modules` 는
+"cluster-responses 라는 낱말이 있는가"가 아니라 "그 taskId 를 실제로 보내는 파일이
+`addAiProposal` 을 거치는가"를 본다.
 
 ```bash
 npm run build        # tsc + vite build
@@ -49,21 +55,57 @@ npm run build        # tsc + vite build
 
 ```
 src/
-  lib/ladder.ts          사다리 순수 계산 — React도 Firestore도 Math.random()도 없다
-  lib/repo.ts            저장 계층 인터페이스 (Firestore / 로컬 두 구현이 이 모양을 공유)
-  lib/auth.tsx           학번 로그인, 강사 판정, 로컬 모드 폴백
-  content/lessons/       18차시 시드 데이터 (개념 72개 × 여섯 층)
-  content/games.ts       발표자 뽑기 18종
-  content/reactions.ts   반응 4종 · 정렬 옵션 (여기만 고치면 되돌릴 수 있다)
-  components/            AppShell · ResponseCollector · VersionTimeline · Wall · Ladder · MustSay …
-  routes/                수강생 화면과 강사 화면
-shared/ai-core.ts        AI 프록시 로직 (Pages Function 은 껍데기만)
-functions/api/           Cloudflare Pages Functions
-firestore.rules          보안 규칙
-scripts/verify-*.mjs     검증 스크립트
-SPEC.md                  구축 지시서 (작업 내내 기준)
-DESIGN.md                시각 디자인 (모든 시각 판단보다 우선)
+  lib/ladder.ts            사다리 순수 계산 — React도 Firestore도 Math.random()도 없다
+  lib/repo.ts              저장 계층 인터페이스 (Firestore / 로컬 두 구현이 이 모양을 공유)
+  lib/auth.tsx             학번 로그인, 강사 판정, 로컬 모드 폴백
+  content/lessons/         18차시 시드 데이터 (개념 72개 × 여섯 층)
+  content/games.ts         발표자 뽑기 18종
+  content/curriculum.ts    교육과정 메타데이터 (판·학교급·학년·영역·성취기준·핵심 아이디어·적용 연도)
+  content/reactions.ts     반응 4종 · 정렬 옵션 (여기만 고치면 되돌릴 수 있다)
+  components/activity/     PickerVisual(18종 화면) · NodeCanvas · DataStudio · CardSorter
+                           RubricStudio · AiAuditBoard · CurriculumMap · ModuleHost
+  components/microteaching/ VideoAnnotator (영상은 브라우저 밖으로 나가지 않는다)
+  components/teach/        LadderPanel · MustSay · TeacherBranchBar · AiClusterPanel
+  routes/                  수강생 화면과 강사 화면
+shared/ai-core.ts          AI 프록시 로직 (Pages Function 은 껍데기만)
+functions/api/             Cloudflare Pages Functions
+firestore.rules            보안 규칙
+scripts/verify-*.mjs       검증 스크립트
+SPEC.md                    구축 지시서 (작업 내내 기준)
+DESIGN.md                  시각 디자인 (모든 시각 판단보다 우선)
 ```
+
+## 차시별 핵심 모듈
+
+| 차시 | 모듈 | 하는 일 |
+|---:|---|---|
+| 6 | 교육과정 맵 | 판·학교급·영역으로 성취기준을 찾고 네 층으로 해부한다 |
+| 8 | 실험 설계 샌드박스 | 표본·흩어짐·**체계 오차**·효과를 바꾸며 결론의 확실성이 어떻게 달라지는지 본다 |
+| 9 | 모형 캔버스 | 요소·관계·경계를 그리고 v1→v2로 고친다. 연결선에 관계어가 없으면 저장되지 않는다 |
+| 11 | 표상 번역기(카드 분류) | 비유의 대응/비대응을 가르고 카드마다 이유를 적는다 |
+| 12 | 논증 지도 | 주장·증거·추론·반론을 잇는다. 같은 캔버스 부품을 논증 모드로 쓴다 |
+| 16 | 루브릭 스튜디오 | 모호한 낱말을 규칙으로 찾고, 수준마다 앵커를 요구하고, 채점이 갈린 자리를 보인다 |
+| 17 | AI 응답 검증 보드 | 문장마다 사실/해석/출처 필요/불확실/오류를 표시하고 원출처를 남긴다 |
+| 18 | 마이크로티칭 주석 | 관찰 코드로 시간축에 기록하고 1차 수업과 재수업을 나란히 놓는다 |
+
+8강 샌드박스는 "표본을 늘리면 확실해진다"를 가르치지 않는다. 체계 오차를 켜 두면
+표본을 열 배로 늘려도 치우친 값으로 수렴한다는 것을 학생이 직접 보게 되어 있다.
+
+## AI는 교사를 지나야 학생에게 간다
+
+지시서 17절이 4단계의 선행 조건으로 못박은 것을 그대로 구현했다.
+
+```
+AI 분류 요청  →  addAiProposal (status: pending)  →  /instructor/ai-review
+                                                        ├ 읽고 고친다  (원문은 그대로 남는다)
+                                                        ├ 채택한다     → 학생 화면에 나간다
+                                                        └ 거부한다     → 이유를 적어야 한다
+```
+
+- 제안은 언제나 `pending` 으로 들어온다. Firestore 규칙이 그것을 강제한다.
+- `original` 은 규칙에서 잠겨 있다. 무엇이 AI 원문이었는지 나중에 확인할 수 있다.
+- 거부한 제안도 지우지 않는다 (`allow delete: if false`).
+- 학생용 AI 패널은 교사용 분류 작업을 **타입에서** 받지 못한다(`Exclude<AiTaskId, 'cluster-responses'>`).
 
 ## 배포 (Cloudflare Pages)
 
@@ -125,14 +167,26 @@ DESIGN.md                시각 디자인 (모든 시각 판단보다 우선)
 - 강사가 단계를 옮겨도 학생 화면이 강제로 이동하지 않는다 — 안내와 이동 버튼만 뜬다
 - 드래그 전용 인터랙션이 없다 — 배분은 숫자 입력, 순위는 버튼
 
-## 남은 일
+## 진행 상황
 
-**2단계** 모형 캔버스 · 데이터 스튜디오 · 논증 빌더 · 루브릭 스튜디오(9·11·12·16강),
-그리고 나머지 17개 게임의 고유 화면(지금은 전부 사다리 엔진을 공유하고 안내 문구만 다르다).
+지시서 17절의 네 단계를 전부 구현했다.
 
-**3단계** 마이크로티칭 영상 주석, 교육과정 메타데이터 검색, 익명 학습 분석.
+| 단계 | 상태 |
+|---|---|
+| 1단계 최소 기능 제품 | 완료 — 사다리, 인증, 스키마·규칙, 1강 전체, 진행 콘솔, 18차시 시드, 검증 |
+| 2단계 | 완료 — 모형 캔버스, 데이터 스튜디오, 논증 지도, 루브릭 스튜디오, **18종 게임 화면** |
+| 3단계 | 완료 — 마이크로티칭 영상 주석, 교육과정 메타데이터 검색, 익명 학습 분석 |
+| 4단계 | 완료 — AI 응답 분류. **교사 검토·수정·거부 관문을 먼저 만들고 그 뒤에 붙였다** |
 
-**4단계** AI 응답 분류·피드백 제안. **교사의 검토·수정·거부 기능이 먼저 완성된 뒤에만 착수한다.**
+### 아직 남은 것
+
+- **성취기준 원문 대조.** `content/curriculum.ts` 와 18차시 모두 `verified: false` 다.
+  NCIC 원문과 맞춰 코드를 넣고 `verified` 를 켜야 「대표 예시」 라벨이 없어진다.
+- **Firestore 규칙 에뮬레이터 테스트.** 규칙은 썼고 `verify:publish` 가 형태를 검사하지만,
+  에뮬레이터로 실제 읽기·쓰기를 돌려 보는 테스트는 아직 없다.
+- **실기기 확인.** 모바일 375px 은 CSS 로 대응했으나 실제 기기에서 재 보지 않았다.
+- **AI 피드백 제안.** 분류(`cluster-responses`)는 붙였다. 개별 학생 피드백 제안은
+  같은 검토 관문을 쓰면 되지만 아직 만들지 않았다.
 
 ## 참조
 

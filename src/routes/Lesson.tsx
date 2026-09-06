@@ -4,11 +4,13 @@ import { getLesson } from '@/content/lessons'
 import { GAMES_BY_LESSON } from '@/content/games'
 import type { LessonId, Step } from '@/content/types'
 import { useAuth } from '@/lib/auth'
-import type { AppUser, LadderState, ResponseDoc, SessionState } from '@/lib/types'
+import { weightFromPresentCount } from '@/lib/ladder'
+import type { AppUser, LadderState, Participation, ResponseDoc, SessionState } from '@/lib/types'
 import { AppShell, InstructorMovedBanner } from '@/components/layout/AppShell'
 import { AiAssistPanel } from '@/components/ai/AiAssistPanel'
 import { ConceptCard } from '@/components/concept/ConceptCard'
 import { LadderGame } from '@/components/activity/LadderGame'
+import { ModuleHost } from '@/components/activity/ModuleHost'
 import { DistributionView } from '@/components/response/DistributionView'
 import { ResponseCollector } from '@/components/response/ResponseCollector'
 import { MustSay } from '@/components/teach/MustSay'
@@ -31,6 +33,7 @@ export function Lesson() {
   const [users, setUsers] = useState<AppUser[]>([])
   const [dismissedAt, setDismissedAt] = useState<string | null>(null)
   const [allDocs, setAllDocs] = useState<ResponseDoc[]>([])
+  const [participation, setParticipation] = useState<Participation[]>([])
 
   const step: Step | undefined = lesson?.steps[stepIndex]
 
@@ -46,7 +49,12 @@ export function Lesson() {
 
   useEffect(() => {
     if (!repo) return
-    return repo.watchUsers(setUsers)
+    const a = repo.watchUsers(setUsers)
+    const b = repo.watchParticipation(setParticipation)
+    return () => {
+      a()
+      b()
+    }
   }, [repo])
 
   useEffect(() => {
@@ -87,6 +95,20 @@ export function Lesson() {
   const nicknames = useMemo(
     () => Object.fromEntries(users.map((u) => [u.uid, u.nickname || '이름 없음'])),
     [users],
+  )
+
+  // 14·18강은 가중치를 학생 화면에 그대로 공개한다. 규칙 자체가 그날의 학습 내용이다.
+  const weights = useMemo(
+    () =>
+      Object.fromEntries(
+        users
+          .filter((u) => u.role === 'student')
+          .map((u) => [
+            u.uid,
+            weightFromPresentCount(participation.find((p) => p.uid === u.uid)?.presentCount ?? 0),
+          ]),
+      ),
+    [users, participation],
   )
 
   return (
@@ -222,10 +244,26 @@ export function Lesson() {
               </div>
             ) : null}
 
-            {/* ③ 내 생각 먼저 → ④ 의견 광장 → 분포 */}
-            {step.fields.length > 0 ? (
+            {/* ③ 내 생각 먼저 → ⑥ 핵심 모듈 → ④ 의견 광장 → 분포 */}
+            {step.fields.length > 0 || step.moduleComponent ? (
               <div style={{ marginTop: 32 }}>
-                <ResponseCollector lessonId={lesson.id} step={step}>
+                <ResponseCollector
+                  lessonId={lesson.id}
+                  step={step}
+                  renderModule={
+                    step.moduleComponent
+                      ? (value, onChange, locked) => (
+                          <ModuleHost
+                            kind={step.moduleComponent!}
+                            lessonId={lesson.id}
+                            value={value}
+                            onChange={onChange}
+                            locked={locked}
+                          />
+                        )
+                      : undefined
+                  }
+                >
                   {(submitted) => (
                     <>
                       {submitted ? (
@@ -279,6 +317,7 @@ export function Lesson() {
                   game={game}
                   state={ladder}
                   nicknames={nicknames}
+                  weights={game.revealWeights ? weights : undefined}
                 />
               </div>
             ) : null}

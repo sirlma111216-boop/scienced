@@ -180,6 +180,31 @@ service cloud.firestore {
         allow write: if isInstructor();
       }
 
+      /**
+       * AI 제안 — 교사 검토 관문.
+       *
+       * 지시서 17절 4단계의 선행 조건. AI 결과는 언제나 pending 으로만 들어오고,
+       * 교사가 읽고 고치고 채택하기 전에는 학생에게 나가지 않는다.
+       */
+      match /aiProposals/{proposalId} {
+        // 학생은 채택된 제안만 볼 수 있다. 검토 전 원문은 보이지 않는다.
+        allow read: if isInstructor()
+          || (signedIn() && resource.data.status == 'accepted');
+
+        // 만들 때는 반드시 pending 이어야 한다. 검토를 건너뛸 수 없다.
+        allow create: if isInstructor()
+          && request.resource.data.status == 'pending'
+          && request.resource.data.reviewedAt == null;
+
+        // 원문은 절대 바뀌지 않는다. 무엇이 AI 원문이었는지가 자료다.
+        allow update: if isInstructor()
+          && request.resource.data.original == resource.data.original
+          && changedKeys().hasOnly(['edited', 'status', 'rejectedReason', 'reviewedAt', 'reviewedBy']);
+
+        // 거부한 제안도 지우지 않는다. 무엇을 왜 거부했는지가 남아야 한다.
+        allow delete: if false;
+      }
+
       /* ── 참여 기록 ── */
       match /participation/{userId} {
         allow read: if isInstructor() || (signedIn() && uid() == userId);

@@ -70,6 +70,22 @@ export function InstructorDashboard() {
             분포 · 의견 조정 · 사다리
           </p>
         </Link>
+        <Link to="/instructor/analytics" className="tile" style={{ color: 'inherit' }}>
+          <p className="text-card-title" style={{ margin: 0 }}>
+            학습 분석
+          </p>
+          <p className="text-body-sm" style={{ marginTop: 8 }}>
+            익명 · 순위 없음
+          </p>
+        </Link>
+        <Link to="/instructor/ai-review" className="tile" style={{ color: 'inherit' }}>
+          <p className="text-card-title" style={{ margin: 0 }}>
+            AI 제안 검토대
+          </p>
+          <p className="text-body-sm" style={{ marginTop: 8 }}>
+            채택 전에는 학생에게 안 나갑니다
+          </p>
+        </Link>
       </div>
 
       <section style={{ marginTop: 64 }}>

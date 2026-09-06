@@ -117,6 +117,14 @@ export function Home() {
                 선행개념 – 목표 – 모형 – 담화 – 평가 – PCK
               </p>
             </Link>
+            <Link to="/curriculum" style={{ color: 'inherit' }}>
+              <p className="text-headline" style={{ margin: 0 }}>
+                교육과정 찾기
+              </p>
+              <p className="text-body-sm" style={{ marginTop: 8 }}>
+                성취기준 · 핵심 아이디어 · 선수와 후속 개념
+              </p>
+            </Link>
             <Link to="/microteaching" style={{ color: 'inherit' }}>
               <p className="text-headline" style={{ margin: 0 }}>
                 마이크로티칭

@@ -26,15 +26,26 @@ const all = [...sources.values()].join('\n')
     }
   }
   if (dragUsers.length > 0) {
-    // 드래그를 쓴다면 같은 파일에 키보드 대안이 있어야 한다.
+    // 드래그를 쓴다면 드래그하지 않고도 같은 일을 할 수 있어야 한다.
+    // 인정하는 길: 선택 상자로 옮기기 · 방향 버튼 · 숫자 입력 · dnd-kit 의 KeyboardSensor
     for (const file of dragUsers) {
       const text = sources.get(file)
-      const hasAlt = /type="number"|onKeyDown|role="button"|아래로|위로|arrow/i.test(text)
-      if (!hasAlt) {
-        fail('드래그 전용 금지', `${file} 이 드래그만 쓰고 키보드·숫자 대안이 없다`)
+      const alt = {
+        select: /<select[\s\S]{0,400}onChange/.test(text),
+        buttons: /아래로|위로|왼쪽으로|오른쪽으로/.test(text),
+        number: /type="number"/.test(text),
+        keyboardSensor: /KeyboardSensor/.test(text),
+        keyHandler: /onKeyDown/.test(text),
+      }
+      const ways = Object.entries(alt).filter(([, on]) => on).map(([k]) => k)
+      if (ways.length === 0) {
+        fail('드래그 전용 금지', `${file} 이 드래그만 쓰고 다른 길이 없다`)
       }
     }
-    pass('드래그 전용 금지', `드래그를 쓰는 ${dragUsers.length}개 파일 모두 대안을 함께 둔다`)
+    pass(
+      '드래그 전용 금지',
+      `드래그를 쓰는 ${dragUsers.length}개 파일 모두 드래그하지 않는 길을 함께 둔다`,
+    )
   } else {
     pass('드래그 전용 금지', '드래그 전용 인터랙션이 아예 없다 (배분은 숫자 입력, 순위는 버튼)')
   }

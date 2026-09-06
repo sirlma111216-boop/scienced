@@ -1,5 +1,6 @@
 import type { GameId, LessonId } from '@/content/types'
 import type {
+  AiProposal,
   AppUser,
   Group,
   LadderState,
@@ -134,6 +135,20 @@ export interface Repo {
   /* ── 공개 제어 ── */
   watchPublished(cb: (ids: LessonId[]) => void): () => void
   setPublished(lessonId: LessonId, published: boolean): Promise<void>
+
+  /* ── AI 제안 (교사 검토 관문) ── */
+  /**
+   * AI 결과를 제안으로 넣는다. 언제나 pending 으로 들어간다.
+   * 이 함수 말고는 AI 결과가 저장되는 경로가 없다.
+   */
+  addAiProposal(p: AiProposal): Promise<void>
+  watchAiProposals(cb: (list: AiProposal[]) => void): () => void
+  /** 교사가 고치거나 채택하거나 거부한다. original 은 바뀌지 않는다. */
+  reviewAiProposal(
+    id: string,
+    patch: { edited?: string; status?: AiProposal['status']; rejectedReason?: string | null },
+    reviewedBy: string,
+  ): Promise<void>
 }
 
 let current: Repo | null = null

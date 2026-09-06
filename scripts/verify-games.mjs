@@ -80,7 +80,32 @@ if (!g14?.revealWeights) {
 }
 pass('참여 형평성', '가중치가 전부 켜져 있고, 14강은 그 가중치를 공개한다')
 
-// 8. 차시 단계가 실제로 그 게임을 가리키는가
+// 8. 18종 모드가 각각 실제 화면을 가지고 있는가
+//    손으로 관리하는 목록을 믿지 않고 PickerVisual 의 switch 문을 직접 읽는다.
+{
+  const { readFile } = await import('node:fs/promises')
+  const src = await readFile('src/components/activity/PickerVisual.tsx', 'utf8')
+  const implemented = new Set(
+    [...src.matchAll(/case\s+'([a-z-]+)':/g)].map((m) => m[1]),
+  )
+
+  for (const g of GAMES) {
+    if (!implemented.has(g.mode)) {
+      fail('모드 화면', `${g.id} 의 mode ${g.mode} 에 해당하는 case 가 PickerVisual 에 없다`)
+    }
+  }
+  // 쓰이지 않는 화면이 남아 있는지도 본다
+  const used = new Set(GAMES.map((g) => g.mode))
+  for (const m of implemented) {
+    if (!used.has(m)) fail('모드 화면', `PickerVisual 에 아무 게임도 쓰지 않는 화면 ${m} 이 있다`)
+  }
+  if (implemented.size !== 18) {
+    fail('모드 화면', `구현된 화면이 ${implemented.size}종이다 (18종)`)
+  }
+  pass('모드 화면', '18종 게임이 각각 자기 화면을 가진다 — 엔진은 같고 표현이 다르다')
+}
+
+// 9. 차시 단계가 실제로 그 게임을 가리키는가
 for (const l of LESSONS) {
   const pickerSteps = l.steps.filter((s) => s.picker?.enabled)
   if (pickerSteps.length !== 1) {

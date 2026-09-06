@@ -1281,6 +1281,7 @@ export const lesson06: Lesson = {
         { key: 'bigIdea', kind: 'text', label: '이 성취기준이 기여하는 핵심 아이디어 한 문장', required: true },
       ],
       gameId: '06-map-pin',
+      component: 'curriculumMap',
       wallPrompt: '내가 고른 성취기준의 네 층 해부',
       printable:
         '활동지 3면: 성취기준 인쇄본 + 네 층 표 + 핵심 아이디어 칸 + 선수/후속 개념 빈 네트워크 그림. ' +

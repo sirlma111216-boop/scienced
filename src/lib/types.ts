@@ -154,6 +154,34 @@ export interface AiLog {
   adopted: boolean
 }
 
+/**
+ * AI 제안.
+ *
+ * 지시서 17절 4단계: "교사의 검토·수정·거부 기능이 먼저 완성된 뒤에만 착수한다."
+ * 그래서 AI 가 만든 것은 언제나 `pending` 상태의 제안으로만 들어온다.
+ * 교사가 읽고, 고치고, 채택하기 전에는 학생 화면에 아무것도 나가지 않는다.
+ * 거부한 제안도 지우지 않고 남긴다 — 무엇을 왜 거부했는지가 자료다.
+ */
+export type AiProposalStatus = 'pending' | 'accepted' | 'rejected'
+
+export interface AiProposal {
+  id: string
+  taskId: string
+  lessonId: LessonId
+  stepId: string
+  /** AI 가 만든 원문. 절대 덮어쓰지 않는다. */
+  original: string
+  /** 교사가 고친 것. 채택하면 이쪽이 학생에게 간다. */
+  edited: string
+  status: AiProposalStatus
+  /** 거부했다면 왜 */
+  rejectedReason: string | null
+  model: string
+  createdAt: number
+  reviewedAt: number | null
+  reviewedBy: string | null
+}
+
 export type StorageMode = 'realtime' | 'local'
 
 /** 응답·의견을 한 화면에 모을 때 쓰는 좌표 */

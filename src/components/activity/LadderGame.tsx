@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth'
 import { buildLadder, winnersFromLadder } from '@/lib/ladder'
 import type { LadderState } from '@/lib/types'
 import { Badge, Button, ColorBlock, Notice, useReducedMotion } from '@/components/ui'
-import { LadderBoard } from './LadderBoard'
+import { PickerVisual } from './PickerVisual'
 
 /**
  * 학생용 발표자 뽑기.
@@ -23,12 +23,15 @@ export function LadderGame({
   game,
   state,
   nicknames,
+  weights,
 }: {
   lessonId: LessonId
   game: GameDef
   state: LadderState | null
   /** uid → 닉네임 */
   nicknames: Record<string, string>
+  /** uid → 가중치. 14·18강은 이것을 학생 화면에 그대로 공개한다. */
+  weights?: Record<string, number>
 }) {
   const { user, repo } = useAuth()
   const reduced = useReducedMotion()
@@ -144,13 +147,16 @@ export function LadderGame({
       ) : null}
 
       <div style={{ marginTop: 24, background: '#fff', borderRadius: 24, padding: 16 }}>
-        <LadderBoard
+        <PickerVisual
+          mode={game.mode}
           seed={state.seed}
           columns={state.columns}
           seats={seatNames}
           presentSlots={state.presentSlots}
-          highlightSeat={mySeat != null ? Number(mySeat) : null}
+          mySeat={mySeat != null ? Number(mySeat) : null}
           revealed={revealed && !animating}
+          weights={game.revealWeights ? weights : undefined}
+          nicknames={nicknames}
         />
       </div>
 

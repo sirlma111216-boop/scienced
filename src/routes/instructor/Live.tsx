@@ -3,12 +3,13 @@ import { Navigate, useParams } from 'react-router-dom'
 import { getLesson } from '@/content/lessons'
 import { GAMES_BY_LESSON } from '@/content/games'
 import { useAuth } from '@/lib/auth'
-import type { AppUser, Participation, Post, ResponseDoc, SessionState } from '@/lib/types'
+import type { AiProposal, AppUser, Participation, Post, ResponseDoc, SessionState } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { DistributionView } from '@/components/response/DistributionView'
 import { LadderPanel } from '@/components/teach/LadderPanel'
 import { MustSay } from '@/components/teach/MustSay'
 import { TeacherBranchBar } from '@/components/teach/TeacherBranchBar'
+import { AiClusterPanel } from '@/components/teach/AiClusterPanel'
 import { WallCard } from '@/components/wall/Wall'
 import { Badge, Button, Caption, Card, ColorBlock, ScrollX } from '@/components/ui'
 
@@ -30,6 +31,7 @@ export function InstructorLive() {
   const [participation, setParticipation] = useState<Participation[]>([])
   const [docs, setDocs] = useState<ResponseDoc[]>([])
   const [posts, setPosts] = useState<Post[]>([])
+  const [proposals, setProposals] = useState<AiProposal[]>([])
 
   const step = lesson?.steps[stepIndex]
 
@@ -42,9 +44,11 @@ export function InstructorLive() {
     if (!repo) return
     const a = repo.watchUsers(setUsers)
     const b = repo.watchParticipation(setParticipation)
+    const c = repo.watchAiProposals(setProposals)
     return () => {
       a()
       b()
+      c()
     }
   }, [repo])
 
@@ -191,6 +195,19 @@ export function InstructorLive() {
                   totalExpected={students.length}
                 />
               </Card>
+            </div>
+          ) : null}
+
+          {/* AI 유형 묶기 — 제안만 만든다. 채택은 검토대에서. */}
+          {step.aiTasks.includes('cluster-responses') ? (
+            <div style={{ marginTop: 32 }}>
+              <AiClusterPanel
+                lessonId={lesson.id}
+                stepId={step.id}
+                stepTitle={`${lesson.id}강 ${step.title}`}
+                docs={docs}
+                proposals={proposals}
+              />
             </div>
           ) : null}
 

@@ -16,16 +16,19 @@ import { Badge, Button, Caption, Card } from '@/components/ui'
  * ASK 는 물음표로 끝나는 한 문장이고 답을 주지 않는다.
  */
 
-const TASK_LABELS: Record<AiTaskId, { title: string; blurb: string; button: string }> = {
+/**
+ * 이 패널이 다룰 수 있는 작업.
+ *
+ * `cluster-responses` 는 여기 없다. 그것은 교사용 분류이고, 반드시 검토대(AiClusterPanel →
+ * addAiProposal)를 지나야 한다. 타입에서 빼 두면 실수로 넘길 수 없다.
+ */
+export type StudentAiTaskId = Exclude<AiTaskId, 'cluster-responses'>
+
+const TASK_LABELS: Record<StudentAiTaskId, { title: string; blurb: string; button: string }> = {
   'recall-probe': {
     title: '되묻기',
     blurb: '내가 쓴 이유를 읽고 질문 하나를 돌려줍니다. 정답은 주지 않습니다.',
     button: '질문 하나 받기',
-  },
-  'cluster-responses': {
-    title: '응답 유형 묶기',
-    blurb: '응답을 유형으로 묶어 제안합니다. 합치고 나누고 이름을 바꿀 수 있습니다.',
-    button: '묶음 제안 받기',
   },
   'exit-self-check': {
     title: '자기 점검 기준',
@@ -73,7 +76,8 @@ export function AiAssistPanel({
   inputs,
   onAdopt,
 }: {
-  taskId: AiTaskId
+  /** 교사용 분류(cluster-responses)는 여기로 올 수 없다. 타입에서 막혀 있다. */
+  taskId: StudentAiTaskId
   /** 서버로 보내는 값. 이름·학번·닉네임을 넣지 않는다. */
   inputs: Record<string, string>
   /** 학생이 채택했을 때만 부른다. 채택 여부가 기록된다. */

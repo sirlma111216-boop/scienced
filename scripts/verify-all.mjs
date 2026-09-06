@@ -10,6 +10,7 @@ const CHECKS = [
   ['verify:content', '교재 OCR 오독과 72회 반복 템플릿 유입 차단'],
   ['verify:standards', '원문 대조 전 성취기준의 「대표 예시」 라벨'],
   ['verify:games', '18개 게임 등록 · mode 고유 · 1강 ladder'],
+  ['verify:modules', '핵심 모듈 배치 · AI 교사 검토 관문'],
   ['verify:wall', '의견 광장 배치 · 인기순 정렬 없음'],
   ['verify:a11y', '드래그 전용 없음 · 포커스 · 대체 텍스트 · reduced-motion'],
   ['verify:publish', '시드에서 1강만 공개 · 보안 규칙'],

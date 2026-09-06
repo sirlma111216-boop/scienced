@@ -2,6 +2,7 @@ import type { LessonId } from '@/content/types'
 import { LESSONS } from '@/content/lessons'
 import type { Repo } from './repo'
 import type {
+  AiProposal,
   AppUser,
   Group,
   Participation,
@@ -341,6 +342,38 @@ export function createLocalRepo(): Repo {
       const cur = read<LessonId[]>('published', seed)
       const next = published ? [...new Set([...cur, lessonId])] : cur.filter((x) => x !== lessonId)
       write('published', next.sort())
+    },
+
+    /* ── AI 제안 ── */
+    async addAiProposal(p) {
+      const list = read<AiProposal[]>('aiProposals', [])
+      // 언제나 pending 으로 들어간다. 호출자가 status 를 바꿔 보내도 무시한다.
+      write('aiProposals', [...list, { ...p, status: 'pending', reviewedAt: null, reviewedBy: null }])
+    },
+
+    watchAiProposals(cb) {
+      return subscribe(() => cb(read<AiProposal[]>('aiProposals', [])))
+    },
+
+    async reviewAiProposal(id, patch, reviewedBy) {
+      const list = read<AiProposal[]>('aiProposals', [])
+      write(
+        'aiProposals',
+        list.map((p) =>
+          p.id !== id
+            ? p
+            : {
+                ...p,
+                // original 은 건드리지 않는다. 무엇이 원문이었는지가 자료다.
+                edited: patch.edited ?? p.edited,
+                status: patch.status ?? p.status,
+                rejectedReason:
+                  patch.rejectedReason !== undefined ? patch.rejectedReason : p.rejectedReason,
+                reviewedAt: patch.status ? Date.now() : p.reviewedAt,
+                reviewedBy: patch.status ? reviewedBy : p.reviewedBy,
+              },
+        ),
+      )
     },
   }
 }

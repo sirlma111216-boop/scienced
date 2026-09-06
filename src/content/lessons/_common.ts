@@ -1,4 +1,4 @@
-import type { FieldDef, GameId, Step } from '../types'
+import type { FieldDef, GameId, ModuleComponent, Step } from '../types'
 
 /**
  * 2~18강 공통 단계 골격.
@@ -33,6 +33,8 @@ export interface StandardSpec {
     gameId: GameId
     wallPrompt: string
     printable: string
+    /** 전용 화면. 없으면 입력 칸만 그린다. */
+    component?: ModuleComponent
   }
   /** 형성평가 — 수집 → 해석 → 교사 분기 → 학생 수정 → 재확인 */
   formative: {
@@ -145,6 +147,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       durationMinutes: spec.minutes[2],
       lead: spec.module.lead,
       fields: spec.module.fields,
+      moduleComponent: spec.module.component,
       aiTasks: [],
       wall: {
         enabled: true,

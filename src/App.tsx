@@ -8,10 +8,13 @@ import { Lesson } from '@/routes/Lesson'
 import { Portfolio } from '@/routes/Portfolio'
 import { ConceptMap } from '@/routes/ConceptMap'
 import { Microteaching } from '@/routes/Microteaching'
+import { Curriculum } from '@/routes/Curriculum'
 import { InstructorDashboard } from '@/routes/instructor/Dashboard'
 import { InstructorLessons } from '@/routes/instructor/Lessons'
 import { InstructorLive } from '@/routes/instructor/Live'
 import { InstructorStudents } from '@/routes/instructor/Students'
+import { InstructorAnalytics } from '@/routes/instructor/Analytics'
+import { InstructorAiReview } from '@/routes/instructor/AiReview'
 
 /**
  * 라우트 보호 (지시서 4.5).
@@ -92,6 +95,14 @@ export function App() {
             }
           />
           <Route
+            path="/curriculum"
+            element={
+              <Guard>
+                <Curriculum />
+              </Guard>
+            }
+          />
+          <Route
             path="/microteaching"
             element={
               <Guard>
@@ -129,6 +140,23 @@ export function App() {
             element={
               <Guard instructorOnly>
                 <InstructorStudents />
+              </Guard>
+            }
+          />
+
+          <Route
+            path="/instructor/analytics"
+            element={
+              <Guard instructorOnly>
+                <InstructorAnalytics />
+              </Guard>
+            }
+          />
+          <Route
+            path="/instructor/ai-review"
+            element={
+              <Guard instructorOnly>
+                <InstructorAiReview />
               </Guard>
             }
           />

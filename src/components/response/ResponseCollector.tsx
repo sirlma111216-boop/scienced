@@ -18,15 +18,29 @@ import { VersionTimeline } from './VersionTimeline'
 
 const AUTOSAVE_MS = 800
 
+/** 전용 모듈 화면이 쓰는 값의 키. 일반 입력 칸과 섞이지 않게 따로 둔다. */
+export const MODULE_KEY = '__module'
+
 export function ResponseCollector({
   lessonId,
   step,
   onSubmitted,
+  renderModule,
   children,
 }: {
   lessonId: LessonId
   step: Step
   onSubmitted?: (payload: Record<string, unknown>) => void
+  /**
+   * 전용 모듈 화면. 모형 캔버스·데이터 스튜디오 같은 것.
+   * 여기서 만든 값은 일반 입력 칸과 함께 같은 응답 버전에 저장되므로
+   * VersionTimeline 에서 v1 → v2 비교가 그대로 된다.
+   */
+  renderModule?: (
+    value: unknown,
+    onChange: (v: unknown) => void,
+    locked: boolean,
+  ) => React.ReactNode
   /** 제출 뒤에만 보여 줄 것 (분포·의견 광장 등) */
   children?: (submitted: boolean, doc: ResponseDoc | null) => React.ReactNode
 }) {
@@ -149,7 +163,12 @@ export function ResponseCollector({
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 자동 저장됨`
   }, [savedAt])
 
-  if (step.fields.length === 0) return <>{children?.(true, doc)}</>
+  const moduleSlot = renderModule
+    ? renderModule(values[MODULE_KEY], (v) => set(MODULE_KEY, v), locked)
+    : null
+
+  // 입력 칸도 모듈도 없으면 그릴 것이 없다 (개념 카드 단계 등).
+  if (step.fields.length === 0 && !renderModule) return <>{children?.(true, doc)}</>
 
   return (
     <div className="flex flex-col gap-lg">
@@ -162,6 +181,9 @@ export function ResponseCollector({
           </p>
         </Notice>
       ) : null}
+
+      {/* 전용 모듈 화면이 있으면 입력 칸보다 먼저 온다 */}
+      {moduleSlot ? <div>{moduleSlot}</div> : null}
 
       <div className="flex flex-col gap-xl" aria-disabled={locked}>
         {step.fields.map((f) => (

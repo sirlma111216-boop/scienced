@@ -11,7 +11,7 @@ import {
 } from '@/lib/ladder'
 import type { AppUser, LadderState, Participation } from '@/lib/types'
 import { Badge, Button, Caption, Card, ScrollX } from '@/components/ui'
-import { LadderBoard } from '@/components/activity/LadderBoard'
+import { PickerVisual } from '@/components/activity/PickerVisual'
 
 /**
  * 강사용 추첨 패널.
@@ -302,12 +302,16 @@ export function LadderPanel({
 
       {state ? (
         <div style={{ marginTop: 24 }}>
-          <LadderBoard
+          <PickerVisual
+            mode={game.mode}
             seed={state.seed}
             columns={state.columns}
             seats={seatNames}
             presentSlots={state.presentSlots}
+            mySeat={null}
             revealed={state.phase === 'running' || state.phase === 'done'}
+            weights={weights}
+            nicknames={nicknames}
           />
           {state.winnerUids.length > 0 ? (
             <div style={{ marginTop: 16 }}>
