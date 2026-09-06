@@ -1,0 +1,196 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    /* DESIGN.md는 다크 테마를 정의하지 않는다. 단색 흑백 프레임을 고정한다. */
+    --focus-ring: #ff3d8b;
+    /* 발표 모드에서만 1.35배 (지시서 2.5) */
+    --present-scale: 1;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans text-body antialiased;
+    margin: 0;
+    font-size: calc(18px * var(--present-scale));
+  }
+
+  /* 지시서 15절 · 컨텍스트 19.10 — 키보드만으로 조작 가능해야 하고 포커스가 보여야 한다. */
+  :focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* 색만으로 상태를 구분하지 않는다: 상태 뱃지는 글자·무늬를 함께 쓴다(.state-* 참고) */
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* ─────────── DESIGN.md components: 버튼은 전부 알약, 아이콘은 전부 원 ─────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-xs rounded-pill text-button;
+    min-height: 44px; /* DESIGN.md Touch Targets */
+    transition: transform 120ms ease, background-color 120ms ease;
+  }
+  .btn:active {
+    transform: scale(0.97);
+  }
+  .btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-canvas;
+    padding: 10px 20px;
+  }
+  .btn-secondary {
+    @apply btn bg-canvas text-ink;
+    padding: 8px 18px 10px;
+    box-shadow: inset 0 0 0 1px #e6e6e6;
+  }
+  .btn-tertiary {
+    @apply btn bg-canvas text-ink rounded-full text-link;
+    padding: 8px 12px;
+  }
+  .btn-promo {
+    @apply btn bg-magenta text-canvas;
+    padding: 10px 18px;
+  }
+  .btn-icon {
+    @apply inline-flex items-center justify-center rounded-full bg-surface-soft text-ink;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* 알약 토글: 선택 = 기본 표면 (DESIGN.md pricing-tab 패턴) */
+  .tab {
+    @apply btn bg-canvas text-ink;
+    padding: 8px 18px;
+    box-shadow: inset 0 0 0 1px #e6e6e6;
+  }
+  .tab[aria-selected='true'],
+  .tab[data-selected='true'] {
+    @apply bg-ink text-canvas;
+    box-shadow: none;
+  }
+
+  .field {
+    @apply w-full bg-canvas text-ink text-body rounded-md;
+    padding: 12px 14px;
+    box-shadow: inset 0 0 0 1px #e6e6e6;
+    min-height: 48px;
+  }
+  .field::placeholder {
+    color: #000;
+    opacity: 0.32;
+  }
+
+  /* 시그니처: 색 블록 섹션. 한 화면에 두 개를 겹쳐 놓지 않는다. */
+  .block {
+    @apply rounded-lg;
+    padding: 48px;
+  }
+  @media (max-width: 768px) {
+    /* DESIGN.md Responsive: 768px 아래에서는 모서리를 없애고 화면 끝까지 채운다 */
+    .block {
+      @apply rounded-none;
+      padding: 32px 24px;
+      margin-left: calc(-1 * var(--gutter, 24px));
+      margin-right: calc(-1 * var(--gutter, 24px));
+    }
+  }
+
+  .hairline {
+    box-shadow: inset 0 0 0 1px #e6e6e6;
+  }
+  .card {
+    @apply bg-canvas rounded-lg hairline;
+    padding: 24px;
+  }
+  .tile {
+    @apply bg-surface-soft rounded-md;
+    padding: 16px;
+  }
+
+  .eyebrow {
+    @apply font-mono text-eyebrow uppercase;
+  }
+  .caption {
+    @apply font-mono text-caption uppercase;
+  }
+
+  .shell {
+    @apply mx-auto w-full;
+    max-width: 1280px;
+    --gutter: 48px;
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+  }
+  @media (max-width: 768px) {
+    .shell {
+      --gutter: 24px;
+    }
+  }
+
+  /* 상태 뱃지 — 색 + 글자 + 테두리 무늬를 함께 쓴다 (색만으로 구분 금지) */
+  .badge {
+    @apply inline-flex items-center gap-xxs font-mono text-caption uppercase rounded-pill;
+    padding: 6px 10px;
+    box-shadow: inset 0 0 0 1px #000;
+  }
+  .badge-solid {
+    @apply bg-ink text-canvas;
+    box-shadow: none;
+  }
+
+  /* 인쇄: 차시별 동일 목표 활동지 (지시서 15절) */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    .block {
+      background: #fff !important;
+      box-shadow: inset 0 0 0 1px #000;
+      padding: 16px;
+    }
+    body {
+      font-size: 11pt;
+    }
+  }
+}
+
+@layer utilities {
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+  }
+  .skip-link:focus {
+    position: fixed;
+    left: 16px;
+    top: 16px;
+    z-index: 100;
+    @apply btn-primary;
+  }
+  /* 가로로 넘치는 표·그림은 스스로 스크롤한다. 본문이 가로로 밀리면 안 된다. */
+  .scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

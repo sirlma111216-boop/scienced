@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.wrangler/
+
+# 서비스 계정이 들어가는 파일. 절대 커밋하지 않는다.
+.env
+.env.local
+.env.*.local
+
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 원본 참조 자료 (교재 PDF·DOCX 등)는 저장소에 올리지 않는다
+reference/
+*.docx
+*.pdf

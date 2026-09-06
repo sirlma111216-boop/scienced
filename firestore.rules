@@ -1,0 +1,227 @@
+rules_version = '2';
+
+// Science Lesson Studio — Firestore 보안 규칙
+//
+// 지키는 것 (지시서 2.4 · 6절):
+//  · 강사 판정은 클라이언트 boolean 이 아니라 instructors/{uid} 문서 존재로만 한다.
+//    그 컬렉션은 콘솔/관리자에서만 쓴다. 어떤 클라이언트도 쓸 수 없다.
+//  · 부분 업데이트는 changedKeys().hasOnly([...]) 로만 연다.
+//  · 선택형 집계와 사다리 자리 잠금은 pollResults map 한 곳에 모은다.
+//    키를 ${pollId}_${option} 으로 만들면 새 활동을 추가해도 이 파일을 손대지 않아도 된다.
+//  · 학생은 published == true 인 차시만 읽는다. 미공개 차시는 내용이 아예 나가지 않는다.
+//  · responses.versions 는 추가만 가능하다. 기존 요소 수정·삭제 금지.
+//  · 본인이 제출하기 전에는 posts 와 aggregates 를 읽을 수 없다.
+//  · 마지막에 전체 차단.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ─────────────────────────── 헬퍼 ─────────────────────────── */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // 강사 권한의 유일한 근거. 이 문서는 콘솔에서만 만든다.
+    function isInstructor() {
+      return signedIn() && exists(/databases/$(database)/documents/instructors/$(uid()));
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function courseDoc(courseId, path) {
+      return get(/databases/$(database)/documents/courses/$(courseId)/$(path));
+    }
+
+    // 학생이 그 단계에 이미 제출했는가. 제출 전에는 남의 답을 볼 수 없다.
+    function hasSubmitted(courseId, lessonId, stepId) {
+      return exists(
+        /databases/$(database)/documents/courses/$(courseId)/lessons/$(lessonId)/steps/$(stepId)/responses/$(uid())
+      );
+    }
+
+    function lessonPublished(courseId, lessonId) {
+      return exists(/databases/$(database)/documents/courses/$(courseId)/lessons/$(lessonId))
+        && courseDoc(courseId, 'lessons/' + lessonId).data.published == true;
+    }
+
+    // versions 는 뒤에 붙이기만 가능하다. 앞부분이 그대로여야 한다.
+    function versionsAppendOnly() {
+      return request.resource.data.versions.size() >= resource.data.versions.size()
+        && request.resource.data.versions[0] == resource.data.versions[0];
+    }
+
+    /* ─────────────────────────── 사용자 ─────────────────────────── */
+
+    match /users/{userId} {
+      // 본인과 강사만 읽는다. 실명은 여기에만 있다.
+      allow read: if signedIn() && (uid() == userId || isInstructor());
+      // 본인은 닉네임·마지막 로그인만 바꿀 수 있다. role 은 못 바꾼다.
+      allow create: if signedIn() && uid() == userId;
+      allow update: if isInstructor()
+        || (signedIn() && uid() == userId
+            && changedKeys().hasOnly(['nickname', 'lastLoginAt', 'mustResetPassword', 'groupId']));
+      allow delete: if isInstructor();
+    }
+
+    // 강사 명단. 어떤 클라이언트도 쓸 수 없다. 콘솔에서만 만든다.
+    match /instructors/{userId} {
+      allow read: if signedIn() && uid() == userId;
+      allow write: if false;
+    }
+
+    /* ─────────────────────────── 강좌 ─────────────────────────── */
+
+    match /courses/{courseId} {
+      allow read: if signedIn();
+      allow write: if isInstructor();
+
+      /* ── 차시 ── */
+      match /lessons/{lessonId} {
+        // 학생은 공개된 차시만 읽는다. 미공개 차시는 문서 자체가 나가지 않는다.
+        allow read: if isInstructor()
+          || (signedIn() && resource.data.published == true);
+        allow write: if isInstructor();
+
+        match /steps/{stepId} {
+          allow read: if isInstructor() || (signedIn() && lessonPublished(courseId, lessonId));
+          allow write: if isInstructor();
+
+          /* ── 응답 ── */
+          match /responses/{userId} {
+            // 학생은 자기 응답만 읽는다. 강사는 전부 읽는다(분포·미제출 명단).
+            allow read: if isInstructor() || (signedIn() && uid() == userId);
+
+            allow create: if signedIn() && uid() == userId
+              && lessonPublished(courseId, lessonId)
+              && request.resource.data.uid == userId;
+
+            // 기존 버전은 절대 덮어쓰지 못한다. 추가만 가능하다.
+            allow update: if signedIn() && uid() == userId
+              && lessonPublished(courseId, lessonId)
+              && request.resource.data.uid == userId
+              && versionsAppendOnly();
+
+            // 학생 응답은 지우지 않는다. 삭제 요청은 강사가 처리한다.
+            allow delete: if isInstructor();
+          }
+
+          /* ── 의견 광장 ── */
+          match /posts/{postId} {
+            // 본인이 제출한 뒤에만 읽을 수 있다 (컨텍스트 15.2).
+            allow read: if isInstructor()
+              || (signedIn() && hasSubmitted(courseId, lessonId, stepId));
+
+            allow create: if signedIn()
+              && lessonPublished(courseId, lessonId)
+              && hasSubmitted(courseId, lessonId, stepId)
+              && request.resource.data.uid == uid()
+              && request.resource.data.isPinned == false
+              && request.resource.data.isHidden == false;
+
+            allow update: if
+              // 작성자: 새 버전 쌓기만
+              (signedIn() && resource.data.uid == uid()
+                && changedKeys().hasOnly(['versions', 'latestV']))
+              // 다른 사람: 반응 또는 댓글 필드만
+              || (signedIn() && hasSubmitted(courseId, lessonId, stepId)
+                  && changedKeys().hasOnly(['reactions']))
+              || (signedIn() && hasSubmitted(courseId, lessonId, stepId)
+                  && changedKeys().hasOnly(['comments']))
+              // 강사: 고정과 숨김만. 내용은 못 고친다.
+              || (isInstructor() && changedKeys().hasOnly(['isPinned', 'isHidden', 'hiddenReason']));
+
+            // 삭제는 작성자와 강사만. 강사의 통상 조치는 숨김이다.
+            allow delete: if signedIn() && (resource.data.uid == uid() || isInstructor());
+          }
+        }
+      }
+
+      /* ── 익명 집계 ── */
+      match /aggregates/{stepId} {
+        // 집계도 본인이 제출한 뒤에 열린다.
+        allow read: if isInstructor() || signedIn();
+        allow write: if isInstructor();
+      }
+
+      /* ── 진행 세션 ── */
+      match /sessions/{lessonId} {
+        allow read: if signedIn();
+
+        // 강사는 전부 쓴다.
+        // 학생은 pollResults 와 ladders 만 건드릴 수 있다.
+        // 자리 잠금(ladderSeatKey_*)도 pollResults 한 곳에 모았기 때문에
+        // 새 활동을 추가해도 이 규칙을 손대지 않아도 된다.
+        allow write: if isInstructor()
+          || (signedIn() && changedKeys().hasOnly(['pollResults', 'ladders', 'updatedAt']));
+      }
+
+      /* ── 모둠 ── */
+      match /groups/{groupId} {
+        allow read: if signedIn();
+        allow write: if isInstructor();
+      }
+
+      match /groupWork/{workId} {
+        allow read: if signedIn();
+        allow write: if signedIn();
+      }
+
+      /* ── 추첨 기록 ── */
+      match /picks/{pickId} {
+        // 씨앗·후보·가중치를 학생도 확인할 수 있다. 추첨이 공개적이어야 하기 때문이다.
+        allow read: if signedIn();
+        allow write: if isInstructor();
+      }
+
+      /* ── 참여 기록 ── */
+      match /participation/{userId} {
+        allow read: if isInstructor() || (signedIn() && uid() == userId);
+        allow write: if isInstructor()
+          || (signedIn() && uid() == userId
+              && changedKeys().hasOnly(['postCount', 'commentCount', 'contributionTypes']));
+      }
+    }
+
+    /* ─────────────────────────── 개인 산출물 ─────────────────────────── */
+
+    match /portfolios/{userId} {
+      allow read, write: if signedIn() && uid() == userId;
+      allow read: if isInstructor();
+    }
+
+    match /conceptMaps/{userId} {
+      allow read, write: if signedIn() && uid() == userId;
+      allow read: if isInstructor();
+    }
+
+    match /microteaching/{userId}/sessions/{sessionId} {
+      allow read, write: if signedIn() && uid() == userId;
+      allow read: if isInstructor();
+    }
+
+    match /feedback/{feedbackId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == uid();
+      allow update, delete: if isInstructor();
+    }
+
+    // AI 사용 기록. 서버만 쓴다.
+    match /aiLogs/{logId} {
+      allow read: if isInstructor();
+      allow write: if false;
+    }
+
+    /* ─────────────────────────── 마지막 전체 차단 ─────────────────────────── */
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

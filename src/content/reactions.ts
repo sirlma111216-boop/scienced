@@ -1,0 +1,42 @@
+/**
+ * 의견 광장의 반응 4종.
+ *
+ * 좋아요를 쓰지 않는다. 컨텍스트 19.7이 "좋아요 중심 인기 평가"를 금지한다.
+ * 하루짜리 연수에서는 하트가 무해하지만, 같은 30명이 18주를 함께 가는 강의에서는
+ * 인기 순위가 굳는다. 14강이 다루는 참여 형평성과도 정면으로 부딪힌다.
+ *
+ * 기존 앱대로 하트 하나로 되돌리고 싶으면 이 배열만 고치면 된다.
+ * 정렬 옵션에 인기순을 만들지 않는다 (verify:wall 이 감시한다).
+ */
+export const REACTIONS = [
+  { key: 'agreed', label: '나도 그렇게 생각했다', meaning: '같은 결론', mark: '=' },
+  { key: 'wantEvidence', label: '근거가 궁금하다', meaning: '더 듣고 싶다', mark: '?' },
+  { key: 'disagree', label: '나는 다르게 본다', meaning: '다른 결론', mark: '≠' },
+  { key: 'learned', label: '새로 알았다', meaning: '내 생각이 움직였다', mark: '+' },
+] as const
+
+export type ReactionKey = (typeof REACTIONS)[number]['key']
+export const REACTION_KEYS = REACTIONS.map((r) => r.key) as ReactionKey[]
+
+/**
+ * 정렬 기본값은 '아직 반응이 없는 글 먼저'.
+ * 아무도 읽지 않은 글이 계속 밑에 깔리는 일을 막는다.
+ */
+export const WALL_SORTS = [
+  { key: 'unanswered', label: '아직 반응이 없는 글 먼저' },
+  { key: 'recent', label: '최신순' },
+  { key: 'pinned', label: '강사 추천(고정)' },
+  { key: 'mine', label: '내가 반응한 것' },
+  { key: 'group', label: '우리 모둠' },
+] as const
+
+export type WallSortKey = (typeof WALL_SORTS)[number]['key']
+
+/** 댓글 문장 틀. 버튼으로 제공하고 강제하지 않는다 (컨텍스트 17.3). */
+export const COMMENT_STARTERS = [
+  '이 부분이 ___와(과) 연결된다고 봅니다',
+  '이 주장에 필요한 증거는 ___라고 생각합니다',
+  '저는 ___ 때문에 다르게 봅니다',
+]
+
+export const COMMENT_MAX = 200
