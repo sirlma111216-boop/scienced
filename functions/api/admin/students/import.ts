@@ -196,10 +196,35 @@ async function upsertUserDoc(
       },
     )
     if (res.ok) return { ok: true, detail: '' }
-    return { ok: false, detail: (await res.text()).slice(0, 120) }
+    return { ok: false, detail: await describeError(res) }
   } catch (err) {
     return { ok: false, detail: (err as Error).message }
   }
+}
+
+/**
+ * 실패 응답을 한 줄로 옮긴다.
+ *
+ * 원문 JSON 을 그대로 화면에 흘리면 강사는 여섯 줄짜리 중괄호 덩어리를 본다.
+ * 무엇을 해야 하는지가 그 안에 묻힌다. 자주 나오는 것은 다음 할 일까지 붙여 준다.
+ */
+async function describeError(res: Response): Promise<string> {
+  const raw = await res.text()
+  let message = raw.slice(0, 160)
+  let status = ''
+  try {
+    const parsed = JSON.parse(raw) as { error?: { message?: string; status?: string } }
+    if (parsed.error?.message) message = parsed.error.message
+    if (parsed.error?.status) status = parsed.error.status
+  } catch {
+    /* JSON 이 아니면 원문 앞부분을 쓴다 */
+  }
+
+  if (res.status === 403 || status === 'PERMISSION_DENIED') {
+    return `${message} — 서비스 계정에 Firestore 쓰기 권한이 없습니다. ` +
+      'Google Cloud 콘솔 → IAM 에서 그 서비스 계정에 「Cloud Datastore 사용자」 역할을 더하세요.'
+  }
+  return status ? `${status}: ${message}` : message
 }
 
 async function docExists(

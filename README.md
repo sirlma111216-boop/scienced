@@ -130,6 +130,17 @@ AI 분류 요청  →  addAiProposal (status: pending)  →  /instructor/ai-revi
 | `FIREBASE_PROJECT_ID` | `scienced-e721d` |
 | `STUDENT_EMAIL_DOMAIN` | `students.slstudio.local` |
 
+서비스 계정 하나로 세 가지를 한다. IAM 역할도 셋 다 있어야 한다.
+
+| 하는 일 | 필요한 역할 |
+|---|---|
+| AI 프록시 (Vertex AI) | `Vertex AI 사용자` |
+| 학생 계정 만들기 | `Firebase 인증 관리자` |
+| 명단 문서 저장 (Firestore) | `Cloud Datastore 사용자` |
+
+하나라도 빠지면 그 기능만 조용히 막힌다. 서버는 5xx 를 던지지 않고 200 + ok:false 로 돌려주므로
+화면에는 안내 문구로만 보인다. 「계정 만들기」가 0명으로 끝나면 이 표부터 확인한다.
+
 **클라이언트** — Firebase 웹 설정값. 공개되어도 무방하다(보안은 규칙이 한다).
 값은 `.env.example` 에 그대로 있으니 복사해 넣으면 된다.
 
