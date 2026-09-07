@@ -81,7 +81,10 @@ export const onRequestPost: PagesFunction<Env & { STUDENT_EMAIL_DOMAIN?: string 
       }
 
       // users/{uid} 생성. 실명은 여기에만 둔다. 화면에는 닉네임만 나간다.
-      await fetch(
+      //
+      // 이 응답을 확인하지 않으면, Auth 계정은 생겼는데 문서가 없어서
+      // 명단에 뜨지 않는 상태가 조용히 만들어진다. 강사는 이유를 알 수 없다.
+      const docRes = await fetch(
         `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents/users?documentId=${data.localId}`,
         {
           method: 'POST',
@@ -101,6 +104,11 @@ export const onRequestPost: PagesFunction<Env & { STUDENT_EMAIL_DOMAIN?: string 
           }),
         },
       )
+      if (!docRes.ok) {
+        const detail = (await docRes.text()).slice(0, 120)
+        failures.push(`${studentId}: 계정은 만들었으나 명단 문서 저장 실패 — ${detail}`)
+        continue
+      }
       created++
     } catch (err) {
       failures.push(`${studentId}: ${(err as Error).message}`)

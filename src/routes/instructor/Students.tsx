@@ -52,15 +52,36 @@ export function InstructorStudents() {
     setBusy(true)
     setLog(null)
     try {
-      const data = await apiPost<{ ok: boolean; message?: string; created?: number }>(
-        '/api/admin/students/import',
-        { students: parsed },
-      )
-      setLog(
-        data.ok
-          ? `${data.created ?? 0}개 계정을 만들었습니다. 초기 비밀번호는 학번입니다.`
-          : data.message || '가져오지 못했습니다.',
-      )
+      const data = await apiPost<{
+        ok: boolean
+        message?: string
+        created?: number
+        failed?: number
+        failures?: string[]
+      }>('/api/admin/students/import', { students: parsed })
+
+      if (!data.ok) {
+        setLog(data.message || '가져오지 못했습니다.')
+        return
+      }
+
+      /*
+       * 서버는 줄마다 실패 이유를 돌려준다. 그것을 버리면 안 된다.
+       * 「0개 계정을 만들었습니다」만 보이면 무엇이 잘못됐는지 알 길이 없다 —
+       * 실제로 그 화면 앞에서 한참 막혔다. 이유는 서버가 이미 말하고 있었다.
+       */
+      const created = data.created ?? 0
+      const failed = data.failed ?? 0
+      const lines = [
+        created > 0
+          ? `${created}개 계정을 만들었습니다. 초기 비밀번호는 학번입니다.`
+          : '계정이 하나도 만들어지지 않았습니다.',
+      ]
+      if (failed > 0) {
+        lines.push(`실패 ${failed}건:`)
+        for (const f of data.failures ?? []) lines.push(`  · ${f}`)
+      }
+      setLog(lines.join('\n'))
     } finally {
       setBusy(false)
     }
@@ -109,7 +130,11 @@ export function InstructorStudents() {
           <Caption>초기 비밀번호는 학번입니다.</Caption>
         </div>
         {log ? (
-          <p role="status" className="text-body-sm" style={{ marginTop: 12, fontWeight: 480 }}>
+          <p
+            role="status"
+            className="text-body-sm"
+            style={{ marginTop: 12, fontWeight: 480, whiteSpace: 'pre-line' }}
+          >
             {log}
           </p>
         ) : null}
