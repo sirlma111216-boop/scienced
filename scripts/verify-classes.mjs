@@ -202,11 +202,33 @@ import { fail, pass, report, walk } from './_report.mjs'
  * 화면에 닉네임이 나가는 곳이 여러 곳이므로 상태 자체를 봐야 한다.
  */
 {
+  const auth = await readFile('src/lib/auth.tsx', 'utf8')
   const app = await readFile('src/App.tsx', 'utf8')
-  if (!/nickname/.test(app)) {
-    fail('닉네임 관문', 'App.tsx 의 라우트 보호가 닉네임을 보지 않는다 — 깃발만 보면 빠진 문서가 통과한다')
-  } else {
-    pass('닉네임 관문', '닉네임이 비어 있으면 설정 화면으로 보낸다')
+  const reset = await readFile('src/routes/ResetPassword.tsx', 'utf8')
+  let bad = 0
+
+  // 판정이 닉네임 자체를 보는가
+  const at = auth.indexOf('export function needsSetup')
+  const fn = at < 0 ? null : [auth.slice(at, at + 400)]
+  if (!fn) {
+    fail('닉네임 관문', 'auth.tsx 에 needsSetup 판정이 없다')
+    bad++
+  } else if (!/nickname/.test(fn[0])) {
+    fail('닉네임 관문', 'needsSetup 이 닉네임을 보지 않는다 — 깃발만 보면 빠진 문서가 통과한다')
+    bad++
+  }
+
+  // ★ 관문과 설정 화면이 같은 판정을 쓰는가.
+  //   서로 다른 조건을 보면 한쪽이 보내고 다른 쪽이 되돌려 무한히 오간다.
+  for (const [file, code] of [['App.tsx', app], ['ResetPassword.tsx', reset]]) {
+    if (!code.includes('needsSetup(')) {
+      fail('닉네임 관문', `${file} 이 needsSetup 을 쓰지 않는다 — 판정이 갈리면 두 화면이 무한히 오간다`)
+      bad++
+    }
+  }
+
+  if (bad === 0) {
+    pass('닉네임 관문', '닉네임이 비어 있으면 보내고, 관문과 설정 화면이 같은 판정을 쓴다')
   }
 }
 
