@@ -20,6 +20,7 @@
     "verify:classes": "node --import ./scripts/_loader.mjs scripts/verify-classes.mjs",
     "verify:content": "node --import ./scripts/_loader.mjs scripts/verify-content.mjs",
     "verify:wording": "node --import ./scripts/_loader.mjs scripts/verify-wording.mjs",
+    "verify:api": "node --import ./scripts/_loader.mjs scripts/verify-api.mjs",
     "verify:tiers": "node --import ./scripts/_loader.mjs scripts/verify-tiers.mjs",
     "verify:standards": "node --import ./scripts/_loader.mjs scripts/verify-standards.mjs",
     "verify:games": "node --import ./scripts/_loader.mjs scripts/verify-games.mjs",

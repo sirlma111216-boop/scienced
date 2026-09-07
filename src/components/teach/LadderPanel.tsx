@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { GameDef, LessonId } from '@/content/types'
+import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import {
   buildLadder,
@@ -24,22 +25,14 @@ import { PickerVisual } from '@/components/activity/PickerVisual'
  *  - 씨앗·후보·가중치를 이 화면에서 확인할 수 있어야 한다.
  */
 
-async function requestSeed(gameId: string, round: number, idToken: string | null): Promise<string> {
+async function requestSeed(gameId: string, round: number): Promise<string> {
   // 난수를 클라이언트에서 만들지 않는다. 서버가 시드를 만든다.
-  try {
-    const res = await fetch('/api/picker/draw', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
-      },
-      body: JSON.stringify({ gameId, round }),
-    })
-    const data = (await res.json()) as { ok: boolean; seed?: string }
-    if (data.ok && data.seed) return data.seed
-  } catch {
-    /* 아래 폴백 */
-  }
+  // 토큰은 apiPost 가 붙인다 — 예전에는 여기서 null 을 넘겨 서버가 늘 거절했다.
+  const data = await apiPost<{ ok: boolean; seed?: string }>('/api/picker/draw', {
+    gameId,
+    round,
+  })
+  if (data.ok && data.seed) return data.seed
   // 서버에 닿지 않는 로컬 저장 모드에서는 강사 화면에서 한 번만 만들고 그대로 공유한다.
   // 씨앗을 화면에 표시하므로 재현성은 유지된다.
   return `${gameId}::r${round}::${Date.now()}`
@@ -95,7 +88,7 @@ export function LadderPanel({
   async function open(round = 1) {
     if (!repo) return
     setBusy(true)
-    const seed = await requestSeed(game.id, round, null)
+    const seed = await requestSeed(game.id, round)
     const columns = Math.max(2, candidates.length || 6)
     await repo.setLadder(classId, lessonId, game.id, {
       gameId: game.id,

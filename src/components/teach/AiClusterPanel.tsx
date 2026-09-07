@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { apiPost } from '@/lib/api'
 import { Link } from 'react-router-dom'
 import type { LessonId } from '@/content/types'
 import { useAuth } from '@/lib/auth'
@@ -60,24 +61,19 @@ export function AiClusterPanel({
     setBusy(true)
     setMessage(null)
     try {
-      const res = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
+      const data = await apiPost<{
+        ok: boolean
+        message?: string
+        text?: string
+        model?: string
+      }>('/api/ai/generate', {
           taskId: 'cluster-responses',
           inputs: {
             question: stepTitle,
             // 번호만 붙인다. 번호는 사람과 이어지지 않는다.
             responses: reasons.map((r, i) => `${i + 1}. ${r}`).join('\n'),
           },
-        }),
       })
-      const data = (await res.json()) as {
-        ok: boolean
-        message?: string
-        text?: string
-        model?: string
-      }
       if (!data.ok) {
         setMessage(data.message || 'AI 응답을 받지 못했습니다. 손으로 묶으셔도 됩니다.')
         return

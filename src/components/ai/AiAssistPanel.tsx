@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiPost } from '@/lib/api'
 import type { AiTaskId } from '@/content/types'
 import { Badge, Button, Caption, Card } from '@/components/ui'
 
@@ -94,21 +95,17 @@ export function AiAssistPanel({
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        // 프롬프트 원문이 아니라 taskId 와 입력값만 보낸다.
-        body: JSON.stringify({ taskId, inputs }),
-      })
+      // 프롬프트 원문이 아니라 taskId 와 입력값만 보낸다.
       // 오류여도 HTTP 200 + JSON 으로 온다. 5xx 를 던지면 엣지가 본문을 덮어쓴다.
-      const data = (await res.json()) as { ok: boolean; message?: string; text?: string; model?: string }
+      const data = await apiPost<{ ok: boolean; message?: string; text?: string; model?: string }>(
+        '/api/ai/generate',
+        { taskId, inputs },
+      )
       if (!data.ok) {
         setError(data.message || 'AI 응답을 받지 못했습니다. 이 활동은 AI 없이도 진행됩니다.')
         return
       }
       setResult(parseFourLines(data.text ?? '', data.model ?? '알 수 없음'))
-    } catch {
-      setError('AI 서버에 닿지 못했습니다. 이 활동은 AI 없이도 진행됩니다.')
     } finally {
       setBusy(false)
     }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { LESSONS } from '@/content/lessons'
+import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import type { Enrollment, ResponseDoc, RosterEntry } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
@@ -147,17 +148,8 @@ export function InstructorClassStudents() {
   async function resetPassword(studentId: string | null) {
     if (!studentId) return
     if (!confirm(`${studentId} 의 비밀번호를 학번으로 되돌립니다. 계속할까요?`)) return
-    try {
-      const res = await fetch('/api/admin/students/reset-password', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ studentId }),
-      })
-      const data = (await res.json()) as { ok: boolean; message?: string }
-      setMessage(data.ok ? '초기 비밀번호는 학번입니다.' : data.message || '초기화하지 못했습니다.')
-    } catch {
-      setMessage('서버에 닿지 못했습니다.')
-    }
+    const data = await apiPost('/api/admin/students/reset-password', { studentId })
+    setMessage(data.ok ? '초기 비밀번호는 학번입니다.' : data.message || '초기화하지 못했습니다.')
   }
 
   if (!isInstructor) return <Navigate to="/" replace />

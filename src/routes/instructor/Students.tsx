@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import type { AppUser, Participation } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
@@ -51,19 +52,15 @@ export function InstructorStudents() {
     setBusy(true)
     setLog(null)
     try {
-      const res = await fetch('/api/admin/students/import', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ students: parsed }),
-      })
-      const data = (await res.json()) as { ok: boolean; message?: string; created?: number }
+      const data = await apiPost<{ ok: boolean; message?: string; created?: number }>(
+        '/api/admin/students/import',
+        { students: parsed },
+      )
       setLog(
         data.ok
           ? `${data.created ?? 0}개 계정을 만들었습니다. 초기 비밀번호는 학번입니다.`
           : data.message || '가져오지 못했습니다.',
       )
-    } catch {
-      setLog('서버에 닿지 못했습니다. 로컬 저장 모드에서는 계정을 만들 수 없습니다.')
     } finally {
       setBusy(false)
     }
@@ -71,17 +68,8 @@ export function InstructorStudents() {
 
   async function resetPassword(studentId: string) {
     if (!confirm(`${studentId} 의 비밀번호를 학번으로 되돌립니다. 계속할까요?`)) return
-    try {
-      const res = await fetch('/api/admin/students/reset-password', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ studentId }),
-      })
-      const data = (await res.json()) as { ok: boolean; message?: string }
-      setLog(data.ok ? '초기 비밀번호는 학번입니다.' : data.message || '초기화하지 못했습니다.')
-    } catch {
-      setLog('서버에 닿지 못했습니다.')
-    }
+    const data = await apiPost('/api/admin/students/reset-password', { studentId })
+    setLog(data.ok ? '초기 비밀번호는 학번입니다.' : data.message || '초기화하지 못했습니다.')
   }
 
   return (
