@@ -16,7 +16,7 @@ import {
   type ClassFormValues,
 } from '@/content/classes'
 import { LESSONS } from '@/content/lessons'
-import { AFTER_CLASS_LABEL } from '@/content/types'
+import { AFTER_CLASS_LABEL, INITIALLY_OPEN } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { classSessionLength } from '@/lib/tiers'
 import type { ClassDoc, Enrollment } from '@/lib/types'
@@ -104,9 +104,9 @@ export function InstructorClasses() {
       createdAt: Date.now(),
     }
     await repo.createClass(doc)
-    // 새 클래스는 01강만 열어 둔다. 나머지는 강사가 진도에 맞춰 연다.
+    // 처음 열어 둘 차시는 INITIALLY_OPEN 한 곳에서 정한다. 나머지는 진도에 맞춰 연다.
     for (const l of LESSONS) {
-      await repo.setLessonPublished(id, l.id, l.id === '01')
+      await repo.setLessonPublished(id, l.id, INITIALLY_OPEN.includes(l.id))
     }
     setCreating(false)
     setForm(emptyClassForm())
@@ -593,7 +593,7 @@ export function InstructorClasses() {
       <div style={{ marginTop: 48 }}>
         <Notice tone="lilac">
           <p className="text-body-sm" style={{ margin: 0 }}>
-            <strong>새 클래스는 1강만 열려 있습니다.</strong> 2~18강은 진도에 맞춰 「차시」 화면에서
+            <strong>새 클래스는 {INITIALLY_OPEN.join('·')}강이 열려 있습니다.</strong> 나머지는 진도에 맞춰 「차시」 화면에서
             엽니다. 공개 여부는 클래스마다 따로라, 지난 학기 설정이 새 학기에 딸려 오지 않습니다.
           </p>
         </Notice>

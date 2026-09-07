@@ -1,7 +1,7 @@
 /**
  * npm run verify:publish
  *
- * 시드 상태에서 1강만 published:true 인지 (지시서 13절).
+ * 시드와 새 클래스가 같은 차시를 여는지 (지시서 13절).
  * 미공개 차시의 내용은 클라이언트로 아예 나가지 않아야 하므로
  * Firestore 규칙에도 같은 조건이 있는지 함께 본다.
  */
@@ -10,13 +10,20 @@ import { fail, pass, report } from './_report.mjs'
 
 const { LESSONS } = await import('../src/content/lessons/index.ts')
 
-const published = LESSONS.filter((l) => l.published)
-if (published.length !== 1) {
-  fail('공개 차시', `시드에서 ${published.length}개가 공개 상태다 (1개여야 한다)`)
-} else if (published[0].id !== '01') {
-  fail('공개 차시', `공개된 차시가 ${published[0].id}강이다 (1강이어야 한다)`)
+/*
+ * 시드의 published 와 INITIALLY_OPEN 이 같아야 한다.
+ * 두 곳에 같은 목록이 있으면 반드시 어긋난다 —
+ * 한쪽만 늘리면 새 클래스에는 열리는데 시드에는 닫혀 있는 차시가 생긴다.
+ */
+const { INITIALLY_OPEN } = await import('../src/content/types.ts')
+const published = LESSONS.filter((l) => l.published).map((l) => l.id)
+if (published.join(',') !== [...INITIALLY_OPEN].join(',')) {
+  fail(
+    '공개 차시',
+    `시드는 [${published}] 인데 INITIALLY_OPEN 은 [${INITIALLY_OPEN}] 이다 — 두 목록이 같아야 한다`,
+  )
 } else {
-  pass('공개 차시', '시드 상태에서 1강만 published:true')
+  pass('공개 차시', `시드와 새 클래스가 같은 차시를 연다 (${published.join('·')}강)`)
 }
 
 // Firestore 규칙에도 published 조건이 있는가 — 프론트 필터링만으로 처리하지 않는다
