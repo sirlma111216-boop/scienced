@@ -249,6 +249,25 @@ const asAnon = env.unauthenticatedContext().firestore()
   pass('로그인 프로필 저장', '학생이 로그인할 때 보내는 값은 통과하고, 역할·학번을 바꾸는 것은 막힌다')
 }
 
+/* ── 닉네임·비밀번호 설정을 마칠 때 (completeReset) ── */
+{
+  // 앱이 보내는 그 모양. 막히면 「저장하고 시작하기」가 되지 않는다.
+  await assertSucceeds(
+    asS1.doc(`users/${S1}`).set(
+      { uid: S1, nickname: '이나나나', mustResetPassword: false, groupId: null, lastClassId: null, lastLoginAt: Date.now() },
+      { merge: true },
+    ),
+  )
+  // 마지막으로 본 클래스 저장도 같은 길을 쓴다
+  await assertSucceeds(
+    asS1.doc(`users/${S1}`).set(
+      { uid: S1, nickname: '이나나나', mustResetPassword: false, groupId: null, lastClassId: A, lastLoginAt: Date.now() },
+      { merge: true },
+    ),
+  )
+  pass('설정 마치기', '닉네임·비밀번호를 마치고 저장하는 값이 규칙을 통과한다')
+}
+
 /* ── 보관된 클래스는 읽기 전용 ── */
 {
   await assertSucceeds(asS1.doc(`classes/archived-C/lessonState/01`).get())

@@ -72,6 +72,35 @@ const Ctx = createContext<AuthState | null>(null)
  *
  * 깃발이 아니라 상태를 본다. 닉네임이 비어 있으면 아직 준비가 안 된 것이다.
  */
+/**
+ * users 규칙이 학생의 수정을 허용하는 필드.
+ *
+ * firestore.rules 의 changedKeys().hasOnly([...]) 와 반드시 같아야 한다.
+ * 여기에 없는 필드를 하나라도 함께 보내면 규칙이 문서 전체를 거절한다.
+ * 「Missing or insufficient permissions.」 는 그때 나온다.
+ */
+const STUDENT_WRITABLE = [
+  'nickname',
+  'lastLoginAt',
+  'mustResetPassword',
+  'groupId',
+  'lastClassId',
+] as const
+
+/**
+ * 저장할 것만 골라 낸다.
+ *
+ * user 객체는 화면용이라 role·studentId·createdAt 까지 다 들어 있다.
+ * 그것을 통째로 보내면 바뀌지 않은 값도 diff 에 잡혀 규칙이 막는다.
+ * 강사는 규칙에서 전부 쓸 수 있으므로 그대로 보낸다.
+ */
+function writableUser(user: AppUser, instructor: boolean): AppUser {
+  if (instructor) return user
+  const out: Record<string, unknown> = { uid: user.uid }
+  for (const key of STUDENT_WRITABLE) out[key] = user[key]
+  return out as unknown as AppUser
+}
+
 export function needsSetup(user: AppUser | null): boolean {
   if (!user) return false
   return user.mustResetPassword || !user.nickname?.trim()
@@ -212,19 +241,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
        *   화면에서 쓰는 값(next)은 다 채우되, 저장은 허용된 것만 한다.
        *   강사는 규칙에서 전부 쓸 수 있으므로 그대로 보낸다.
        */
-      const savable: AppUser = instructor
-        ? next
-        : ({
-            uid: next.uid,
-            nickname: next.nickname,
-            mustResetPassword: next.mustResetPassword,
-            groupId: next.groupId,
-            lastClassId: next.lastClassId,
-            lastLoginAt: next.lastLoginAt,
-          } as AppUser)
-
       try {
-        await repo.upsertUser(savable)
+        await repo.upsertUser(writableUser(next, instructor))
       } catch (err) {
         /*
          * 저장이 막혀도 로그인은 진행한다.
@@ -278,11 +296,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (cid: string) => {
       if (!user) return
       const next = { ...user, lastClassId: cid }
-      await repo.upsertUser(next)
+      await repo.upsertUser(writableUser(next, isInstructor))
       if (!getFirebaseAuth()) writeLocalUser(next)
       setUser(next)
     },
-    [repo, user],
+    [repo, user, isInstructor],
   )
 
   const selectClass = useCallback(
@@ -416,18 +434,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const next: AppUser = { ...user, mustResetPassword: false, nickname: nickname.trim() }
-      await repo.upsertUser(next)
+      await repo.upsertUser(writableUser(next, isInstructor))
       if (!auth) writeLocalUser(next)
       setUser(next)
     },
-    [repo, user],
+    [repo, user, isInstructor],
   )
 
   const setNickname = useCallback(
     async (nickname: string) => {
       if (!user) return
       const next = { ...user, nickname: nickname.trim() }
-      await repo.upsertUser(next)
+      await repo.upsertUser(writableUser(next, isInstructor))
       if (!getFirebaseAuth()) writeLocalUser(next)
       setUser(next)
       // 등록된 클래스의 표시 이름도 함께 바꾼다.
@@ -435,7 +453,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await repo.updateEnrollment(cid, user.uid, { nickname: next.nickname })
       }
     },
-    [repo, user, myEnrollments],
+    [repo, user, myEnrollments, isInstructor],
   )
 
   const myClassIds = useMemo(() => Object.keys(myEnrollments), [myEnrollments])
