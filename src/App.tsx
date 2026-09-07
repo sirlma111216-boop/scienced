@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { AuthProvider, useAuth } from '@/lib/auth'
+import { AuthProvider, needsSetup, useAuth } from '@/lib/auth'
 import { PresentProvider } from '@/components/ui'
 import { Login } from '@/routes/Login'
 import { ResetPassword } from '@/routes/ResetPassword'
@@ -55,8 +55,7 @@ function Guard({
    * 깃발은 상태에 대한 이야기일 뿐이다. 상태 자체를 본다 —
    * 닉네임이 비어 있으면 아직 시작할 준비가 안 된 것이다.
    */
-  const needsSetup = user.mustResetPassword || !user.nickname?.trim()
-  if (needsSetup && loc.pathname !== '/reset-password') {
+  if (needsSetup(user) && loc.pathname !== '/reset-password') {
     return <Navigate to="/reset-password" replace />
   }
   // 클래스를 하나도 고르지 않으면 다른 화면에 접근할 수 없다 (2차 지시서 A.4).

@@ -44,7 +44,7 @@ try {
 }
 
 const env = await initializeTestEnvironment({
-  projectId: PROJECT_ID,
+  projectId: PROJECT_ID + '-' + Date.now(),
   firestore: {
     rules: await readFile('firestore.rules', 'utf8'),
     host: HOST.split(':')[0],

@@ -63,6 +63,20 @@ interface AuthState {
 
 const Ctx = createContext<AuthState | null>(null)
 
+/**
+ * 아직 시작할 준비가 안 된 계정인가.
+ *
+ * ★ 라우트 보호(App.tsx)와 설정 화면(ResetPassword.tsx)이 **같은 판정**을 써야 한다.
+ *   서로 다른 조건을 보면 한쪽이 보내고 다른 쪽이 되돌려 무한히 오간다.
+ *   실제로 그럴 뻔했다 — 관문은 닉네임을 보는데 화면은 깃발을 보고 있었다.
+ *
+ * 깃발이 아니라 상태를 본다. 닉네임이 비어 있으면 아직 준비가 안 된 것이다.
+ */
+export function needsSetup(user: AppUser | null): boolean {
+  if (!user) return false
+  return user.mustResetPassword || !user.nickname?.trim()
+}
+
 const LOCAL_USER_KEY = 'sls.v1.localUser'
 
 function readLocalUser(): AppUser | null {
@@ -328,12 +342,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (newPassword: string, nickname: string) => {
       const auth = getFirebaseAuth()
       if (!user) throw new Error('로그인이 필요합니다.')
-      if (newPassword.length < 8) throw new Error('새 비밀번호는 8자 이상이어야 합니다.')
-      if (user.studentId && newPassword === user.studentId) {
-        throw new Error('새 비밀번호는 학번과 달라야 합니다.')
+      if (user.mustResetPassword) {
+        if (newPassword.length < 8) throw new Error('새 비밀번호는 8자 이상이어야 합니다.')
+        if (user.studentId && newPassword === user.studentId) {
+          throw new Error('새 비밀번호는 학번과 달라야 합니다.')
+        }
       }
       if (!nickname.trim()) throw new Error('닉네임을 정해 주세요.')
-      if (auth?.currentUser) await updatePassword(auth.currentUser, newPassword)
+
+      /*
+       * 비밀번호를 바꿔야 하는 계정만 바꾼다.
+       * 닉네임만 비어 있는 계정에게 비밀번호까지 새로 정하라고 할 이유가 없다.
+       *
+       * updatePassword 는 로그인한 지 오래되면 requires-recent-login 으로 거절한다.
+       * 그대로 두면 영어 원문이 화면에 뜨고, 학생은 무엇을 해야 할지 알 수 없다.
+       */
+      if (user.mustResetPassword && auth?.currentUser) {
+        try {
+          await updatePassword(auth.currentUser, newPassword)
+        } catch (err) {
+          const code = (err as { code?: string })?.code ?? ''
+          if (code.includes('requires-recent-login')) {
+            throw new Error(
+              '로그인한 지 오래되어 비밀번호를 바꿀 수 없습니다. 나갔다가 다시 로그인해 주세요.',
+            )
+          }
+          if (code.includes('weak-password')) {
+            throw new Error('비밀번호가 너무 단순합니다. 다른 것으로 정해 주세요.')
+          }
+          throw err
+        }
+      }
+
       const next: AppUser = { ...user, mustResetPassword: false, nickname: nickname.trim() }
       await repo.upsertUser(next)
       if (!auth) writeLocalUser(next)

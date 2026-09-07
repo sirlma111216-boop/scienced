@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/lib/auth'
+import { needsSetup, useAuth } from '@/lib/auth'
 import { Button, Caption, Notice } from '@/components/ui'
 
 /**
@@ -19,12 +19,19 @@ export function ResetPassword() {
 
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
-  if (!user.mustResetPassword) return <Navigate to="/" replace />
+  /*
+   * ★ 관문과 같은 판정을 써야 한다.
+   *   관문은 닉네임을 보고 여기로 보내는데 이 화면이 깃발을 보고 되돌리면 무한히 오간다.
+   */
+  if (!needsSetup(user)) return <Navigate to="/" replace />
+
+  /* 비밀번호를 바꿔야 하는 계정만 비밀번호 칸을 본다. */
+  const wantsPassword = user.mustResetPassword
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (pw1 !== pw2) {
+    if (wantsPassword && pw1 !== pw2) {
       setError('두 비밀번호가 다릅니다.')
       return
     }
@@ -43,7 +50,7 @@ export function ResetPassword() {
       <main className="shell" style={{ paddingTop: 96, paddingBottom: 96, maxWidth: 560 }}>
         <p className="eyebrow">첫 로그인</p>
         <h1 className="text-display-lg" style={{ margin: '16px 0 0' }}>
-          비밀번호와 닉네임을 정합니다
+          {wantsPassword ? '비밀번호와 닉네임을 정합니다' : '닉네임을 정합니다'}
         </h1>
 
         <div style={{ marginTop: 24 }}>
@@ -69,6 +76,8 @@ export function ResetPassword() {
             <Caption>학기 내내 이 이름으로 보입니다.</Caption>
           </div>
 
+          {wantsPassword ? (
+          <>
           <div className="flex flex-col gap-xs">
             <label htmlFor="np1" className="text-body-sm" style={{ fontWeight: 480 }}>
               새 비밀번호
@@ -97,6 +106,8 @@ export function ResetPassword() {
               onChange={(e) => setPw2(e.target.value)}
             />
           </div>
+          </>
+          ) : null}
 
           {error ? (
             <p role="alert" className="text-body-sm" style={{ fontWeight: 480 }}>
