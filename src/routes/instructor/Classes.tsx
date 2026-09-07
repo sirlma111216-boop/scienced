@@ -40,6 +40,8 @@ export function InstructorClasses() {
   const [nameTouched, setNameTouched] = useState(false)
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [publishedCounts, setPublishedCounts] = useState<Record<string, number>>({})
+  /* 하위 자료까지 훑어 지우므로 시간이 걸린다. 두 번 누르지 못하게 막는다. */
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   // 각 클래스의 등록 인원과 공개 차시 수
   useEffect(() => {
@@ -531,25 +533,32 @@ export function InstructorClasses() {
                             {c.enrollmentOpen ? '수강 등록 마감' : '등록 다시 열기'}
                           </Button>
                           {/*
-                            빈 클래스만 지운다.
-                            시험 삼아 만든 것을 치울 길이 없으면 목록이 금방 못 쓰게 된다.
-                            등록 인원이 있으면 「보관」을 쓴다 — 학생 자료가 딸린 클래스를
-                            실수로 지우면 되돌릴 수 없다.
+                            인원이 있어도 지운다. 수강생을 넣어 시험해 본 클래스를
+                            치울 길이 없으면 목록이 금방 못 쓰게 된다.
+                            대신 무엇이 함께 사라지는지 숫자로 밝히고 확인을 받는다.
                           */}
-                          {(counts[c.id] ?? 0) === 0 ? (
-                            <Button
-                              variant="tertiary"
-                              onClick={() => {
-                                const ok = confirm(
-                                  `이 클래스를 지웁니다.\n\n${c.displayName}\n\n` +
-                                    '등록한 수강생이 없어 지울 수 있습니다. 되돌릴 수 없습니다.',
-                                )
-                                if (ok) void repo?.deleteClass(c.id)
-                              }}
-                            >
-                              지우기
-                            </Button>
-                          ) : null}
+                          <Button
+                            variant="tertiary"
+                            disabled={deleting === c.id}
+                            onClick={() => {
+                              const n = counts[c.id] ?? 0
+                              const ok = confirm(
+                                `이 클래스를 지웁니다.\n\n${c.displayName}\n\n` +
+                                  (n > 0
+                                    ? `수강생 ${n}명의 응답·의견·실명 명단이 함께 지워집니다.\n`
+                                    : '') +
+                                  '되돌릴 수 없습니다.\n\n' +
+                                  '기록을 남기려면 「보관」을 쓰세요.',
+                              )
+                              if (!ok) return
+                              setDeleting(c.id)
+                              void repo
+                                ?.deleteClass(c.id)
+                                .finally(() => setDeleting(null))
+                            }}
+                          >
+                            {deleting === c.id ? '지우는 중…' : '지우기'}
+                          </Button>
                           <Button
                             variant="tertiary"
                             onClick={() => {

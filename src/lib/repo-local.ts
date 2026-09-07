@@ -116,12 +116,20 @@ export function createLocalRepo(): Repo {
       write(kPublished(c.id), seedPublished())
     },
     async deleteClass(classId) {
+      // 로컬 모드에서도 같은 약속을 지킨다 — 이 클래스로 시작하는 키를 전부 지운다.
+      const prefix = `${NS}.c.${classId}.`
+      try {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith(prefix)) localStorage.removeItem(key)
+        }
+      } catch {
+        /* 저장소가 막혀 있어도 목록에서는 지운다 */
+      }
       const list = read<ClassDoc[]>('classes', [])
       write(
         'classes',
         list.filter((c) => c.id !== classId),
       )
-      write(kPublished(classId), [])
     },
     async updateClass(classId, patch) {
       const list = read<ClassDoc[]>('classes', [])

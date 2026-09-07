@@ -12,6 +12,7 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore'
+import { LESSONS } from '@/content/lessons'
 import type { GameId, LessonId } from '@/content/types'
 import type { Repo } from './repo'
 import type {
@@ -95,9 +96,41 @@ export function createFirestoreRepo(db: Firestore): Repo {
       await setDoc(doc(db, 'classes', classId), patch, { merge: true })
     },
     async deleteClass(classId) {
-      // Firestore 는 문서를 지워도 하위 컬렉션이 남는다. lessonState 를 먼저 치운다.
-      const states = await getDocs(cc(db, classId, 'lessonState'))
-      await Promise.all(states.docs.map((d) => deleteDoc(d.ref)))
+      /*
+       * Firestore 는 문서를 지워도 하위 컬렉션이 남는다.
+       * 클래스 문서만 지우면 화면에서는 사라지지만 학생 응답·의견·실명은 그대로 남는다.
+       * 지웠다고 말할 수 없는 상태다. 그래서 아래를 전부 훑어 치운 뒤에 지운다.
+       *
+       * 차시별 응답·의견은 18강 × 단계 수만큼 돌아야 해서 느리다.
+       * 자주 하는 일이 아니므로 정확한 쪽을 택한다.
+       */
+      const wipe = async (ref: ReturnType<typeof cc>) => {
+        const snap = await getDocs(ref)
+        await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+      }
+
+      for (const name of [
+        'lessonState',
+        'enrollments',
+        'roster',
+        'aggregates',
+        'sessions',
+        'groups',
+        'groupWork',
+        'picks',
+        'participation',
+        'aiProposals',
+      ]) {
+        await wipe(cc(db, classId, name))
+      }
+
+      for (const lesson of LESSONS) {
+        for (const step of lesson.steps) {
+          await wipe(cc(db, classId, ...stepPath(lesson.id, step.id), 'responses'))
+          await wipe(cc(db, classId, ...stepPath(lesson.id, step.id), 'posts'))
+        }
+      }
+
       await deleteDoc(doc(db, 'classes', classId))
     },
 
