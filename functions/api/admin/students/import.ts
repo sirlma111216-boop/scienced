@@ -127,6 +127,20 @@ export const onRequestPost: PagesFunction<Env & { STUDENT_EMAIL_DOMAIN?: string 
   })
 }
 
+/** users/{uid} 문서가 이미 있는가. 서비스 계정 토큰으로 본다. */
+async function userDocExists(project: string, token: string, uid: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents/users/${uid}`,
+      { headers: { authorization: `Bearer ${token}` } },
+    )
+    return res.ok
+  } catch {
+    // 확인하지 못하면 없는 것으로 본다 — 전부 쓰는 쪽이 반쪽 문서보다 안전하다.
+    return false
+  }
+}
+
 /** 이미 있는 계정의 uid 를 이메일로 찾는다. */
 async function lookupUid(
   project: string,
@@ -170,7 +184,19 @@ async function upsertUserDoc(
     studentId: { stringValue: studentId },
     displayName: { stringValue: name },
   }
-  const fields = isNew
+  /*
+   * ★ 「계정이 이미 있다」와 「명단 문서가 이미 있다」는 다르다.
+   *
+   *   Auth 계정만 만들어지고 문서 저장이 실패한 상태가 실제로 있었다.
+   *   그때 isNew 만 보고 학번·실명만 쓰면 nickname 과 mustResetPassword 가 없는
+   *   반쪽 문서가 남는다. 그러면 학생은 닉네임 정하는 화면을 건너뛰고,
+   *   수강 등록에서 undefined 를 저장하려다 통째로 막힌다. 둘 다 실제로 일어났다.
+   *
+   *   문서가 없으면 새 계정과 똑같이 전부 쓴다.
+   *   있을 때만 학번·실명·역할만 고쳐 학생이 정한 닉네임을 지키지 않는다.
+   */
+  const hasDoc = await userDocExists(project, token, uid)
+  const fields = isNew || !hasDoc
     ? {
         ...base,
         nickname: { stringValue: '' },

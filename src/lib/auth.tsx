@@ -157,7 +157,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           instructor = false
         }
       }
-      const profile: AppUser = existing ?? {
+      /*
+       * 기본값 위에 있는 값만 덮는다.
+       *
+       * existing ?? 기본값 으로 두면, 필드가 빠진 반쪽 문서가 그대로 통과한다.
+       * 실제로 그런 문서가 만들어졌고 두 가지가 터졌다 —
+       * mustResetPassword 가 없어 닉네임 정하는 화면을 건너뛰었고,
+       * nickname 이 없어 수강 등록이 undefined 를 저장하려다 막혔다.
+       *
+       * Firestore 는 undefined 를 담지 않으므로, 빠진 필드는 키 자체가 없다.
+       * 그래서 펼치기(spread)로 덮으면 없는 것만 기본값이 남는다.
+       */
+      const profile: AppUser = {
         uid: fb.uid,
         role: instructor ? 'instructor' : 'student',
         studentId: fb.email ? fb.email.split('@')[0] : null,
@@ -169,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastClassId: null,
         createdAt: Date.now(),
         lastLoginAt: Date.now(),
+        ...(existing ?? {}),
       }
       const next: AppUser = {
         ...profile,
@@ -237,10 +249,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const given = (joinCode ?? '').trim().toUpperCase()
         if (given !== target.joinCode) throw new Error('참여 코드가 맞지 않습니다.')
       }
+      /*
+       * Firestore 는 undefined 를 저장하지 못한다. setDoc 이 통째로 거부한다.
+       * users/{uid} 문서가 없는 계정(콘솔에서 손으로 만들었거나 명단 저장이 실패한 경우)은
+       * nickname·studentId 가 undefined 라, 그대로 넣으면 수강 등록이 통째로 막혔다.
+       * 없는 값은 빈 문자열과 null 로 못박는다 — 등록이 이런 이유로 막히면 안 된다.
+       */
       await repo.enroll(cid, {
         uid: user.uid,
-        studentId: user.studentId,
-        nickname: user.nickname,
+        studentId: user.studentId ?? null,
+        nickname: user.nickname ?? '',
         groupId: null,
         joinedAt: Date.now(),
         lastSeenAt: Date.now(),
@@ -250,8 +268,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...m,
         [cid]: {
           uid: user.uid,
-          studentId: user.studentId,
-          nickname: user.nickname,
+          studentId: user.studentId ?? null,
+          nickname: user.nickname ?? '',
           groupId: null,
           joinedAt: Date.now(),
           lastSeenAt: Date.now(),
