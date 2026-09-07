@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { needsSetup, useAuth } from '@/lib/auth'
 import { isFirebaseConfigured } from '@/lib/firebase'
-import { Button, Caption, ColorBlock, Notice } from '@/components/ui'
+import { Button, Caption, Notice } from '@/components/ui'
 
 /**
  * 로그인.
@@ -189,13 +189,6 @@ export function Login() {
         </form>
       </main>
 
-      <ColorBlock tone="lime" className="no-print" as="aside">
-        <p className="eyebrow">이 앱이 하는 일</p>
-        <p className="text-subhead" style={{ marginTop: 12, maxWidth: 640 }}>
-          최초 답을 지우지 않습니다. 모든 응답은 버전으로 쌓입니다. 정답 속도가 아니라 설명의 질,
-          증거 사용, 근거 있는 수정을 봅니다. 학생 순위를 만들지 않습니다.
-        </p>
-      </ColorBlock>
     </div>
   )
 }
