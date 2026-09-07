@@ -229,7 +229,11 @@ service cloud.firestore {
         allow write: if isInstructor() && classActive(cid);
       }
 
-      /* ── 진행 세션 ── */
+      /*
+       * ── 차시 진행 상태 ──
+       * 컬렉션 이름은 sessions 그대로 둔다. 이름을 바꾸면 이미 저장된 문서가 갈 곳을 잃는다.
+       * 화면과 주석에서만 「차시 진행」이라고 부른다.
+       */
       match /sessions/{lid} {
         allow read: if isEnrolled(cid) || isInstructor();
 

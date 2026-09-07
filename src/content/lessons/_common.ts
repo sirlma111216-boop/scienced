@@ -1,3 +1,4 @@
+import { WRAPUP_LABEL } from '../types'
 import type { FieldDef, GameId, ModuleComponent, Step } from '../types'
 
 /**
@@ -8,7 +9,7 @@ import type { FieldDef, GameId, ModuleComponent, Step } from '../types'
  *   ⑤ 개념 카드                                  → step-concepts
  *   ⑥ 핵심 활동 + ⑦ 발표자 뽑기                   → step-module (의견 광장 2, 게임)
  *   ⑧ 형성평가                                   → step-formative
- *   ⑨ 퇴실표 + ⑩ 포트폴리오                       → step-exit
+ *   ⑨ 이번 수업 정리 + ⑩ 포트폴리오                → step-wrapup
  *
  * 의견 광장은 차시마다 최소 두 단계(step-open, step-module)에 붙는다.
  * 게임은 차시마다 하나(step-module)에 붙는다. verify:wall / verify:games 가 확인한다.
@@ -43,8 +44,8 @@ export interface StandardSpec {
     /** 응답 유형별로 교사가 고를 수 있는 다음 행동 */
     branches: string[]
   }
-  /** 퇴실표 첫 문항 */
-  exitPrompt: string
+  /** 「이번 수업 정리」 첫 문항 */
+  wrapupPrompt: string
   /** 시간 배분 (합계 50) */
   minutes: [number, number, number, number, number]
 }
@@ -53,7 +54,7 @@ const CONFIDENCE: FieldDef = { key: 'confidence', kind: 'confidence', label: '�
 
 const CHANGE_STARTERS = [
   '나는 처음에 ___라고 생각했으나 ___ 때문에 ___로 수정했다',
-  '오늘도 ___는 그대로였다. 왜냐하면 ___이기 때문이다',
+  '이번에도 ___는 그대로였다. 왜냐하면 ___이기 때문이다',
 ]
 
 export function buildStandardSteps(spec: StandardSpec): Step[] {
@@ -204,27 +205,28 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
         '첫 답을 지우지 못하도록 칸을 위아래로 분리해 인쇄한다.',
     },
     {
-      id: 'step-exit',
+      id: 'step-wrapup',
       order: 5,
-      type: 'exit',
-      title: '퇴실표',
+      type: 'wrapup',
+      title: WRAPUP_LABEL,
       durationMinutes: spec.minutes[4],
       lead: '세 칸만 채우고 마칩니다. 바뀐 생각이 없어도 괜찮습니다.',
       fields: [
-        { key: 'artifact', kind: 'longtext', label: spec.exitPrompt, required: true },
+        { key: 'artifact', kind: 'longtext', label: spec.wrapupPrompt, required: true },
         {
           key: 'changed',
           kind: 'longtext',
-          label: '오늘 바뀐 생각 한 줄',
+          label: '이번 수업에서 바뀐 생각 한 줄',
           required: true,
           sentenceStarters: CHANGE_STARTERS,
         },
         CONFIDENCE,
       ],
-      aiTasks: ['exit-self-check'],
+      aiTasks: ['wrapup-self-check'],
       wall: null,
       picker: null,
-      printableAlternative: '활동지 4면(A5 반쪽): 세 칸 퇴실표. 걷어서 다음 차시 도입 익명 인용으로 쓴다.',
+      printableAlternative:
+        `활동지 4면(A5 반쪽): 세 칸 「${WRAPUP_LABEL}」. 걷어서 다음 차시 도입 익명 인용으로 쓴다.`,
     },
   ]
 }

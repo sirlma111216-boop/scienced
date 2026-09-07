@@ -143,7 +143,7 @@ const asAnon = env.unauthenticatedContext().firestore()
   await assertFails(asS1.doc(`classes/${B}/picks/x`).get())
   await assertFails(asS1.doc(`classes/${B}/participation/${S2}`).get())
   await assertFails(asS1.collection(`classes/${B}/lessons/01/steps/step-open/posts`).get())
-  pass('클래스 격리', 'A 수강생이 B 클래스의 등록·공개·응답·의견·세션·추첨·참여를 전부 읽지 못한다')
+  pass('클래스 격리', 'A 수강생이 B 클래스의 등록·공개·응답·의견·진행·추첨·참여를 전부 읽지 못한다')
 }
 
 /* ── ② roster 는 학생이 자기 것도 읽지 못한다 ── */

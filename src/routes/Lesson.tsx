@@ -285,9 +285,9 @@ export function Lesson() {
                               inputs={{ context: step.title }}
                             />
                           ) : null}
-                          {step.aiTasks.includes('exit-self-check') ? (
+                          {step.aiTasks.includes('wrapup-self-check') ? (
                             <AiAssistPanel
-                              taskId="exit-self-check"
+                              taskId="wrapup-self-check"
                               inputs={{ context: step.title }}
                             />
                           ) : null}

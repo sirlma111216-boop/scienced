@@ -33,7 +33,7 @@ export function mulberry32(seed: number): () => number {
 }
 
 export interface Ladder {
-  /** 세로줄 개수 = 자리 개수 = 참가자 수 */
+  /** 세로줄 개수 = 자리 개수 = 그 자리에 선 수강생 수 */
   columns: number
   /** 가로줄을 놓을 수 있는 층 수 */
   rows: number
@@ -96,7 +96,7 @@ function canPlace(rungs: boolean[][], row: number, col: number): boolean {
  * 씨앗 문자열에서 사다리를 만든다. 같은 씨앗 → 언제 어디서 불러도 같은 결과.
  *
  * @param seed 서버가 만든 씨앗 문자열. 클라이언트가 난수를 만들지 않는다.
- * @param columns 자리 개수(참가자 수)
+ * @param columns 자리 개수(수강생 수)
  */
 export function buildLadder(seed: string, columns: number): Ladder {
   const cols = Math.max(1, Math.floor(columns))

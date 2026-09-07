@@ -166,7 +166,7 @@ export interface Repo {
     uid: string,
   ): Promise<void>
 
-  /* ── 진행 세션 ── */
+  /* ── 차시 진행 상태 (지금 어느 단계인지·투표가 열렸는지) ── */
   watchSession(classId: string, lessonId: LessonId, cb: (s: SessionState | null) => void): () => void
   setSession(classId: string, lessonId: LessonId, patch: Partial<SessionState>): Promise<void>
 

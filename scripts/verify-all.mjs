@@ -9,6 +9,7 @@ const CHECKS = [
   ['verify:lessons', '18개 차시 메타데이터 · 개념 여섯 층 · 강사 대본'],
   ['verify:classes', '수강 클래스 격리 · 실명 분리 · 보안 규칙'],
   ['verify:content', '교재 OCR 오독과 72회 반복 템플릿 유입 차단'],
+  ['verify:wording', '하루짜리 연수 어휘 차단 · 마무리 단계 이름 · 타임라인 링크'],
   ['verify:standards', '원문 대조 전 성취기준의 「대표 예시」 라벨'],
   ['verify:games', '18개 게임 등록 · mode 고유 · 1강 ladder'],
   ['verify:modules', '핵심 모듈 배치 · AI 교사 검토 관문'],

@@ -1,3 +1,4 @@
+import { WRAPUP_LABEL } from '../types'
 import type { Lesson, TimelineItem } from '../types'
 import { buildStandardSteps, commonScriptLines } from './_common'
 
@@ -7,7 +8,7 @@ function tl(m: [number, number, number, number, number], moduleLabel: string): T
     { minutes: m[1], label: '개념 카드', stepId: 'step-concepts' },
     { minutes: m[2], label: moduleLabel, stepId: 'step-module' },
     { minutes: m[3], label: '형성평가', stepId: 'step-formative' },
-    { minutes: m[4], label: '퇴실표', stepId: 'step-exit' },
+    { minutes: m[4], label: WRAPUP_LABEL, stepId: 'step-wrapup' },
   ]
 }
 
@@ -35,7 +36,7 @@ export const lesson08: Lesson = {
   fieldCase:
     '“설탕은 뜨거운 물에서 더 빨리 녹는다”를 검토할 때 녹는 양과 녹는 속도를 구별하고, ' +
     '젓는 정도·입자 크기·물의 양·종료 기준을 조작적으로 정의한다.',
-  flowSummary: '5분 빠른 판정 → 12분 개념 카드 → 18분 실험 설계 샌드박스 → 10분 형성평가 → 5분 성찰',
+  flowSummary: '5분 빠른 판정 → 12분 개념 카드 → 18분 실험 설계 샌드박스 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘과정·기능’의 탐구 설계·수행, 자료 수집·분석·해석, 결론 도출과 연결한다.',
@@ -174,7 +175,7 @@ export const lesson08: Lesson = {
       watchFor: '표본만 최대로 올려 두고 다른 설정을 안 만지는 사람.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '성찰하면서',
       sayThis: '오늘의 세 칸 — 확실히 / 조심해서 / 아직 — 은 12강 논증과 13강 SSI에서 그대로 씁니다.',
       whyNotSkip: '불확실성 표현 틀을 매번 새로 가르치지 않으려면 여기서 이름을 붙여 둔다.',
@@ -270,7 +271,7 @@ export const lesson08: Lesson = {
         '설계 수정 — 같은 질문을 다른 조사 유형으로 바꿔 보게 한다',
       ],
     },
-    exitPrompt: '내 전공 실험 하나에서 학생이 정해야 할 조작적 정의 한 개를 적어 주세요.',
+    wrapupPrompt: '내 전공 실험 하나에서 학생이 정해야 할 조작적 정의 한 개를 적어 주세요.',
     minutes: M08,
   }),
 }
@@ -299,7 +300,7 @@ export const lesson09: Lesson = {
   fieldCase:
     '검은색·흰색 지붕의 온도 차이를 탐구하고 학교 옥상 열환경을 낮추는 해결책을 설계한다. ' +
     '과학적 설명과 공학적 최적화의 기준이 어떻게 다른지 비교한다.',
-  flowSummary: '7분 현상 관찰 → 10분 개념 카드 → 18분 모형 버전 관리 → 10분 형성평가 → 5분 퇴실표',
+  flowSummary: '7분 현상 관찰 → 10분 개념 카드 → 18분 모형 버전 관리 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘과정·기능’의 모형 개발과 사용, 문제 해결 방안 설계와 연결한다.',
@@ -434,7 +435,7 @@ export const lesson09: Lesson = {
       watchFor: '경계를 안 그린 모형 — 무엇이 들어오고 나가는지 물으면 바로 드러난다.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis: '오늘의 v1·v2 형식은 5강에서 쓴 것과 같습니다. 11강 표상 번역에서도 같은 형식을 씁니다.',
       whyNotSkip: '형식을 재사용한다고 말해 두면 매번 새로 설명하지 않아도 된다.',
@@ -527,7 +528,7 @@ export const lesson09: Lesson = {
         '자료 보강 — 흐린 날 자료를 추가로 공개한다',
       ],
     },
-    exitPrompt: '내 전공 개념의 모형에서 “실제와 다른 점” 상자에 넣을 내용을 한 줄 적어 주세요.',
+    wrapupPrompt: '내 전공 개념의 모형에서 “실제와 다른 점” 상자에 넣을 내용을 한 줄 적어 주세요.',
     minutes: M09,
   }),
 }
@@ -556,7 +557,7 @@ export const lesson10: Lesson = {
   fieldCase:
     '빛의 굴절, 용해, 생태계 평형, 달의 위상 네 주제에 같은 5E를 적용할 때 생기는 문제를 비교하고 ' +
     '주제별로 필요한 구조를 선택한다.',
-  flowSummary: '8분 단계 카드 배열 → 15분 개념 카드 → 15분 모형 선택 의사결정 트리 → 7분 형성평가 → 5분 퇴실표',
+  flowSummary: '8분 단계 카드 배열 → 15분 개념 카드 → 15분 모형 선택 의사결정 트리 → 7분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘교수·학습 방향’의 탐구 중심 수업과 학습자 맞춤형 수업 설계에 연결한다.',
@@ -701,7 +702,7 @@ export const lesson10: Lesson = {
       watchFor: '이유 칸에 트리 문구를 그대로 옮긴 응답.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis: '시간이 절반으로 줄면 무엇을 남길지 반드시 적어 주세요. 현장에서 가장 자주 오는 조건입니다.',
       whyNotSkip: '이상적 조건만 설계하고 나가면 첫 수업에서 무너진다.',
@@ -793,7 +794,7 @@ export const lesson10: Lesson = {
         '사례 교체 — 두 차시에 걸친 5E 사례를 보인다',
       ],
     },
-    exitPrompt: '내 주제에서 시간이 절반으로 줄어도 반드시 남길 핵심 단계 하나를 적어 주세요.',
+    wrapupPrompt: '내 주제에서 시간이 절반으로 줄어도 반드시 남길 핵심 단계 하나를 적어 주세요.',
     minutes: M10,
   }),
 }
@@ -822,7 +823,7 @@ export const lesson11: Lesson = {
   fieldCase:
     '전기회로를 물 흐름에 비유할 때 전류·전압·저항은 설명되지만, ' +
     '물질이 도선 안을 빠르게 순환한다는 오해나 전류 소모 모형을 강화할 위험을 분석한다.',
-  flowSummary: '5분 그림 해석 → 12분 개념 카드 → 15분 표상 번역기 → 13분 형성평가 → 5분 성찰',
+  flowSummary: '5분 그림 해석 → 12분 개념 카드 → 15분 표상 번역기 → 13분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘과정·기능’의 모형 사용, 자료 표현과 의사소통에 연결한다.',
@@ -961,7 +962,7 @@ export const lesson11: Lesson = {
       watchFor: '“사라진 정보” 칸을 비운 응답.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '성찰하면서',
       sayThis: '오늘 만든 비유 대응표는 18강 마이크로티칭에서 실제로 써 봅니다.',
       whyNotSkip: '실행 예고가 없으면 대응표가 종이 과제로 끝난다.',
@@ -1050,7 +1051,7 @@ export const lesson11: Lesson = {
         '표상 교체 — 전하 흐름과 에너지 전달을 분리한 모형을 제시한다',
       ],
     },
-    exitPrompt: '내가 쓸 비유 하나의 “여기서 멈춘다” 지점을 한 줄로 적어 주세요.',
+    wrapupPrompt: '내가 쓸 비유 하나의 “여기서 멈춘다” 지점을 한 줄로 적어 주세요.',
     minutes: M11,
   }),
 }
@@ -1079,7 +1080,7 @@ export const lesson12: Lesson = {
   fieldCase:
     '“마스크를 쓰면 이산화탄소 중독이 생긴다” 또는 “에너지 음료가 집중력을 높인다”는 주장에 ' +
     '필요한 자료, 비교조건, 출처와 대안설명을 구분한다.',
-  flowSummary: '6분 즉석 주장 → 12분 개념 카드 → 17분 논증 지도 → 10분 형성평가 → 5분 퇴실표',
+  flowSummary: '6분 즉석 주장 → 12분 개념 카드 → 17분 논증 지도 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘과정·기능’의 논증하기, ‘가치·태도’의 과학적 소통과 비판적 수용에 연결한다.',
@@ -1218,7 +1219,7 @@ export const lesson12: Lesson = {
       watchFor: '증거 칸에 교과서 문장을 적은 응답 — 자료와 문헌 인용을 가른다.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis:
         '오늘 확신도를 낮춘 분이 있다면 그건 좋은 결과입니다. 근거에 따라 조정한 것을 기록해 두세요.',
@@ -1311,7 +1312,7 @@ export const lesson12: Lesson = {
         '발문 리허설 — 후속 발문 세 개를 만들어 짝에게 실행한다',
       ],
     },
-    exitPrompt: '내 수업에서 쓸 후속 발문(“왜?” 말고) 한 개를 적어 주세요.',
+    wrapupPrompt: '내 수업에서 쓸 후속 발문(“왜?” 말고) 한 개를 적어 주세요.',
     minutes: M12,
   }),
 }
@@ -1340,7 +1341,7 @@ export const lesson13: Lesson = {
   fieldCase:
     '학교 운동장 인조잔디 교체를 놓고 과학적 증거와 가치·정책 판단을 분리한다. ' +
     '표면 온도 자료, 부상률 자료, 미세플라스틱 자료, 비용과 사용 시간 자료가 함께 주어진다.',
-  flowSummary: '5분 가치선 투표 → 10분 개념 카드 → 20분 의사결정 매트릭스 → 10분 형성평가 → 5분 성찰',
+  flowSummary: '5분 가치선 투표 → 10분 개념 카드 → 20분 의사결정 매트릭스 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘가치·태도’의 과학의 사회적 문제 해결 참여, 생태전환 교육과 연결한다.',
@@ -1485,7 +1486,7 @@ export const lesson13: Lesson = {
       watchFor: '가중치를 한 번도 안 바꾼 모둠.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '성찰하면서',
       sayThis: '결론보다 출처·불확실성·가치 충돌·수정 과정을 평가한다고 다시 말해 주세요.',
       whyNotSkip: '평가 기준을 명시하지 않으면 학생이 “정답 결론”을 찾으려 한다.',
@@ -1588,7 +1589,7 @@ export const lesson13: Lesson = {
         '역할 교환 — 반대 입장 이해당사자의 기준으로 다시 쓰게 한다',
       ],
     },
-    exitPrompt: '내 결론이 바뀌려면 어떤 자료가 필요한지 한 줄로 적어 주세요.',
+    wrapupPrompt: '내 결론이 바뀌려면 어떤 자료가 필요한지 한 줄로 적어 주세요.',
     minutes: M13,
   }),
 }

@@ -1,3 +1,4 @@
+import { WRAPUP_LABEL } from '../types'
 import type { Lesson, TimelineItem } from '../types'
 import { buildStandardSteps, commonScriptLines } from './_common'
 
@@ -8,7 +9,7 @@ function tl(m: [number, number, number, number, number], moduleLabel: string): T
     { minutes: m[1], label: '개념 카드', stepId: 'step-concepts' },
     { minutes: m[2], label: moduleLabel, stepId: 'step-module' },
     { minutes: m[3], label: '형성평가', stepId: 'step-formative' },
-    { minutes: m[4], label: '퇴실표', stepId: 'step-exit' },
+    { minutes: m[4], label: WRAPUP_LABEL, stepId: 'step-wrapup' },
   ]
 }
 
@@ -36,7 +37,7 @@ export const lesson02: Lesson = {
   fieldCase:
     '같은 발자국 사진을 보고 ‘사실’과 ‘추론’을 나눈 뒤, “과학은 변하므로 믿을 수 없다”는 중학생 발화에 ' +
     '교사가 어떻게 답할지 실제 문장으로 쓴다.',
-  flowSummary: '7분 발자국 미스터리 → 13분 개념 카드 → 15분 뉴스 속 주장 분석 → 10분 형성평가 → 5분 퇴실표',
+  flowSummary: '7분 발자국 미스터리 → 13분 개념 카드 → 15분 뉴스 속 주장 분석 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘과정·기능’의 자료 해석과 결론 도출, ‘가치·태도’의 과학적 근거에 기초한 의사소통과 연결한다.',
@@ -187,7 +188,7 @@ export const lesson02: Lesson = {
       watchFor: '확신도를 올리면서 근거는 그대로인 응답 — 재응답 단계에서 되묻는다.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis: '오늘 만든 “교사의 응답 한 문장”은 12강 논증 수업에서 다시 씁니다. 지워지지 않습니다.',
       whyNotSkip: '차시 사이 연결을 말해 두지 않으면 학생이 매 시간을 독립된 과제로 처리한다.',
@@ -270,7 +271,7 @@ export const lesson02: Lesson = {
         '사례 교체 — 반복이 실제로 결론을 바꾼 자료를 하나 더 보여준다',
       ],
     },
-    exitPrompt: '“과학은 변하니까 못 믿겠다”는 학생에게 할 교사의 응답 한 문장을 적어 주세요.',
+    wrapupPrompt: '“과학은 변하니까 못 믿겠다”는 학생에게 할 교사의 응답 한 문장을 적어 주세요.',
     minutes: M02,
   }),
 }
@@ -299,7 +300,7 @@ export const lesson03: Lesson = {
   fieldCase:
     '“더 무거운 물체가 더 빨리 떨어진다”, “전류는 전구에서 소모된다”, “식물의 질량은 흙에서 온다”, ' +
     '“여름은 지구가 태양에 가까울 때다” — 네 발화를 정정하지 않고 그 생각을 낳은 경험을 찾는다.',
-  flowSummary: '5분 개인 예상 → 12분 개념 카드 → 18분 학생 답안 진단 → 10분 형성평가 → 5분 퇴실표',
+  flowSummary: '5분 개인 예상 → 12분 개념 카드 → 18분 학생 답안 진단 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘교수·학습 방향’의 학생 선개념 확인과 ‘평가 방향’의 진단적 활용에 연결한다.',
@@ -447,7 +448,7 @@ export const lesson03: Lesson = {
       watchFor: '“왜 그렇게 생각했어?”만 반복하는 사람 — 가상 학생이 같은 답을 반복하게 되어 있다.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis: '오늘 만든 후속 발문은 5강 개념변화와 12강 논증에서 다시 씁니다.',
       whyNotSkip: '연결을 말해 두지 않으면 발문 만들기가 오늘 한 번의 과제로 끝난다.',
@@ -530,7 +531,7 @@ export const lesson03: Lesson = {
         '개별 비계 — 힘과 속도를 가르는 그림 틀을 제공한다',
       ],
     },
-    exitPrompt: '내 전공 개념 하나에서, 학생 사고를 드러낼 진단 질문 한 개를 적어 주세요.',
+    wrapupPrompt: '내 전공 개념 하나에서, 학생 사고를 드러낼 진단 질문 한 개를 적어 주세요.',
     minutes: M03,
   }),
 }
@@ -559,7 +560,7 @@ export const lesson04: Lesson = {
   fieldCase:
     '밀도 공식을 먼저 설명하는 수업도 유의미할 수 있고, 학생이 실험으로 공식을 찾아도 기계적일 수 있음을 ' +
     '두 수업 기록으로 비교한다.',
-  flowSummary: '8분 카드 매칭 → 15분 개념 카드 → 17분 비계 조절 시뮬레이터 → 5분 형성평가 → 5분 요약',
+  flowSummary: '8분 카드 매칭 → 15분 개념 카드 → 17분 비계 조절 시뮬레이터 → 5분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘교수·학습 방향’의 학습자 수준을 고려한 단계적 지원과 연결한다.',
@@ -706,7 +707,7 @@ export const lesson04: Lesson = {
       watchFor: '최고 수준 힌트를 처음부터 주는 사람 — 결과 화면에서 의존도가 올라간다.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '요약하면서',
       sayThis: '오늘 네 이론 중 하나만 골라 수업을 처방하면 반드시 놓치는 것이 있습니다. 그 놓친 것을 적어 주세요.',
       whyNotSkip: '단일 이론 처방은 예비교사가 가장 흔히 빠지는 자리다.',
@@ -786,7 +787,7 @@ export const lesson04: Lesson = {
         '사례 교체 — 같은 학생에게 다른 시점에 같은 힌트를 준 두 기록을 비교한다',
       ],
     },
-    exitPrompt: '네 이론 중 하나만으로 처방했을 때 놓치게 되는 것을 한 줄로 적어 주세요.',
+    wrapupPrompt: '네 이론 중 하나만으로 처방했을 때 놓치게 되는 것을 한 줄로 적어 주세요.',
     minutes: M04,
   }),
 }
@@ -815,7 +816,7 @@ export const lesson05: Lesson = {
   fieldCase:
     '뜨거운 물과 찬물을 섞을 때 최종 온도를 예상하게 하고, 수치가 예상과 달랐을 때 ' +
     '측정 오류로 방어하는 학생 반응을 다룬다.',
-  flowSummary: '8분 POE 경험 → 12분 개념 카드 → 15분 설명 생존 게임 → 10분 형성평가 → 5분 성찰',
+  flowSummary: '8분 POE 경험 → 12분 개념 카드 → 15분 설명 생존 게임 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘과정·기능’의 예상하기·자료 해석하기와 ‘가치·태도’의 증거에 근거한 판단에 연결한다.',
@@ -961,7 +962,7 @@ export const lesson05: Lesson = {
       watchFor: '증거가 나왔는데도 확신도만 올리는 모둠.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '성찰하면서',
       sayThis: '오늘 여러분이 만든 버전 기록은 9강 모형 버전 관리에서 같은 형식으로 다시 씁니다.',
       whyNotSkip: '버전 기록을 오늘만의 양식으로 여기면 다음에 다시 가르쳐야 한다.',
@@ -1037,7 +1038,7 @@ export const lesson05: Lesson = {
         '자료 보강 — 반복 측정 자료를 제공해 신뢰도 의심을 해소한다',
       ],
     },
-    exitPrompt: '내 전공 개념 하나에서, 학생이 새 설명을 다시 써 볼 두 번째 상황을 적어 주세요.',
+    wrapupPrompt: '내 전공 개념 하나에서, 학생이 새 설명을 다시 써 볼 두 번째 상황을 적어 주세요.',
     minutes: M05,
   }),
 }
@@ -1066,7 +1067,7 @@ export const lesson06: Lesson = {
   fieldCase:
     '‘광합성’을 지식 설명으로만 다룬 수업과, 물질 변화 모형·자료해석·생태계 역할·식량 문제까지 ' +
     '연결한 수업을 비교한다.',
-  flowSummary: '5분 길 찾기 → 15분 개념 카드 → 20분 성취기준 해부 → 5분 형성평가 → 5분 퇴실표',
+  flowSummary: '5분 길 찾기 → 15분 개념 카드 → 20분 성취기준 해부 → 5분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text:
@@ -1215,7 +1216,7 @@ export const lesson06: Lesson = {
       watchFor: '“안다/이해한다”로 동사를 바꿔 적은 사람.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis:
         '오늘 해부한 성취기준 하나를 그대로 7강으로 가져갑니다. 다음 시간에 이것으로 50분 수업을 만듭니다.',
@@ -1302,7 +1303,7 @@ export const lesson06: Lesson = {
         '사례 교체 — 동사가 다른 성취기준 두 개를 비교한다',
       ],
     },
-    exitPrompt: '다음 시간(7강)에 50분 수업으로 만들 성취기준 하나를 확정해 적어 주세요.',
+    wrapupPrompt: '다음 시간(7강)에 50분 수업으로 만들 성취기준 하나를 확정해 적어 주세요.',
     minutes: M06,
   }),
 }
@@ -1331,7 +1332,7 @@ export const lesson07: Lesson = {
   fieldCase:
     '‘기체의 압력과 부피 관계를 실험으로 확인한다’를 대상으로 증거가 될 학생 산출물과 ' +
     '흔한 오개념을 먼저 정한 뒤 50분 수업을 만든다.',
-  flowSummary: '7분 나쁜 목표 고치기 → 10분 개념 카드 → 20분 수업 정렬 검사기 → 8분 형성평가 → 5분 퇴실표',
+  flowSummary: '7분 나쁜 목표 고치기 → 10분 개념 카드 → 20분 수업 정렬 검사기 → 8분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '6강에서 각자 확정한 성취기준을 그대로 이어 쓴다. 성취기준 원문은 NCIC 자료로 대조한 뒤 확정한다.',
@@ -1470,7 +1471,7 @@ export const lesson07: Lesson = {
       watchFor: '검사기 결과를 그대로 복사한 응답.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis: '오늘 만든 목표·증거·활동 세 줄은 18강 마이크로티칭 설계 브리프의 첫 세 줄이 됩니다.',
       whyNotSkip: '학기 산출물과의 연결을 말해 두면 학생이 임시로 채우지 않는다.',
@@ -1562,7 +1563,7 @@ export const lesson07: Lesson = {
         '사례 교체 — 같은 활동에 붙은 서로 다른 목표 두 개를 비교한다',
       ],
     },
-    exitPrompt: '내 수업의 도달 증거가 될 학생 산출물 하나를 구체적으로 적어 주세요.',
+    wrapupPrompt: '내 수업의 도달 증거가 될 학생 산출물 하나를 구체적으로 적어 주세요.',
     minutes: M07,
   }),
 }

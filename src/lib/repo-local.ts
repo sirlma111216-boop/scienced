@@ -310,7 +310,7 @@ export function createLocalRepo(): Repo {
       )
     },
 
-    /* ── 진행 세션 ── */
+    /* ── 차시 진행 상태 ── */
     watchSession(classId, lessonId, cb) {
       return subscribe(() => cb(read<SessionState | null>(kSession(classId, lessonId), null)))
     },

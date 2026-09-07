@@ -28,13 +28,15 @@ npm run dev          # http://localhost:5173
 npm run verify
 ```
 
-여덟 가지를 본다. 하나라도 실패하면 배포하지 않는다.
+열한 가지를 본다. 하나라도 실패하면 배포하지 않는다.
 
 | 스크립트 | 무엇을 막는가 |
 |---|---|
 | `verify:ladder` | 전단사 · 가로줄 인접 금지 · 발표자 수 · 씨앗 재현성 · 좌우 이동률 70% |
 | `verify:lessons` | 18차시 메타데이터, 개념 카드 여섯 층, 강사 대본이 전부 채워졌는지 |
+| `verify:classes` | 학기 간 자료 격리, 실명이 강사 전용 경로에만 있는지 |
 | `verify:content` | 교재 OCR 오독과 72회 반복 템플릿 문구가 화면 문구에 새어 들어왔는지 |
+| `verify:wording` | 하루짜리 연수의 말(퇴실표·참가자·담벼락)이 남았는지, 이름을 바꾸다 만 단계가 있는지 |
 | `verify:standards` | 원문 대조 전 성취기준에 「대표 예시」 라벨이 붙어 있는지 |
 | `verify:games` | 18개 게임 등록, mode 고유, 1강이 ladder, 정답 기준 추첨 없음, **18종 화면이 실제로 구현됐는지** |
 | `verify:modules` | 핵심 모듈이 지정된 차시에 붙었는지, **AI가 교사 검토를 우회하는 경로가 없는지** |
@@ -45,7 +47,9 @@ npm run verify
 검증기는 문자열이 아니라 **실제 불변식**을 본다. 예를 들어 `verify:games` 는 손으로 관리하는
 목록이 아니라 `PickerVisual.tsx` 의 `case '…':` 를 직접 읽고, `verify:modules` 는
 "cluster-responses 라는 낱말이 있는가"가 아니라 "그 taskId 를 실제로 보내는 파일이
-`addAiProposal` 을 거치는가"를 본다.
+`addAiProposal` 을 거치는가"를 본다. `verify:wording` 도 마찬가지로 금지어만 찾지 않고
+타임라인이 가리키는 단계가 실제로 있는지 대조한다 — 열여덟 차시 중 하나만 놓쳐도
+그 차시의 링크가 죽는데 화면을 열기 전에는 드러나지 않는다.
 
 ```bash
 npm run build        # tsc + vite build

@@ -66,6 +66,3 @@ export function getDb(): Firestore | null {
   ensure()
   return db
 }
-
-/** 이 강좌 하나만 다룬다. 여러 강좌를 쓰게 되면 여기만 바꾸면 된다. */
-export const COURSE_ID = import.meta.env.VITE_COURSE_ID || 'khu-science-2026'

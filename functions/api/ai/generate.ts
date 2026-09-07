@@ -30,6 +30,19 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
 
   if (!body.taskId) return fail('taskId 가 없습니다.')
 
-  const result = await generate(ctx.env, body.taskId, body.inputs ?? {})
+  const result = await generate(ctx.env, LEGACY_TASK_IDS[body.taskId] ?? body.taskId, body.inputs ?? {})
   return json(result)
+}
+
+/**
+ * 이름을 바꾼 작업의 옛 id.
+ *
+ * 배포 순간에 이미 열려 있던 학생 화면은 옛 id 로 요청을 보낸다.
+ * 그 요청을 400 으로 돌려보내면 수업 중에 버튼이 죽는다.
+ * 여기서만 받아 준다 — TASKS 에 옛 id 를 남기면 새 코드가 그걸 다시 쓰게 된다.
+ *
+ * 2026-2학기가 끝나면 지운다.
+ */
+const LEGACY_TASK_IDS: Record<string, string> = {
+  'exit-self-check': 'wrapup-self-check',
 }

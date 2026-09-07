@@ -294,7 +294,7 @@ export function createFirestoreRepo(db: Firestore): Repo {
       await deleteDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'posts', postId))
     },
 
-    /* ── 진행 세션 ── */
+    /* ── 차시 진행 상태 ── */
     watchSession(classId, lessonId, cb) {
       return onSnapshot(
         cd(db, classId, 'sessions', lessonId),

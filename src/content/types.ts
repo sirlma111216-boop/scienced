@@ -19,7 +19,7 @@ export const LESSON_IDS: LessonId[] = [
 export type AiTaskId =
   | 'recall-probe'
   | 'cluster-responses'
-  | 'exit-self-check'
+  | 'wrapup-self-check'
   | 'ai-audit-source'
   | 'rubric-language-check'
 
@@ -124,7 +124,15 @@ export type StepType =
   | 'auction'     // 배분·협상·사다리
   | 'module'      // 차시별 핵심 모듈
   | 'formative'   // 형성평가 (수집→해석→분기→수정→재확인)
-  | 'exit'        // 퇴실표
+  | 'wrapup'      // 이번 수업 정리
+
+/**
+ * 마지막 단계의 이름. 화면 문구는 여기 한 곳에서만 정한다.
+ *
+ * 「퇴실표」였다. 그것은 하루짜리 연수에서 나가는 사람을 붙잡아 한 장 받는 말이다.
+ * 같은 학생이 18주를 함께 가는 강의에서 매주 퇴실할 일은 없다.
+ */
+export const WRAPUP_LABEL = '이번 수업 정리'
 
 export interface WallConfig {
   enabled: boolean

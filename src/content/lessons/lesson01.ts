@@ -1,3 +1,4 @@
+import { WRAPUP_LABEL } from '../types'
 import type { Lesson } from '../types'
 
 /**
@@ -31,7 +32,7 @@ export const lesson01: Lesson = {
     '드라이아이스 시범이 성공적으로 끝났지만 학생에게 “무엇을 알게 되었니?”라고 묻자 “연기가 신기했다”만 남은 수업. ' +
     '현상·목표·학생 사고·학습의 증거 가운데 무엇이 빠졌는지 찾는다.',
   flowSummary:
-    '5분 회상 → 10분 과학교육이 남겨야 하는 것 → 15분 두 수업 비교 → 15분 좋은 수업 경매와 사다리타기 → 5분 퇴실표',
+    '5분 회상 → 10분 과학교육이 남겨야 하는 것 → 15분 두 수업 비교 → 15분 좋은 수업 경매와 사다리타기 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text:
@@ -177,7 +178,7 @@ export const lesson01: Lesson = {
     { minutes: 10, label: '과학 수업이 남겨야 하는 것', stepId: 'step-concepts' },
     { minutes: 15, label: '두 수업 비교', stepId: 'step-compare' },
     { minutes: 15, label: '좋은 수업 경매 + 사다리타기', stepId: 'step-auction' },
-    { minutes: 5, label: '퇴실표', stepId: 'step-exit' },
+    { minutes: 5, label: WRAPUP_LABEL, stepId: 'step-wrapup' },
   ],
 
   instructorScript: [
@@ -242,12 +243,12 @@ export const lesson01: Lesson = {
       watchFor: '변경 사유 칸에 "그냥"이라고 적힌 응답 — 다음 시간 도입 자료로 쓴다.',
     },
     {
-      stepId: 'step-exit',
-      cue: '퇴실표를 열면서',
+      stepId: 'step-wrapup',
+      cue: `${WRAPUP_LABEL}를 열면서`,
       sayThis:
         '오늘 바뀐 생각이 없어도 괜찮습니다. 대신 무엇이 그대로였고 왜 그런지 적어 주세요.',
       whyNotSkip:
-        '변화만 요구하면 학생이 없는 변화를 지어낸다. 퇴실표 자료의 신뢰도가 떨어진다.',
+        `변화만 요구하면 학생이 없는 변화를 지어낸다. ${WRAPUP_LABEL} 자료의 신뢰도가 떨어진다.`,
       watchFor: '확신도가 높은데 이유가 빈약한 응답 — 컨텍스트 19.9가 말한 "높은 확신의 오개념"이다.',
     },
   ],
@@ -541,13 +542,13 @@ export const lesson01: Lesson = {
     },
 
     {
-      id: 'step-exit',
+      id: 'step-wrapup',
       order: 5,
-      type: 'exit',
-      title: '퇴실표',
+      type: 'wrapup',
+      title: WRAPUP_LABEL,
       durationMinutes: 5,
       lead:
-        '오늘 자리에서 일어나기 전에 세 칸만 채웁니다.\n' +
+        '수업을 마치기 전에 세 칸만 채웁니다.\n' +
         '바뀐 생각이 없어도 괜찮습니다. 대신 무엇이 그대로였는지 적어 주세요.',
       fields: [
         {
@@ -560,20 +561,20 @@ export const lesson01: Lesson = {
         {
           key: 'changed',
           kind: 'longtext',
-          label: '오늘 바뀐 생각 한 줄',
+          label: '이번 수업에서 바뀐 생각 한 줄',
           required: true,
           sentenceStarters: [
             '나는 처음에 ___라고 생각했으나 ___ 때문에 ___로 수정했다',
-            '오늘도 ___는 그대로였다. 왜냐하면 ___이기 때문이다',
+            '이번에도 ___는 그대로였다. 왜냐하면 ___이기 때문이다',
           ],
         },
         { key: 'confidence', kind: 'confidence', label: '확신도' },
       ],
-      aiTasks: ['exit-self-check'],
+      aiTasks: ['wrapup-self-check'],
       wall: null,
       picker: null,
       printableAlternative:
-        '활동지 7면(A5 반쪽): 세 칸 퇴실표. 걷어서 다음 시간 도입에 익명 인용 3개로 되돌려 준다.',
+        `활동지 7면(A5 반쪽): 세 칸 「${WRAPUP_LABEL}」. 걷어서 다음 차시 도입에 익명 인용 3개로 되돌려 준다.`,
     },
   ],
 }

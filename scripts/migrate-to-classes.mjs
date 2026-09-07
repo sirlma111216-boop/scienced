@@ -96,6 +96,16 @@ async function listDocs(path) {
 
 const id = (doc) => doc.name.split('/').pop()
 
+/**
+ * 2차 B.1 에서 이름을 바꾼 단계.
+ *
+ * 「퇴실표」는 하루짜리 연수의 말이라 「이번 수업 정리」로 바꿨고, 단계 id 도 따라갔다.
+ * 옛 id 로 저장된 응답이 있으면 여기서 새 id 로 옮겨 붙인다.
+ * 옮기지 않으면 학생이 쓴 답이 화면에 뜨지 않는다 — 지워지지는 않지만 아무도 못 본다.
+ */
+const RENAMED_STEPS = { 'step-exit': 'step-wrapup' }
+const newStepId = (sid) => RENAMED_STEPS[sid] ?? sid
+
 /* ─────────────────── 1. 무엇이 있는지 센다 ─────────────────── */
 
 console.log(`\n프로젝트 ${projectId} · courses/${COURSE_ID}\n`)
@@ -134,7 +144,7 @@ console.log('─'.repeat(52))
 console.log(`차시 문서        ${lessons.length}`)
 console.log(`학생 응답        ${responseCount}   ← A.7 의 갈림길`)
 console.log(`의견 광장 글     ${postCount}`)
-console.log(`진행 세션        ${sessions.length}`)
+console.log(`차시 진행 상태   ${sessions.length}`)
 console.log(`모둠             ${groups.length}`)
 console.log(`추첨 기록        ${picks.length}`)
 console.log(`참여 기록        ${participation.length}`)
@@ -145,15 +155,19 @@ if (responseCount === 0 && postCount === 0) {
   console.log(
     '\n실제 학생 자료가 없습니다.\n' +
       '  → 마이그레이션이 필요 없습니다. 새 구조(classes/*)로 그냥 쓰시면 됩니다.\n' +
-      '  → 단계 id 도 정리해도 안전합니다 (step-exit → step-wrapup).\n' +
       '  → courses/* 아래에 남은 것이 있으면 콘솔에서 지워도 됩니다.\n',
   )
   process.exit(0)
 }
 
+const renamedHits = [...responseDocs, ...postDocs].filter((d) => RENAMED_STEPS[d.sid]).length
+
 console.log(
   '\n실제 학생 자료가 있습니다.\n' +
-    '  → 아래 계획대로 옮깁니다. 단계 id 는 바꾸지 않습니다(응답이 갈 곳을 잃습니다).\n',
+    '  → 아래 계획대로 옮깁니다.\n' +
+    (renamedHits > 0
+      ? `  → 이름이 바뀐 단계에 ${renamedHits}건이 있습니다. 새 id 로 함께 옮깁니다.\n`
+      : ''),
 )
 
 /* ─────────────────── 2. 옮길 계획 ─────────────────── */
@@ -200,7 +214,7 @@ for (const lesson of lessons) {
 
   const steps = await listDocs(`courses/${COURSE_ID}/lessons/${lid}/steps`)
   for (const step of steps) {
-    await put(`lessons/${lid}/steps/${id(step)}`, step.fields ?? {})
+    await put(`lessons/${lid}/steps/${newStepId(id(step))}`, step.fields ?? {})
   }
   // 공개 여부는 클래스로 옮긴다
   await put(`classes/${NEW_CLASS}/lessonState/${lid}`, {
@@ -233,13 +247,13 @@ await put(`classes/${NEW_CLASS}`, {
 // 3-3. 응답과 의견
 for (const r of responseDocs) {
   await put(
-    `classes/${NEW_CLASS}/lessons/${r.lid}/steps/${r.sid}/responses/${r.uid}`,
+    `classes/${NEW_CLASS}/lessons/${r.lid}/steps/${newStepId(r.sid)}/responses/${r.uid}`,
     r.doc.fields ?? {},
   )
 }
 for (const p of postDocs) {
   await put(
-    `classes/${NEW_CLASS}/lessons/${p.lid}/steps/${p.sid}/posts/${p.pid}`,
+    `classes/${NEW_CLASS}/lessons/${p.lid}/steps/${newStepId(p.sid)}/posts/${p.pid}`,
     p.doc.fields ?? {},
   )
 }

@@ -30,7 +30,7 @@ const TASK_LABELS: Record<StudentAiTaskId, { title: string; blurb: string; butto
     blurb: '내가 쓴 이유를 읽고 질문 하나를 돌려줍니다. 정답은 주지 않습니다.',
     button: '질문 하나 받기',
   },
-  'exit-self-check': {
+  'wrapup-self-check': {
     title: '자기 점검 기준',
     blurb: '내 문장이 ‘증거’인지 스스로 판단할 기준 세 개를 제시합니다. 문장을 고쳐 주지 않습니다.',
     button: '기준 세 개 받기',

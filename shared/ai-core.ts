@@ -154,7 +154,7 @@ export const TASKS = {
       `문항: ${i.question ?? '(없음)'}\n익명 응답 묶음:\n${i.responses ?? '(없음)'}`,
     maxInput: 8000,
   },
-  'exit-self-check': {
+  'wrapup-self-check': {
     label: '자기 점검 기준',
     system:
       '너는 학습자가 스스로 점검하도록 기준만 제시하는 조교다. ' +

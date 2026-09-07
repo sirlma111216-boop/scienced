@@ -21,7 +21,7 @@ import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/com
 const TASK_LABEL: Record<string, string> = {
   'recall-probe': '되묻는 질문',
   'cluster-responses': '응답 유형 묶기',
-  'exit-self-check': '자기 점검 기준',
+  'wrapup-self-check': '자기 점검 기준',
   'ai-audit-source': '주장 단위 쪼개기',
   'rubric-language-check': '모호한 표현 찾기',
 }

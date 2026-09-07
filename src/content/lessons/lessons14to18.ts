@@ -1,3 +1,4 @@
+import { WRAPUP_LABEL } from '../types'
 import type { Lesson, TimelineItem } from '../types'
 import { buildStandardSteps, commonScriptLines } from './_common'
 
@@ -7,7 +8,7 @@ function tl(m: [number, number, number, number, number], moduleLabel: string): T
     { minutes: m[1], label: '개념 카드', stepId: 'step-concepts' },
     { minutes: m[2], label: moduleLabel, stepId: 'step-module' },
     { minutes: m[3], label: '형성평가', stepId: 'step-formative' },
-    { minutes: m[4], label: '퇴실표', stepId: 'step-exit' },
+    { minutes: m[4], label: WRAPUP_LABEL, stepId: 'step-wrapup' },
   ]
 }
 
@@ -35,7 +36,7 @@ export const lesson14: Lesson = {
   fieldCase:
     '실험에서 한 학생만 기구를 만지고 다른 학생은 기록만 하는 모둠을 분석한다. ' +
     '역할 순환, 개인 예상, 공동자료, 개인 설명, 모둠 성찰을 넣어 구조를 바꾼다.',
-  flowSummary: '7분 실패한 모둠 체험 → 12분 개념 카드 → 16분 참여 균형 대시보드 → 10분 형성평가 → 5분 퇴실표',
+  flowSummary: '7분 실패한 모둠 체험 → 12분 개념 카드 → 16분 참여 균형 대시보드 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘교수·학습 방향’의 협력적 문제 해결과 학습자 다양성을 고려한 수업 설계에 연결한다.',
@@ -179,7 +180,7 @@ export const lesson14: Lesson = {
       watchFor: '가중치 공개에 불편해하는 반응 — 그 반응 자체를 형평성 논의 자료로 쓴다.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis: '기여 유형 기록은 이 앱이 학기 내내 모읍니다. 순위를 만들지 않고 여러분 자신이 확인용으로 씁니다.',
       whyNotSkip: '기록된다는 말만 하면 감시로 받아들인다. 쓰임새를 함께 말한다.',
@@ -276,7 +277,7 @@ export const lesson14: Lesson = {
         '기록 확인 — 이번 활동의 기여 유형 분포를 함께 본다',
       ],
     },
-    exitPrompt: '내 수업에서 한 사람이 빠지면 결론이 안 나오게 만드는 장치 하나를 적어 주세요.',
+    wrapupPrompt: '내 수업에서 한 사람이 빠지면 결론이 안 나오게 만드는 장치 하나를 적어 주세요.',
     minutes: M14,
   }),
 }
@@ -305,7 +306,7 @@ export const lesson15: Lesson = {
   fieldCase:
     '“물체에 힘이 작용하지 않으면 멈춘다”에 70%가 동의한 즉석 응답 뒤, ' +
     '예정대로 진도를 나간 장면과 충돌 사례·저마찰 영상·동료설명으로 수업을 수정한 장면을 비교한다.',
-  flowSummary: '5분 즉석 문항 → 12분 개념 카드 → 15분 다음 수를 두어라 → 13분 형성평가 → 5분 성찰',
+  flowSummary: '5분 즉석 문항 → 12분 개념 카드 → 15분 다음 수를 두어라 → 13분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 과학과 ‘평가 방향’의 학습 과정 중심 평가와 피드백을 통한 수업 개선에 연결한다.',
@@ -444,7 +445,7 @@ export const lesson15: Lesson = {
       watchFor: '전원이 같은 행동을 고른 경우 — 응답 이유를 다시 읽게 한다.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '성찰하면서',
       sayThis: '재확인 없이 끝난 순환은 형성평가가 아닙니다. 오늘 여러분의 순환에 재확인이 있었는지 적어 주세요.',
       whyNotSkip: '재확인이 가장 자주 빠지는 단계다. 마지막에 다시 짚는다.',
@@ -544,7 +545,7 @@ export const lesson15: Lesson = {
         '자료 확인 — 실제 재응답 자료를 열어 무엇이 안 바뀌었는지 본다',
       ],
     },
-    exitPrompt: '내 수업에서 쓸 hinge question 하나와, 응답 유형별 다음 행동 두 개를 적어 주세요.',
+    wrapupPrompt: '내 수업에서 쓸 hinge question 하나와, 응답 유형별 다음 행동 두 개를 적어 주세요.',
     minutes: M15,
   }),
 }
@@ -573,7 +574,7 @@ export const lesson16: Lesson = {
   fieldCase:
     '‘현미경을 사용할 수 있다’를 기구명 암기, 절차 수행, 상의 질, 안전, 문제해결 중 ' +
     '무엇으로 평가할지 구인을 먼저 정한다.',
-  flowSummary: '7분 채점 불일치 체험 → 12분 개념 카드 → 18분 루브릭 스튜디오 → 8분 형성평가 → 5분 퇴실표',
+  flowSummary: '7분 채점 불일치 체험 → 12분 개념 카드 → 18분 루브릭 스튜디오 → 8분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text:
@@ -711,7 +712,7 @@ export const lesson16: Lesson = {
       watchFor: '기술어에 “충분히·적절히·잘” 같은 말이 남아 있는지.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '마무리하면서',
       sayThis: '오늘 만든 루브릭은 18강 마이크로티칭 상호평가에 그대로 씁니다. 실제로 쓸 물건입니다.',
       whyNotSkip: '실사용 예고가 없으면 예비교사가 형식만 채운다.',
@@ -805,7 +806,7 @@ export const lesson16: Lesson = {
         '기준 맞추기 — 경계 사례 하나를 전체가 공동 채점한다',
       ],
     },
-    exitPrompt: '내 루브릭에서 사람마다 다르게 읽힐 낱말 하나와 그 대안을 적어 주세요.',
+    wrapupPrompt: '내 루브릭에서 사람마다 다르게 읽힐 낱말 하나와 그 대안을 적어 주세요.',
     minutes: M16,
   }),
 }
@@ -835,7 +836,7 @@ export const lesson17: Lesson = {
   fieldCase:
     'AI가 “계절은 지구가 태양에 가까워져서 생긴다”고 그럴듯하게 설명한 응답을 ' +
     '자료·모형·남북반구 반례로 검증한다.',
-  flowSummary: '5분 AI 답 판정 → 10분 개념 카드 → 15분 AI 응답 검증 보드 → 15분 형성평가 → 5분 성찰',
+  flowSummary: '5분 AI 답 판정 → 10분 개념 카드 → 15분 AI 응답 검증 보드 → 15분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '2022 개정 교육과정의 디지털·AI 소양과 과학과 ‘가치·태도’의 정보 비판적 수용에 연결한다.',
@@ -981,7 +982,7 @@ export const lesson17: Lesson = {
       watchFor: '출처 칸에 검색 결과 첫 페이지 링크만 적은 응답.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '성찰하면서',
       sayThis:
         '이 앱의 AI도 같은 규칙을 지킵니다. 점수를 매기지 않고, 근거와 한계를 표시하고, 여러분이 채택 여부를 정합니다.',
@@ -1075,7 +1076,7 @@ export const lesson17: Lesson = {
         '출처 확인 — 원자료를 함께 열어 본다',
       ],
     },
-    exitPrompt: '내 수업에서 쓸 도구 하나와, 그 도구가 없을 때보다 더 잘 드러나는 학생 사고를 적어 주세요.',
+    wrapupPrompt: '내 수업에서 쓸 도구 하나와, 그 도구가 없을 때보다 더 잘 드러나는 학생 사고를 적어 주세요.',
     minutes: M17,
   }),
 }
@@ -1104,7 +1105,7 @@ export const lesson18: Lesson = {
   fieldCase:
     '동일한 ‘달의 위상’ 성취기준을 중학교 1학년, 언어적 설명이 어려운 학생이 포함된 학급, ' +
     '시간이 부족한 학급에서 각각 다르게 설계한다. 과학 내용의 정확성은 유지하고 표상과 비계를 바꾼다.',
-  flowSummary: '8분 1강 답 다시 보기 → 12분 개념 카드 → 15분 마이크로티칭 코치 → 10분 형성평가 → 5분 개인 개선 목표',
+  flowSummary: '8분 1강 답 다시 보기 → 12분 개념 카드 → 15분 마이크로티칭 코치 → 10분 형성평가 → 5분 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text: '한 학기 동안 각자 다룬 성취기준으로 8~10분 마이크로티칭 구간을 확정한다.',
@@ -1247,7 +1248,7 @@ export const lesson18: Lesson = {
       watchFor: '코드 없이 감상만 적은 기록.',
     },
     {
-      stepId: 'step-exit',
+      stepId: 'step-wrapup',
       cue: '학기를 마치면서',
       sayThis:
         '오늘까지의 기록은 여러분 포트폴리오에 남습니다. 언제까지 보관하고 언제 삭제할지는 여러분이 정합니다.',
@@ -1263,7 +1264,7 @@ export const lesson18: Lesson = {
         '1강 「좋은 과학 수업은 무엇을 남기는가」에서 여러분이 적은 것:\n' +
         '· 기억에 남는 과학 수업 장면과 “나에게 남은 것”\n' +
         '· 좋은 수업 요소 8장에 나눈 100포인트\n' +
-        '· 퇴실표의 “좋은 과학 수업이 남긴 것을 학생 산출물 하나로”\n\n' +
+        `· ${WRAPUP_LABEL}의 “좋은 과학 수업이 남긴 것을 학생 산출물 하나로”\n\n` +
         '오른쪽에 그때의 답이 그대로 뜹니다. 그때 답이 틀렸다고 말하지 않습니다.\n' +
         '무엇이 달라졌고 무엇이 그대로인지, 그리고 왜 그런지가 오늘의 자료입니다.',
     },
@@ -1348,7 +1349,7 @@ export const lesson18: Lesson = {
         '기록 확인 — 실제 관찰 코드 기록을 함께 읽는다',
       ],
     },
-    exitPrompt: '다음 학기 첫 수업에서 반드시 하겠다고 정한 것 하나를, 근거와 함께 적어 주세요.',
+    wrapupPrompt: '다음 학기 첫 수업에서 반드시 하겠다고 정한 것 하나를, 근거와 함께 적어 주세요.',
     minutes: M18,
   }),
 }
