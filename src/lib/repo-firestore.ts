@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore'
 import { LESSONS } from '@/content/lessons'
 import type { GameId, LessonId } from '@/content/types'
@@ -101,15 +102,12 @@ export function createFirestoreRepo(db: Firestore): Repo {
        * 클래스 문서만 지우면 화면에서는 사라지지만 학생 응답·의견·실명은 그대로 남는다.
        * 지웠다고 말할 수 없는 상태다. 그래서 아래를 전부 훑어 치운 뒤에 지운다.
        *
-       * 차시별 응답·의견은 18강 × 단계 수만큼 돌아야 해서 느리다.
-       * 자주 하는 일이 아니므로 정확한 쪽을 택한다.
+       * ★ 훑을 곳이 190군데쯤 된다 (10 + 18강 × 단계 × 2).
+       *   처음에는 하나씩 기다리며 돌았는데, 왕복이 190번이라 몇 분씩 걸렸다.
+       *   화면에는 「지우는 중…」만 떠 있고 끝나지 않는 것처럼 보였다.
+       *   그래서 읽기는 묶어서 동시에 하고, 지우기는 배치로 모아 보낸다.
        */
-      const wipe = async (ref: ReturnType<typeof cc>) => {
-        const snap = await getDocs(ref)
-        await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
-      }
-
-      for (const name of [
+      const targets = [
         'lessonState',
         'enrollments',
         'roster',
@@ -120,15 +118,29 @@ export function createFirestoreRepo(db: Firestore): Repo {
         'picks',
         'participation',
         'aiProposals',
-      ]) {
-        await wipe(cc(db, classId, name))
-      }
+      ].map((name) => cc(db, classId, name))
 
       for (const lesson of LESSONS) {
         for (const step of lesson.steps) {
-          await wipe(cc(db, classId, ...stepPath(lesson.id, step.id), 'responses'))
-          await wipe(cc(db, classId, ...stepPath(lesson.id, step.id), 'posts'))
+          targets.push(cc(db, classId, ...stepPath(lesson.id, step.id), 'responses'))
+          targets.push(cc(db, classId, ...stepPath(lesson.id, step.id), 'posts'))
         }
+      }
+
+      /* 한 번에 다 던지면 브라우저 연결 한도에 걸린다. 25개씩 끊어 동시에 읽는다. */
+      const refs: Array<ReturnType<typeof doc>> = []
+      const CHUNK = 25
+      for (let i = 0; i < targets.length; i += CHUNK) {
+        const snaps = await Promise.all(targets.slice(i, i + CHUNK).map((t) => getDocs(t)))
+        for (const snap of snaps) for (const d of snap.docs) refs.push(d.ref)
+      }
+
+      /* 배치 한 번에 500개까지. 문서를 하나씩 지우면 다시 왕복이 늘어난다. */
+      const BATCH = 400
+      for (let i = 0; i < refs.length; i += BATCH) {
+        const batch = writeBatch(db)
+        for (const ref of refs.slice(i, i + BATCH)) batch.delete(ref)
+        await batch.commit()
       }
 
       await deleteDoc(doc(db, 'classes', classId))

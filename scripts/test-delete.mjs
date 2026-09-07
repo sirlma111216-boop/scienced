@@ -70,7 +70,13 @@ await env.withSecurityRulesDisabled(async (ctx) => {
 
 /* 앱이 쓰는 그 코드로 지운다. */
 const repo = createFirestoreRepo(env.authenticatedContext(TEACHER).firestore())
+
+/* 얼마나 걸리는지 잰다. 190군데를 훑으므로 방식에 따라 몇 분이 되기도 한다. */
+const t0 = Date.now()
 await repo.deleteClass(CID)
+const ms = Date.now() - t0
+console.log(`  걸린 시간: ${ms}ms (에뮬레이터 기준)`)
+if (ms > 20000) fail('지우기 속도', `${ms}ms 걸렸다 — 화면에서 끝나지 않는 것처럼 보인다`)
 
 /* 규칙을 우회해 정말 사라졌는지 본다 — 규칙에 가려 안 보이는 것과 없는 것은 다르다. */
 await env.withSecurityRulesDisabled(async (ctx) => {
