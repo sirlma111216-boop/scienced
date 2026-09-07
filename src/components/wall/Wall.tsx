@@ -8,6 +8,7 @@ import {
   type WallSortKey,
 } from '@/content/reactions'
 import { useAuth } from '@/lib/auth'
+import type { FieldDef } from '@/content/types'
 import type { Post } from '@/lib/types'
 import { Badge, Button, Caption, Notice } from '@/components/ui'
 
@@ -41,6 +42,7 @@ export function ShareBar({
   stepId,
   prompt,
   unlocked,
+  fields,
 }: {
   classId: string
   lessonId: LessonId
@@ -48,6 +50,12 @@ export function ShareBar({
   prompt: string
   /** 본인이 이 단계 응답을 제출했는가 */
   unlocked: boolean
+  /**
+   * 이 단계의 입력 칸.
+   * 공유 상자를 열 때 내가 낸 답을 불러와 채우는 데 쓴다 —
+   * 방금 쓴 것을 다시 치게 하면 같은 일을 두 번 시키는 것이다.
+   */
+  fields?: FieldDef[]
 }) {
   const { repo } = useAuth()
   const [posts, setPosts] = useState<Post[]>([])
@@ -90,6 +98,7 @@ export function ShareBar({
           lessonId={lessonId}
           stepId={stepId}
           prompt={prompt}
+          fields={fields}
           onClose={() => setComposing(false)}
           onDone={() => {
             setComposing(false)
@@ -190,6 +199,7 @@ function ComposeDialog({
   lessonId,
   stepId,
   prompt,
+  fields,
   onClose,
   onDone,
 }: {
@@ -197,12 +207,43 @@ function ComposeDialog({
   lessonId: LessonId
   stepId: string
   prompt: string
+  fields?: FieldDef[]
   onClose: () => void
   onDone: () => void
 }) {
   const { user, repo } = useAuth()
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
+  /** 불러온 답을 그대로 낼 것인가, 고쳐서 낼 것인가 — 고친 적이 있으면 다시 덮지 않는다. */
+  const touched = useRef(false)
+
+  /*
+   * 내가 낸 최신 답을 불러와 채운다.
+   * 방금 쓴 것을 다시 치게 하면 같은 일을 두 번 시키는 것이다.
+   * 확신도처럼 숫자만 있는 칸은 문장이 되지 않으므로 뺀다.
+   */
+  useEffect(() => {
+    if (!repo || !user) return
+    let cancelled = false
+    void repo.getResponse(classId, lessonId, stepId, user.uid).then((doc) => {
+      if (cancelled || touched.current) return
+      const latest = doc?.versions?.[doc.versions.length - 1]
+      if (!latest) return
+      const payload = latest.payload ?? {}
+      const lines: string[] = []
+      for (const f of fields ?? []) {
+        if (f.kind === 'confidence') continue
+        const v = payload[f.key]
+        const text =
+          typeof v === 'string' ? v : Array.isArray(v) ? v.filter(Boolean).join(', ') : ''
+        if (text.trim()) lines.push(text.trim())
+      }
+      if (lines.length > 0) setText(lines.join('\n\n'))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [repo, user, classId, lessonId, stepId, fields])
 
   async function submit() {
     if (!repo || !user) return
@@ -225,6 +266,11 @@ function ComposeDialog({
       <p className="text-body-sm" style={{ opacity: 0.72, marginBottom: 12 }}>
         {prompt}
       </p>
+      {text.trim() ? (
+        <p className="caption" style={{ marginBottom: 8, opacity: 0.7 }}>
+          내가 낸 답을 불러왔습니다. 고쳐서 내도 됩니다.
+        </p>
+      ) : null}
       <textarea
         className="field"
         rows={6}
@@ -232,6 +278,7 @@ function ComposeDialog({
         aria-label="공유할 내용"
         aria-invalid={error ? true : undefined}
         onChange={(e) => {
+          touched.current = true
           setText(e.target.value)
           setError(null)
         }}

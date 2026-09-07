@@ -390,6 +390,8 @@ export function Lesson() {
                             stepId={step.id}
                             prompt={step.wall.prompt}
                             unlocked={submitted || !step.wall.opensAfterSubmit}
+                            /* 공유 상자를 열 때 내가 낸 답을 불러오는 데 쓴다 */
+                            fields={stepView.fields}
                           />
                         </div>
                       ) : null}
