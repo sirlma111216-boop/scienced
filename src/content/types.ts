@@ -95,6 +95,11 @@ export interface KeyConcept {
   applyQuestion: string
   /** 잠깐 확인 1문항. 선택 + 이유 한 줄. 이유 없이는 제출되지 않는다. */
   check: { prompt: string; options: string[] }
+  /**
+   * 50분 판에서 이 카드를 흐름에서 빼는가 (3차 F.3).
+   * 그 차시의 판단에 꼭 필요한 카드는 빼지 않는다 — verify:tiers 가 최소 2장을 지킨다.
+   */
+  tier?: Tier
 }
 
 /** 강사 대본 한 줄. 발표 모드에서만 보인다. */
@@ -134,6 +139,19 @@ export type StepType =
  */
 export const WRAPUP_LABEL = '이번 수업 정리'
 
+/**
+ * 블록이 어느 판에 나오는가 (3차 F.3).
+ *   core     — 두 판 모두 강의 흐름에 나온다
+ *   extended — 1시간 판에서만 흐름에 나온다. 50분 판에서는 「수업 후 이어서」로 내려간다
+ *
+ * 기본값은 core 다. 태그를 빠뜨린 블록이 조용히 사라지는 사고를 막는다 —
+ * 빠뜨린 쪽이 벌을 받아야지, 학생이 못 본 채로 지나가면 안 된다.
+ */
+export type Tier = 'core' | 'extended'
+
+/** 「수업 후 이어서」 영역의 이름. 화면 문구는 여기 한 곳에서만 정한다. */
+export const AFTER_CLASS_LABEL = '수업 후 이어서'
+
 export interface WallConfig {
   enabled: boolean
   prompt: string
@@ -167,6 +185,8 @@ export interface FieldDef {
   quadrants?: Array<{ id: string; label: string }>
   /** 문장 틀 버튼 (컨텍스트 17.3). 강제하지 않는다. */
   sentenceStarters?: string[]
+  /** 50분 판에서 흐름을 빼고 「수업 후 이어서」로 내릴 칸. 없으면 core (3차 F.3). */
+  tier?: Tier
 }
 
 /**
@@ -210,12 +230,18 @@ export interface Step {
   /** 이 단계에서 쓰는 개념 카드 id (type === 'concepts') */
   conceptIds?: string[]
   /** 이 단계에서 쓰는 읽기 자료 */
-  material?: { kind: 'transcript' | 'note'; title: string; body: string }[]
+  material?: { kind: 'transcript' | 'note'; title: string; body: string; tier?: Tier }[]
   aiTasks: AiTaskId[]
   wall: WallConfig | null
   picker: PickerConfig | null
   /** 인쇄 활동지에 실을 같은 목표의 오프라인 대안 (지시서 15절) */
   printableAlternative: string
+  /**
+   * 단계 전체를 50분 판에서 빼는가 (3차 F.3).
+   * extended 이면 50분 판의 단계 네비게이션에도 나오지 않고 「수업 후 이어서」로 내려간다.
+   * 없으면 core.
+   */
+  tier?: Tier
 }
 
 export interface Lesson {

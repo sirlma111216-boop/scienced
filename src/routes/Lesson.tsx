@@ -2,10 +2,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { getLesson } from '@/content/lessons'
 import { GAMES_BY_LESSON } from '@/content/games'
-import type { LessonId, Step } from '@/content/types'
+import { SESSION_LENGTHS, sessionLengthShort } from '@/content/classes'
+import type { LessonId, Step, Tier } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { weightFromPresentCount } from '@/lib/ladder'
-import type { AppUser, LadderState, Participation, ResponseDoc, SessionState } from '@/lib/types'
+import {
+  buildLessonView,
+  classSessionLength,
+  classShowsDeferred,
+  tierKey,
+  type TierOverrides,
+} from '@/lib/tiers'
+import type {
+  AppUser,
+  LadderState,
+  Participation,
+  ResponseDoc,
+  SessionLength,
+  SessionState,
+} from '@/lib/types'
+import { AfterClass } from '@/components/response/AfterClass'
 import { AppShell, InstructorMovedBanner } from '@/components/layout/AppShell'
 import { AiAssistPanel } from '@/components/ai/AiAssistPanel'
 import { ConceptCard } from '@/components/concept/ConceptCard'
@@ -25,9 +41,16 @@ import { Badge, Button, Caption, ColorBlock, Notice, ScrollX } from '@/component
  */
 export function Lesson() {
   const { id } = useParams()
-  const { repo, isInstructor, classId } = useAuth()
+  const { repo, isInstructor, classId, currentClass } = useAuth()
   const lesson = getLesson(id ?? '')
   const [stepIndex, setStepIndex] = useState(0)
+  const [tierOverrides, setTierOverrides] = useState<TierOverrides>({})
+  /**
+   * 강사 미리보기 (3차 F.6).
+   * 실제 클래스 설정과 무관하게 두 판을 다 확인할 수 있어야 한다.
+   * null 이면 이 클래스의 설정을 따른다.
+   */
+  const [preview, setPreview] = useState<SessionLength | null>(null)
   const [session, setSession] = useState<SessionState | null>(null)
   const [published, setPublished] = useState<LessonId[]>([])
   const [users, setUsers] = useState<AppUser[]>([])
@@ -35,12 +58,36 @@ export function Lesson() {
   const [allDocs, setAllDocs] = useState<ResponseDoc[]>([])
   const [participation, setParticipation] = useState<Participation[]>([])
 
-  const step: Step | undefined = lesson?.steps[stepIndex]
+  /* 이 클래스가 도는 판. 강사가 미리보기를 켜면 그쪽을 따른다. */
+  const length: SessionLength = preview ?? classSessionLength(currentClass)
+
+  /**
+   * 차시를 판에 맞춰 자른다.
+   * 50분 판에서는 심화 블록이 흐름에서 빠지고 「수업 후 이어서」로 내려간다.
+   */
+  const view = useMemo(
+    () => (lesson ? buildLessonView(lesson, length, tierOverrides) : null),
+    [lesson, length, tierOverrides],
+  )
+
+  const stepView = view?.steps[stepIndex]
+  const step: Step | undefined = stepView?.step
 
   useEffect(() => {
     if (!repo || !classId) return
     return repo.watchLessonState(classId, setPublished)
   }, [repo, classId])
+
+  useEffect(() => {
+    if (!repo || !classId || !lesson) return
+    return repo.watchLessonTiers(classId, lesson.id, setTierOverrides)
+  }, [repo, classId, lesson])
+
+  /* 판이 바뀌면 단계 수가 달라진다. 범위를 벗어난 자리에 머물지 않게 한다. */
+  useEffect(() => {
+    const n = view?.steps.length ?? 0
+    if (n > 0 && stepIndex >= n) setStepIndex(n - 1)
+  }, [view, stepIndex])
 
   useEffect(() => {
     if (!repo || !lesson || !classId) return
@@ -62,36 +109,12 @@ export function Lesson() {
     return repo.watchAllResponses(classId, lesson.id, step.id, setAllDocs)
   }, [repo, lesson, step, classId])
 
-  if (!lesson) return <Navigate to="/" replace />
-
-  // 미공개 차시는 내용을 아예 그리지 않는다. 규칙에서도 막히지만 화면에서도 막는다.
-  const open = published.includes(lesson.id) || isInstructor
-  if (!open) {
-    return (
-      <AppShell>
-        <ColorBlock tone="cream">
-          <p className="eyebrow">아직 열리지 않았습니다</p>
-          <p className="text-subhead" style={{ marginTop: 12 }}>
-            이 차시는 아직 공개되지 않았습니다. 강사가 열면 학기 홈에 나타납니다.
-          </p>
-        </ColorBlock>
-      </AppShell>
-    )
-  }
-
-  const navItems = lesson.steps.map((s) => ({
-    id: s.id,
-    label: s.title,
-    shortLabel: s.shortTitle,
-    instructorHere: session?.instructorAt === s.id,
-  }))
-
-  const instructorStep = lesson.steps.find((s) => s.id === session?.instructorAt)
-  const showMoved =
-    instructorStep && instructorStep.id !== step?.id && dismissedAt !== instructorStep.id
-
-  const game = GAMES_BY_LESSON[lesson.id]
-  const ladder: LadderState | null = game ? (session?.ladders?.[game.id] ?? null) : null
+  /*
+   * ★ 훅은 조기 반환보다 위에 있어야 한다.
+   *   아래의 `if (!open) return` 은 차시가 수업 중에 공개되는 순간 false→true 로 바뀐다.
+   *   그때 훅이 반환문 아래 있으면 렌더마다 훅 개수가 달라져 화면이 깨진다.
+   *   실제로 그렇게 있었고, eslint(react-hooks/rules-of-hooks)가 잡았다.
+   */
   const nicknames = useMemo(
     () => Object.fromEntries(users.map((u) => [u.uid, u.nickname || '이름 없음'])),
     [users],
@@ -111,21 +134,62 @@ export function Lesson() {
     [users, participation],
   )
 
+  if (!lesson || !view) return <Navigate to="/" replace />
+
+  // 미공개 차시는 내용을 아예 그리지 않는다. 규칙에서도 막히지만 화면에서도 막는다.
+  const open = published.includes(lesson.id) || isInstructor
+  if (!open) {
+    return (
+      <AppShell>
+        <ColorBlock tone="cream">
+          <p className="eyebrow">아직 열리지 않았습니다</p>
+          <p className="text-subhead" style={{ marginTop: 12 }}>
+            이 차시는 아직 공개되지 않았습니다. 강사가 열면 학기 홈에 나타납니다.
+          </p>
+        </ColorBlock>
+      </AppShell>
+    )
+  }
+
+  /* 50분 판에서는 심화 단계가 네비게이션에도 나오지 않는다 (3차 F.3). */
+  const navItems = view.steps.map((s) => ({
+    id: s.step.id,
+    label: s.step.title,
+    shortLabel: s.step.shortTitle,
+    instructorHere: session?.instructorAt === s.step.id,
+  }))
+
+  const instructorStep = view.steps.find((s) => s.step.id === session?.instructorAt)?.step
+  const showMoved =
+    instructorStep && instructorStep.id !== step?.id && dismissedAt !== instructorStep.id
+
+  const game = GAMES_BY_LESSON[lesson.id]
+  const ladder: LadderState | null = game ? (session?.ladders?.[game.id] ?? null) : null
+
   return (
     <AppShell
       title={`${lesson.id}강 ${lesson.title}`}
       steps={navItems}
       activeStepId={step?.id}
       onSelectStep={(sid) => {
-        const i = lesson.steps.findIndex((s) => s.id === sid)
+        const i = view.steps.findIndex((s) => s.step.id === sid)
         if (i >= 0) setStepIndex(i)
       }}
     >
+      {/* 강사만 보는 판 미리보기. 실제 클래스 설정과 무관하게 두 판을 다 확인한다 (3차 F.6). */}
+      {isInstructor ? (
+        <PlanPreviewBar
+          classLength={classSessionLength(currentClass)}
+          preview={preview}
+          onPreview={setPreview}
+        />
+      ) : null}
+
       {showMoved && instructorStep ? (
         <InstructorMovedBanner
           label={instructorStep.title}
           onGo={() => {
-            const i = lesson.steps.findIndex((s) => s.id === instructorStep.id)
+            const i = view.steps.findIndex((s) => s.step.id === instructorStep.id)
             if (i >= 0) setStepIndex(i)
           }}
           onDismiss={() => setDismissedAt(instructorStep.id)}
@@ -209,7 +273,7 @@ export function Lesson() {
         </section>
       ) : null}
 
-      {step ? (
+      {step && stepView ? (
         <>
           <MustSay lines={lesson.instructorScript} stepId={step.id} isInstructor={isInstructor} />
 
@@ -218,12 +282,20 @@ export function Lesson() {
             <h2 className="text-headline" style={{ margin: '0 0 8px' }}>
               {step.title}
             </h2>
+            {isInstructor ? (
+              <TierBadge
+                tier={stepView.tier}
+                onChange={(t) =>
+                  classId && void repo?.setLessonTier(classId, lesson.id, tierKey.step(step.id), t)
+                }
+              />
+            ) : null}
             <p className="text-body-lg" style={{ whiteSpace: 'pre-line', marginTop: 0 }}>
               {step.lead}
             </p>
 
-            {/* ② 시작 현상 / 읽을 자료 */}
-            {step.material?.map((m, i) => (
+            {/* ② 시작 현상 / 읽을 자료 — 이 판에 나오는 것만 */}
+            {stepView.material.map((m, i) => (
               <div key={i} className="card" style={{ marginTop: 24 }}>
                 <Caption>{m.kind === 'transcript' ? '수업 기록' : '자료'}</Caption>
                 <h3 className="text-card-title" style={{ margin: '8px 0 12px' }}>
@@ -235,24 +307,38 @@ export function Lesson() {
               </div>
             ))}
 
-            {/* ⑤ 개념 카드 */}
+            {/* ⑤ 개념 카드 — 이 판에 나오는 것만 */}
             {step.type === 'concepts' ? (
               <div className="flex flex-col" style={{ gap: 96, marginTop: 48 }}>
-                {(step.conceptIds ?? []).map((cid, i) => {
-                  const concept = lesson.keyConcepts.find((c) => c.id === cid)
-                  if (!concept) return null
-                  return <ConceptCard key={cid} concept={concept} index={i} />
-                })}
+                {stepView.concepts.map((concept, i) => (
+                  <div key={concept.id}>
+                    {isInstructor ? (
+                      <TierBadge
+                        tier={concept.tier ?? 'core'}
+                        onChange={(t) =>
+                          classId &&
+                          void repo?.setLessonTier(
+                            classId,
+                            lesson.id,
+                            tierKey.concept(concept.id),
+                            t,
+                          )
+                        }
+                      />
+                    ) : null}
+                    <ConceptCard concept={concept} index={i} />
+                  </div>
+                ))}
               </div>
             ) : null}
 
             {/* ③ 내 생각 먼저 → ⑥ 핵심 모듈 → ④ 의견 광장 → 분포 */}
-            {step.fields.length > 0 || step.moduleComponent ? (
+            {stepView.fields.length > 0 || step.moduleComponent ? (
               <div style={{ marginTop: 32 }}>
                 <ResponseCollector
                   classId={classId!}
                   lessonId={lesson.id}
-                  step={step}
+                  step={{ ...step, fields: stepView.fields, material: stepView.material }}
                   renderModule={
                     step.moduleComponent
                       ? (value, onChange, locked) => (
@@ -271,12 +357,12 @@ export function Lesson() {
                     <>
                       {submitted ? (
                         <div className="flex flex-col gap-xl" style={{ marginTop: 32 }}>
-                          {step.fields.find((f) => f.kind === 'choice') ? (
+                          {stepView.fields.find((f) => f.kind === 'choice') ? (
                             <DistributionView
                               docs={allDocs}
-                              field={step.fields.find((f) => f.kind === 'choice')!}
+                              field={stepView.fields.find((f) => f.kind === 'choice')!}
                               reasonKey={
-                                step.fields.find((f) => /reason/i.test(f.key))?.key
+                                stepView.fields.find((f) => /reason/i.test(f.key))?.key
                               }
                             />
                           ) : null}
@@ -354,18 +440,18 @@ export function Lesson() {
             </Button>
             <span className="flex-1" />
             <Caption>
-              {stepIndex + 1} / {lesson.steps.length}
+              {stepIndex + 1} / {view.steps.length}
             </Caption>
             <span className="flex-1" />
             <Button
-              disabled={stepIndex === lesson.steps.length - 1}
-              onClick={() => setStepIndex((i) => Math.min(lesson.steps.length - 1, i + 1))}
+              disabled={stepIndex === view.steps.length - 1}
+              onClick={() => setStepIndex((i) => Math.min(view.steps.length - 1, i + 1))}
             >
               다음 단계
             </Button>
           </nav>
 
-          {stepIndex === lesson.steps.length - 1 ? (
+          {stepIndex === view.steps.length - 1 ? (
             <div style={{ marginTop: 48 }}>
               <Notice tone="mint">
                 <p className="text-body-sm">
@@ -377,7 +463,70 @@ export function Lesson() {
           ) : null}
         </>
       ) : null}
+
+      {/*
+        「수업 후 이어서」 — 흐름에서 뺀 블록 (3차 F.2 ① · F.6).
+        클래스 설정에서 끄면(extendedAsHomework: false) 아예 보이지 않는다.
+      */}
+      {classId && classShowsDeferred(currentClass) ? (
+        <AfterClass classId={classId} lesson={lesson} view={view} />
+      ) : null}
     </AppShell>
+  )
+}
+
+/** 강사만 보는 판 미리보기 (3차 F.6). 학생 화면에는 나오지 않는다. */
+function PlanPreviewBar({
+  classLength,
+  preview,
+  onPreview,
+}: {
+  classLength: SessionLength
+  preview: SessionLength | null
+  onPreview: (v: SessionLength | null) => void
+}) {
+  const active = preview ?? classLength
+  return (
+    <div
+      className="flex flex-wrap items-center gap-xs no-print"
+      style={{ marginBottom: 24 }}
+    >
+      <Caption>미리보기</Caption>
+      {SESSION_LENGTHS.map((s) => (
+        <button
+          key={s.key}
+          type="button"
+          className="tab"
+          aria-pressed={active === s.key}
+          data-selected={active === s.key}
+          style={{ fontSize: 13, minHeight: 36, padding: '4px 12px' }}
+          onClick={() => onPreview(s.key === classLength ? null : s.key)}
+        >
+          {s.label}
+        </button>
+      ))}
+      {preview && preview !== classLength ? (
+        <Caption>이 클래스는 {sessionLengthShort(classLength)}으로 돕니다 — 보기만 바꾼 것입니다</Caption>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * 핵심 / 심화 배지 (3차 F.6).
+ * 차시별 판단의 최종 결정권은 강의자에게 있다. 누르면 이 클래스에서만 바뀐다.
+ */
+function TierBadge({ tier, onChange }: { tier: Tier; onChange: (t: Tier) => void }) {
+  return (
+    <button
+      type="button"
+      className="badge no-print"
+      aria-label={`이 블록은 ${tier === 'core' ? '핵심' : '심화'}입니다. 눌러서 바꿉니다.`}
+      style={{ cursor: 'pointer', marginBottom: 8 }}
+      onClick={() => onChange(tier === 'core' ? 'extended' : 'core')}
+    >
+      {tier === 'core' ? '핵심' : '심화'}
+    </button>
   )
 }
 

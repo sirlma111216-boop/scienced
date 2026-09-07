@@ -138,7 +138,13 @@ service cloud.firestore {
       allow get, list: if signedIn();
       allow write: if isInstructor();
 
-      /* ── 차시 공개 (클래스마다 따로) ── */
+      /*
+       * ── 차시 공개 + 핵심/심화 덮어쓰기 (클래스마다 따로) ──
+       *
+       * tierOverrides 도 이 문서에 있다 (3차 F.6).
+       * 학생도 읽어야 한다 — 자기 화면이 어느 판으로 그려질지 여기서 결정되기 때문이다.
+       * 쓰는 것은 강사뿐이다.
+       */
       match /lessonState/{lid} {
         allow read: if isEnrolled(cid) || isInstructor();
         allow write: if isInstructor() && classActive(cid);

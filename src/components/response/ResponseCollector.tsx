@@ -27,12 +27,21 @@ export function ResponseCollector({
   step,
   onSubmitted,
   renderModule,
+  autosave = true,
   children,
 }: {
   classId: string
   lessonId: LessonId
   step: Step
   onSubmitted?: (payload: Record<string, unknown>) => void
+  /**
+   * 초안 자동 저장을 끈다.
+   *
+   * 「수업 후 이어서」는 같은 단계의 나머지 칸을 받는다 (3차 F.6).
+   * 그래서 한 단계에 수집기가 둘 붙을 수 있는데, 둘 다 초안을 쓰면 서로 덮어쓴다.
+   * 제출은 마지막 제출본을 불러와 통째로 다시 쓰므로 안전하다 — 초안만 끄면 된다.
+   */
+  autosave?: boolean
   /**
    * 전용 모듈 화면. 모형 캔버스·데이터 스튜디오 같은 것.
    * 여기서 만든 값은 일반 입력 칸과 함께 같은 응답 버전에 저장되므로
@@ -75,13 +84,13 @@ export function ResponseCollector({
   /** 입력이 멈추면 자동 저장한다. */
   const scheduleSave = useCallback(
     (next: Record<string, unknown>) => {
-      if (!repo || !uid) return
+      if (!repo || !uid || !autosave) return
       if (timer.current) window.clearTimeout(timer.current)
       timer.current = window.setTimeout(() => {
         void repo.saveDraft(classId, lessonId, step.id, uid, next).then(() => setSavedAt(Date.now()))
       }, AUTOSAVE_MS)
     },
-    [repo, uid, classId, lessonId, step.id],
+    [repo, uid, classId, lessonId, step.id, autosave],
   )
 
   useEffect(

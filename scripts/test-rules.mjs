@@ -206,6 +206,24 @@ const asAnon = env.unauthenticatedContext().firestore()
   pass('초안 → 제출', 'versions 가 없던 문서에 첫 제출이 들어간다')
 }
 
+/* ── 핵심/심화 덮어쓰기: 강사만 쓴다, 학생은 읽는다 (3차 F.6) ── */
+{
+  await assertSucceeds(
+    asTeacher
+      .doc(`classes/${A}/lessonState/01`)
+      .set({ lessonId: '01', tierOverrides: { 'step:step-wrapup': 'core' } }, { merge: true }),
+  )
+  // 학생은 읽어야 한다 — 자기 화면이 어느 판으로 그려질지가 여기서 결정된다
+  await assertSucceeds(asS1.doc(`classes/${A}/lessonState/01`).get())
+  // 학생이 자기 판을 바꾸지는 못한다
+  await assertFails(
+    asS1
+      .doc(`classes/${A}/lessonState/01`)
+      .set({ tierOverrides: { 'step:step-wrapup': 'extended' } }, { merge: true }),
+  )
+  pass('판 덮어쓰기', '강사만 tierOverrides 를 쓰고, 학생은 읽기만 한다')
+}
+
 /* ── 보관된 클래스는 읽기 전용 ── */
 {
   await assertSucceeds(asS1.doc(`classes/archived-C/lessonState/01`).get())

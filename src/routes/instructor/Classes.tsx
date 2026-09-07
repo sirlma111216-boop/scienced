@@ -2,18 +2,23 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   AFFILIATIONS,
+  COURSE_TITLE_SUGGESTIONS,
   DAYS,
+  SESSION_LENGTHS,
   TERMS,
   buildDisplayName,
   emptyClassForm,
   generateJoinCode,
+  sessionLengthShort,
   sortDays,
   validateClassForm,
   type Affiliation,
   type ClassFormValues,
 } from '@/content/classes'
 import { LESSONS } from '@/content/lessons'
+import { AFTER_CLASS_LABEL } from '@/content/types'
 import { useAuth } from '@/lib/auth'
+import { classSessionLength } from '@/lib/tiers'
 import type { ClassDoc, Enrollment } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
@@ -78,6 +83,7 @@ export function InstructorClasses() {
     const doc: ClassDoc = {
       id,
       ownerUid: user.uid,
+      courseTitle: form.courseTitle.trim(),
       affiliation: form.affiliation,
       year: form.year,
       term: form.term,
@@ -85,6 +91,9 @@ export function InstructorClasses() {
       startTime: form.startTime,
       endTime: form.endTime,
       credits: form.credits,
+      sessionLength: form.sessionLength,
+      // 뺀 블록은 「수업 후 이어서」로 내려간다. 두 반의 산출물을 같게 두기 위해서다.
+      extendedAsHomework: true,
       displayName: form.displayName.trim(),
       joinCode: generateJoinCode(),
       requireJoinCode: false,
@@ -139,6 +148,34 @@ export function InstructorClasses() {
             </h2>
 
             <div className="flex flex-col gap-xl">
+              {/*
+                강의 제목 — 같은 학기에 두 강의를 함께 열 수 있으므로 클래스를 가르는 핵심 값이다.
+                표시 이름의 맨 앞에도 이것이 온다.
+              */}
+              <div className="flex flex-col gap-xs">
+                <label htmlFor="cl-course" className="text-body-sm" style={{ fontWeight: 480 }}>
+                  강의 제목
+                </label>
+                <input
+                  id="cl-course"
+                  className="field"
+                  list="cl-course-suggestions"
+                  value={form.courseTitle}
+                  onChange={(e) => patch({ courseTitle: e.target.value })}
+                  placeholder="예: 과학교육론"
+                />
+                <datalist id="cl-course-suggestions">
+                  {COURSE_TITLE_SUGGESTIONS.map((t) => (
+                    <option key={t} value={t} />
+                  ))}
+                </datalist>
+                {errors.courseTitle ? (
+                  <p role="alert" className="text-body-sm">
+                    ⚠ {errors.courseTitle}
+                  </p>
+                ) : null}
+              </div>
+
               {/* 소속 */}
               <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
                 <legend className="text-body-sm" style={{ fontWeight: 480, paddingBottom: 8 }}>
@@ -320,6 +357,44 @@ export function InstructorClasses() {
                 </div>
               </div>
 
+              {/*
+                강의 길이 — 이 클래스가 어느 판으로 도는가.
+                50분 판은 차시마다 심화 블록을 흐름에서 빼고 「수업 후 이어서」로 내린다.
+                만든 뒤에도 목록에서 바꿀 수 있다.
+              */}
+              <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend className="text-body-sm" style={{ fontWeight: 480, paddingBottom: 8 }}>
+                  강의 길이
+                </legend>
+                <div className="flex flex-wrap gap-xs">
+                  {SESSION_LENGTHS.map((s) => (
+                    <label
+                      key={s.key}
+                      className="flex items-center gap-xs rounded-pill"
+                      style={{
+                        padding: '10px 16px',
+                        minHeight: 44,
+                        boxShadow: `inset 0 0 0 ${form.sessionLength === s.key ? 2 : 1}px ${form.sessionLength === s.key ? '#000' : '#e6e6e6'}`,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="sessionLength"
+                        checked={form.sessionLength === s.key}
+                        onChange={() => patch({ sessionLength: s.key })}
+                      />
+                      <span className="text-body-sm">{s.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="caption" style={{ marginTop: 8, opacity: 0.7 }}>
+                  {/* wording-ok: 강의 길이 설정을 설명하는 문장이다. 단계 소요 시간이 아니다. */}
+                  50분 강의는 차시마다 일부 블록이 「{AFTER_CLASS_LABEL}」로 내려갑니다. 사라지지
+                  않고, 학생이 수업 뒤에 마저 작성합니다.
+                </p>
+              </fieldset>
+
               {/* 표시 이름 */}
               <div className="flex flex-col gap-xs">
                 <label htmlFor="cl-name" className="text-body-sm" style={{ fontWeight: 480 }}>
@@ -363,7 +438,7 @@ export function InstructorClasses() {
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 860, marginTop: 32 }}>
             <thead>
               <tr>
-                {['클래스', '등록 인원', '공개 차시', '참여 코드', '상태', ''].map((h) => (
+                {['클래스', '강의 길이', '등록 인원', '공개 차시', '참여 코드', '상태', ''].map((h) => (
                   <th
                     key={h}
                     scope="col"
@@ -380,6 +455,37 @@ export function InstructorClasses() {
                 <tr key={c.id} style={{ boxShadow: 'inset 0 -1px 0 #f1f1f1' }}>
                   <td className="text-body-sm" style={{ padding: '14px 16px 14px 0', maxWidth: 320 }}>
                     {c.displayName}
+                  </td>
+                  {/*
+                    어느 판으로 도는 클래스인지 늘 보여야 한다.
+                    보관된 클래스가 아니면 여기서 바로 바꾼다 — 바꾸면 흐름이 즉시 달라지고,
+                    이미 낸 응답은 그대로 남는다.
+                  */}
+                  <td style={{ padding: '14px 16px 14px 0' }}>
+                    {c.status === 'archived' ? (
+                      <Badge>{sessionLengthShort(classSessionLength(c))}</Badge>
+                    ) : (
+                      <div className="flex gap-xxs">
+                        {SESSION_LENGTHS.map((s) => {
+                          const on = classSessionLength(c) === s.key
+                          return (
+                            <button
+                              key={s.key}
+                              type="button"
+                              className="tab"
+                              aria-pressed={on}
+                              data-selected={on}
+                              style={{ fontSize: 13, minHeight: 36, padding: '4px 12px' }}
+                              onClick={() =>
+                                void repo?.updateClass(c.id, { sessionLength: s.key })
+                              }
+                            >
+                              {s.short}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </td>
                   <td className="font-mono text-body-sm" style={{ padding: '14px 16px 14px 0' }}>
                     {counts[c.id] ?? 0}

@@ -245,7 +245,7 @@ export const lesson14: Lesson = {
           help: '긍정적 상호의존과 개인 책무가 각각 어디에 들어갔는지 표시합니다.',
         },
         {
-          key: 'udlCheck',
+          key: 'udlCheck', tier: 'extended',
           kind: 'longtext',
           label: 'UDL 점검 — 이 활동의 장벽과 그것을 낮추는 방법',
           required: true,
@@ -507,7 +507,7 @@ export const lesson15: Lesson = {
           ],
         },
         {
-          key: 'defense',
+          key: 'defense', tier: 'extended',
           kind: 'longtext',
           label: '그 수를 고른 근거',
           required: true,
@@ -775,7 +775,7 @@ export const lesson16: Lesson = {
           required: true,
         },
         {
-          key: 'fairness',
+          key: 'fairness', tier: 'extended',
           kind: 'longtext',
           label: '공정성 점검 — 목표와 무관하게 점수를 좌우할 수 있는 요인',
           required: true,
@@ -1052,7 +1052,7 @@ export const lesson17: Lesson = {
           required: true,
         },
         {
-          key: 'toolFunction',
+          key: 'toolFunction', tier: 'extended',
           kind: 'choice',
           label: '이 수업에서 디지털 도구가 맡은 학습 기능',
           required: true,
@@ -1317,7 +1317,7 @@ export const lesson18: Lesson = {
           help: '한 번에 다 고치지 않습니다. 학습에 가장 큰 영향을 줄 것부터.',
         },
         {
-          key: 'evidenceOfChange',
+          key: 'evidenceOfChange', tier: 'extended',
           kind: 'longtext',
           label: '수정 전후 학생 반응의 차이',
           required: true,

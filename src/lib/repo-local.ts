@@ -1,4 +1,5 @@
 import type { LessonId } from '@/content/types'
+import type { TierOverrides } from './tiers'
 import { LESSONS } from '@/content/lessons'
 import type { Repo } from './repo'
 import type {
@@ -72,6 +73,7 @@ const kPicks = (c: string) => `c.${c}.picks`
 const kGroups = (c: string) => `c.${c}.groups`
 const kParticipation = (c: string) => `c.${c}.participation`
 const kPublished = (c: string) => `c.${c}.published`
+const kTiers = (c: string, l: string) => `c.${c}.tiers.${l}`
 const kEnrollments = (c: string) => `c.${c}.enrollments`
 const kRoster = (c: string) => `c.${c}.roster`
 const kProposals = (c: string) => `c.${c}.aiProposals`
@@ -125,6 +127,17 @@ export function createLocalRepo(): Repo {
     watchLessonState(classId, cb) {
       return subscribe(() => cb(read<LessonId[]>(kPublished(classId), seedPublished())))
     },
+    watchLessonTiers(classId, lessonId, cb) {
+      return subscribe(() => cb(read<TierOverrides>(kTiers(classId, lessonId), {})))
+    },
+    async setLessonTier(classId, lessonId, key, tier) {
+      const cur = read<TierOverrides>(kTiers(classId, lessonId), {})
+      const next = { ...cur }
+      if (tier === null) delete next[key]
+      else next[key] = tier
+      write(kTiers(classId, lessonId), next)
+    },
+
     async setLessonPublished(classId, lessonId, published) {
       const cur = read<LessonId[]>(kPublished(classId), seedPublished())
       const next = published

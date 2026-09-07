@@ -82,7 +82,11 @@ export function NodeCanvas({
   onChange: (v: CanvasValue) => void
   readOnly?: boolean
 }) {
-  const v: CanvasValue = value ?? { nodes: [], edges: [], boundary: '', limits: '' }
+  // 매 렌더 새 객체가 되면 아래 useCallback 이 의미를 잃는다.
+  const v: CanvasValue = useMemo(
+    () => value ?? { nodes: [], edges: [], boundary: '', limits: '' },
+    [value],
+  )
   const kinds = KINDS[mode]
 
   const [kind, setKind] = useState(kinds[0].key)

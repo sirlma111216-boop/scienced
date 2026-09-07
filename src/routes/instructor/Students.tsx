@@ -29,7 +29,9 @@ export function InstructorStudents() {
       a()
       b()
     }
-  }, [repo])
+    // classId 가 빠져 있었다. 클래스를 바꿔도 다시 구독하지 않아
+    // 이전 학기의 참여 기록이 화면에 남았다. eslint 가 잡았다.
+  }, [repo, classId])
 
   if (!isInstructor) return <Navigate to="/" replace />
 

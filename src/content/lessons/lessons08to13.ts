@@ -243,7 +243,7 @@ export const lesson08: Lesson = {
           sentenceStarters: ['___를 통제하지 않으면 ___ 때문이라는 설명이 남는다'],
         },
         {
-          key: 'threeBoxes',
+          key: 'threeBoxes', tier: 'extended',
           kind: 'longtext',
           label: '확실히 말할 수 있는 것 / 조심해서 말할 것 / 아직 말할 수 없는 것',
           required: true,
@@ -501,7 +501,7 @@ export const lesson09: Lesson = {
           sentenceStarters: ['우리 모형은 ___을 설명하지만 ___은 설명하지 못한다'],
         },
         {
-          key: 'engineeringCriteria',
+          key: 'engineeringCriteria', tier: 'extended',
           kind: 'longtext',
           label: '해결책을 고를 기준과 제약 (공학적 판단)',
           required: true,
@@ -766,13 +766,13 @@ export const lesson10: Lesson = {
           required: true,
         },
         {
-          key: 'shrink',
+          key: 'shrink', tier: 'extended',
           kind: 'longtext',
           label: '시간이 절반으로 줄면 무엇을 남기고 무엇을 뺄 것인가',
           required: true,
         },
         {
-          key: 'counterexample',
+          key: 'counterexample', tier: 'extended',
           kind: 'text',
           label: '다른 모둠이 제시할 만한 반례 조건',
           required: true,
@@ -1015,7 +1015,7 @@ export const lesson11: Lesson = {
           help: '그림은 글로 묘사해도 됩니다.',
         },
         {
-          key: 'lostInformation',
+          key: 'lostInformation', tier: 'extended',
           kind: 'longtext',
           label: '새 표상에서 더 잘 보이는 것 / 사라진 것',
           required: true,
@@ -1281,7 +1281,7 @@ export const lesson12: Lesson = {
           required: true,
         },
         {
-          key: 'alternative',
+          key: 'alternative', tier: 'extended',
           kind: 'longtext',
           label: '가능한 대안 설명',
           required: true,
@@ -1568,7 +1568,7 @@ export const lesson13: Lesson = {
           sentenceStarters: ['___가 확인되면 ___한다. 다만 ___는 아직 확정할 수 없다'],
         },
         {
-          key: 'whatWouldChange',
+          key: 'whatWouldChange', tier: 'extended',
           kind: 'text',
           label: '내 결론이 바뀌려면 어떤 자료가 나와야 하는가',
           required: true,

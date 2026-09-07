@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   type Firestore,
   getDoc,
@@ -19,6 +20,7 @@ import type {
   Enrollment,
   Group,
   LadderState,
+  LessonState,
   Participation,
   PickRecord,
   Post,
@@ -97,6 +99,22 @@ export function createFirestoreRepo(db: Firestore): Repo {
         () => cb([]),
       )
     },
+    watchLessonTiers(classId, lessonId, cb) {
+      return onSnapshot(
+        cd(db, classId, 'lessonState', lessonId),
+        (snap) => cb((snap.data() as LessonState | undefined)?.tierOverrides ?? {}),
+        () => cb({}),
+      )
+    },
+    async setLessonTier(classId, lessonId, key, tier) {
+      // merge 로 그 열쇠 하나만 건드린다. 다른 강사가 같은 순간 다른 블록을 바꿔도 덮이지 않는다.
+      await setDoc(
+        cd(db, classId, 'lessonState', lessonId),
+        { lessonId, tierOverrides: { [key]: tier ?? deleteField() } },
+        { merge: true },
+      )
+    },
+
     async setLessonPublished(classId, lessonId, published) {
       await setDoc(
         cd(db, classId, 'lessonState', lessonId),

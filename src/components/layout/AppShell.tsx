@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useRef, useState, type ReactNode } from 'react'
-import { buildShortName } from '@/content/classes'
+import { buildShortName, sessionLengthShort } from '@/content/classes'
+import { classSessionLength } from '@/lib/tiers'
 import { useAuth } from '@/lib/auth'
 import { Badge, Button, usePresent } from '@/components/ui'
 
@@ -192,6 +193,9 @@ export function AppShell({
                 style={{ fontSize: 13, minHeight: 36, padding: '4px 12px', whiteSpace: 'nowrap' }}
               >
                 {buildShortName(currentClass)}
+                {/* 어느 판으로 도는 클래스인지 강사가 늘 보여야 한다 (3차 E) */}
+                {' · '}
+                {sessionLengthShort(classSessionLength(currentClass))}
                 {currentClass.status === 'archived' ? ' · 보관' : ''}
                 {switchable.length > 1 ? <span aria-hidden> ▾</span> : null}
               </button>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { LESSONS } from '@/content/lessons'
 import { useAuth } from '@/lib/auth'
@@ -75,7 +75,10 @@ export function InstructorClassStudents() {
     return () => unsubs.forEach((u) => u())
   }, [repo, classId])
 
-  const nameOf = (uid: string) => roster.find((r) => r.uid === uid)?.rosterName ?? ''
+  const nameOf = useCallback(
+    (uid: string) => roster.find((r) => r.uid === uid)?.rosterName ?? '',
+    [roster],
+  )
 
   const rows = useMemo(() => {
     const list = enrollments.filter((e) => e.status === 'active')
@@ -90,7 +93,7 @@ export function InstructorClassStudents() {
           (a.e.studentId ?? '').localeCompare(b.e.studentId ?? '', 'ko'),
         )
     }
-  }, [enrollments, roster, submitted, sort])
+  }, [enrollments, nameOf, submitted, sort])
 
   const missingNames = rows.filter((r) => !r.name.trim()).length
 

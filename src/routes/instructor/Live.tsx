@@ -3,6 +3,7 @@ import { Navigate, useParams } from 'react-router-dom'
 import { getLesson } from '@/content/lessons'
 import { GAMES_BY_LESSON } from '@/content/games'
 import { useAuth } from '@/lib/auth'
+import { buildLessonView, classSessionLength, type TierOverrides } from '@/lib/tiers'
 import type { AiProposal, AppUser, Participation, Post, ResponseDoc, SessionState } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { DistributionView } from '@/components/response/DistributionView'
@@ -23,8 +24,9 @@ import { Badge, Button, Caption, Card, ColorBlock, ScrollX } from '@/components/
  */
 export function InstructorLive() {
   const { id } = useParams()
-  const { repo, isInstructor, classId } = useAuth()
+  const { repo, isInstructor, classId, currentClass } = useAuth()
   const lesson = getLesson(id ?? '')
+  const [tierOverrides, setTierOverrides] = useState<TierOverrides>({})
   const [stepIndex, setStepIndex] = useState(0)
   const [session, setSession] = useState<SessionState | null>(null)
   const [users, setUsers] = useState<AppUser[]>([])
@@ -38,12 +40,33 @@ export function InstructorLive() {
    */
   const [timerMinutes, setTimerMinutes] = useState('')
 
-  const step = lesson?.steps[stepIndex]
+  /*
+   * 진행 콘솔은 현재 클래스의 판을 따른다 (3차 F.6).
+   * 50분 반을 진행하면서 1시간 판의 단계를 제어할 수 있으면 학생 화면과 어긋난다.
+   */
+  const view = useMemo(
+    () =>
+      lesson
+        ? buildLessonView(lesson, classSessionLength(currentClass), tierOverrides)
+        : null,
+    [lesson, currentClass, tierOverrides],
+  )
+  const step = view?.steps[stepIndex]?.step
 
   useEffect(() => {
     if (!repo || !lesson || !classId) return
     return repo.watchSession(classId, lesson.id, setSession)
   }, [repo, lesson, classId])
+
+  useEffect(() => {
+    if (!repo || !classId || !lesson) return
+    return repo.watchLessonTiers(classId, lesson.id, setTierOverrides)
+  }, [repo, classId, lesson])
+
+  useEffect(() => {
+    const n = view?.steps.length ?? 0
+    if (n > 0 && stepIndex >= n) setStepIndex(n - 1)
+  }, [view, stepIndex])
 
   useEffect(() => {
     if (!repo || !classId) return
@@ -85,7 +108,7 @@ export function InstructorLive() {
   )
 
   if (!isInstructor) return <Navigate to="/" replace />
-  if (!lesson) return <Navigate to="/instructor/lessons" replace />
+  if (!lesson || !view) return <Navigate to="/instructor/lessons" replace />
 
   const game = GAMES_BY_LESSON[lesson.id]
   const choiceField = step?.fields.find((f) => f.kind === 'choice')
@@ -93,7 +116,8 @@ export function InstructorLive() {
 
   async function moveTo(i: number) {
     setStepIndex(i)
-    const s = lesson!.steps[i]
+    const s = view!.steps[i]?.step
+    if (!s) return
     // 학생 화면을 강제로 옮기지 않는다. 어디에 있는지만 알린다.
     if (classId) await repo?.setSession(classId, lesson!.id, { instructorAt: s.id, currentStepId: s.id })
   }
@@ -101,15 +125,15 @@ export function InstructorLive() {
   return (
     <AppShell
       title={`${lesson.id}강 진행 콘솔`}
-      steps={lesson.steps.map((s) => ({
-        id: s.id,
-        label: s.title,
-        shortLabel: s.shortTitle,
-        instructorHere: session?.instructorAt === s.id,
+      steps={view.steps.map((s) => ({
+        id: s.step.id,
+        label: s.step.title,
+        shortLabel: s.step.shortTitle,
+        instructorHere: session?.instructorAt === s.step.id,
       }))}
       activeStepId={step?.id}
       onSelectStep={(sid) => {
-        const i = lesson.steps.findIndex((s) => s.id === sid)
+        const i = view.steps.findIndex((s) => s.step.id === sid)
         if (i >= 0) void moveTo(i)
       }}
     >

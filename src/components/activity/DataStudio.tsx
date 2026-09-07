@@ -73,7 +73,8 @@ export function DataStudio({
   value: DataStudioValue | null
   onChange: (v: DataStudioValue) => void
 }) {
-  const v = { ...DEFAULTS, ...(value ?? {}) }
+  // useMemo 로 감싸지 않으면 렌더마다 새 객체가 되어 아래 simulate 가 매번 다시 돈다.
+  const v = useMemo(() => ({ ...DEFAULTS, ...(value ?? {}) }), [value])
   const [showRaw, setShowRaw] = useState(false)
   const sample = useMemo(() => simulate(v), [v])
 

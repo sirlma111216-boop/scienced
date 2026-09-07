@@ -1,5 +1,5 @@
 import type { Affiliation } from '@/content/classes'
-import type { GameId, LessonId } from '@/content/types'
+import type { GameId, LessonId, Tier } from '@/content/types'
 
 /** 저장 계층이 주고받는 타입. Firestore 구현과 로컬 구현이 이 모양을 공유한다. */
 
@@ -15,9 +15,24 @@ export type ClassStatus = 'active' | 'archived'
  * 모든 학생 자료는 이 문서의 하위 컬렉션 안에서만 움직인다.
  * 다른 클래스의 자료는 어떤 경로로도 읽히지 않아야 한다 (firestore.rules 참고).
  */
+/**
+ * 한 차시를 얼마나 길게 도는가.
+ *   full  — 1시간 강의. 모든 블록을 수업 안에서 한다.
+ *   short — 50분 강의. 전환 시간을 빼면 실제로 쓸 수 있는 것은 40분 남짓이라
+ *           심화 블록을 흐름에서 빼고 「수업 후 이어서」로 내린다.
+ *
+ * 두 반은 같은 강의다. 빼는 것은 삭제가 아니라 이동이다 (3차 F.2 ①).
+ */
+export type SessionLength = 'full' | 'short'
+
 export interface ClassDoc {
   id: string
   ownerUid: string
+  /**
+   * 강의 제목. 같은 학기에 「과학교육론」과 「과학교과교수법」을 함께 열 수 있어
+   * 클래스를 구분하는 핵심 값이다.
+   */
+  courseTitle: string
   affiliation: Affiliation
   year: number
   term: string
@@ -25,6 +40,13 @@ export interface ClassDoc {
   startTime: string
   endTime: string
   credits: number
+  /** 만든 뒤에도 바꿀 수 있다. 바꾸면 흐름이 즉시 달라지고, 이미 낸 응답은 그대로 남는다. */
+  sessionLength: SessionLength
+  /**
+   * 50분 판에서 흐름을 빠진 블록을 「수업 후 이어서」로 보여 줄 것인가.
+   * 끄면 그 블록이 아예 보이지 않는다. 기본은 켬 — 두 반의 산출물을 같게 두기 위해서다.
+   */
+  extendedAsHomework: boolean
   displayName: string
   /** 칠판에 적어 주는 6자리 코드 */
   joinCode: string
@@ -40,7 +62,18 @@ export interface LessonState {
   lessonId: LessonId
   published: boolean
   publishedAt: number | null
+  /**
+   * 강사가 이 클래스에서만 바꾼 핵심/심화 판단 (3차 F.6).
+   *
+   * 차시별 판단의 최종 결정권은 강의자에게 있다. 교재의 기본 태그를 고치는 것이 아니라
+   * 이 클래스에만 덮어쓴다 — 다른 학기·다른 반이 따라 바뀌면 안 된다.
+   *
+   * 열쇠 모양은 tierKey() 가 만든다: step:… · field:… · concept:… · material:…
+   */
+  tierOverrides?: Record<string, Tier>
 }
+
+export type { Tier } from '@/content/types'
 
 /** 학생도 자기 것을 읽는다. 실명은 여기 없다. */
 export interface Enrollment {

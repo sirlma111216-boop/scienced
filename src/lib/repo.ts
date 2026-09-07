@@ -1,4 +1,5 @@
-import type { GameId, LessonId } from '@/content/types'
+import type { GameId, LessonId, Tier } from '@/content/types'
+import type { TierOverrides } from './tiers'
 import type {
   AiProposal,
   AppUser,
@@ -47,6 +48,23 @@ export interface Repo {
   /* ── 차시 공개 (클래스마다 따로) ── */
   watchLessonState(classId: string, cb: (published: LessonId[]) => void): () => void
   setLessonPublished(classId: string, lessonId: LessonId, published: boolean): Promise<void>
+
+  /*
+   * 핵심/심화 판단을 이 클래스에서만 바꾼다 (3차 F.6).
+   * 교재의 기본 태그를 고치는 것이 아니다 — 다른 학기가 따라 바뀌면 안 된다.
+   * 열쇠는 tierKey() 가 만든다. tier 를 null 로 주면 덮어쓰기를 지우고 기본값으로 돌아간다.
+   */
+  watchLessonTiers(
+    classId: string,
+    lessonId: LessonId,
+    cb: (overrides: TierOverrides) => void,
+  ): () => void
+  setLessonTier(
+    classId: string,
+    lessonId: LessonId,
+    key: string,
+    tier: Tier | null,
+  ): Promise<void>
 
   /* ── 수강 등록 ── */
   watchEnrollments(classId: string, cb: (list: Enrollment[]) => void): () => void

@@ -111,6 +111,7 @@ export const lesson01: Lesson = {
     },
     {
       id: 'c01-identity',
+      tier: 'extended',
       term: '과학 정체성',
       plainOneLiner: '학생이 자신을 과학을 쓸 수 있는 사람으로 여기는지에 관한 것이다.',
       whyItMatters:
@@ -141,6 +142,7 @@ export const lesson01: Lesson = {
     },
     {
       id: 'c01-agency',
+      tier: 'extended',
       term: '학생 주도성',
       plainOneLiner:
         '목표를 이해하고 선택하고 증거를 점검하며 결과에 책임 있게 참여하는 능력이다.',
@@ -553,6 +555,8 @@ export const lesson01: Lesson = {
       type: 'wrapup',
       title: WRAPUP_LABEL,
       shortTitle: '수업 정리',
+      /* 50분 판에서는 「수업 후 이어서」로 내려간다 (3차 F.5). */
+      tier: 'extended',
       durationMinutes: 5,
       lead:
         '수업을 마치기 전에 세 칸만 채웁니다.\n' +

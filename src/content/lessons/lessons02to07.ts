@@ -242,14 +242,14 @@ export const lesson02: Lesson = {
         },
         { key: 'certainty1', kind: 'confidence', label: '지금 나의 확신도' },
         {
-          key: 'afterNewEvidence',
+          key: 'afterNewEvidence', tier: 'extended',
           kind: 'longtext',
           label: '새 증거 카드를 본 뒤 — 무엇이 달라졌는가',
           sentenceStarters: [
             '두 결과의 차이는 ___일 수 있으나, ___ 자료가 없어 확정할 수 없다',
           ],
         },
-        { key: 'certainty2', kind: 'confidence', label: '새 증거 뒤 확신도' },
+        { key: 'certainty2', tier: 'extended', kind: 'confidence', label: '새 증거 뒤 확신도' },
       ],
       gameId: '02-sealed-envelope',
       wallPrompt: '이 주장을 판단하려면 무엇이 더 필요한가',
@@ -505,7 +505,7 @@ export const lesson03: Lesson = {
           required: true,
         },
         {
-          key: 'informativeness',
+          key: 'informativeness', tier: 'extended',
           kind: 'choice',
           label: '내 질문 중 정보를 가장 많이 끌어낸 것은 몇 번째였나?',
           options: ['1번째', '2번째', '3번째', '4번째', '5번째'],
@@ -756,7 +756,7 @@ export const lesson04: Lesson = {
           ],
         },
         {
-          key: 'removalEvidence',
+          key: 'removalEvidence', tier: 'extended',
           kind: 'longtext',
           label: '이 도움을 줄일 근거로 삼을 증거',
           required: true,
@@ -1015,7 +1015,7 @@ export const lesson05: Lesson = {
           ],
         },
         {
-          key: 'stillUnexplained',
+          key: 'stillUnexplained', tier: 'extended',
           kind: 'text',
           label: '내 설명이 아직 설명하지 못하는 것',
           required: true,
@@ -1289,7 +1289,7 @@ export const lesson06: Lesson = {
           label: '가치·태도 — 어떤 책임·협력·참여를 경험하는가',
           required: true,
         },
-        { key: 'bigIdea', kind: 'text', label: '이 성취기준이 기여하는 핵심 아이디어 한 문장', required: true },
+        { key: 'bigIdea', tier: 'extended', kind: 'text', label: '이 성취기준이 기여하는 핵심 아이디어 한 문장', required: true },
       ],
       gameId: '06-map-pin',
       component: 'curriculumMap',
@@ -1548,7 +1548,7 @@ export const lesson07: Lesson = {
           required: true,
         },
         {
-          key: 'verdict',
+          key: 'verdict', tier: 'extended',
           kind: 'longtext',
           label: '검사기 표시에 대한 내 최종 판정과 근거',
           required: true,

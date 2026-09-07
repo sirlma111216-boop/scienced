@@ -215,6 +215,12 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       order: 5,
       type: 'wrapup',
       title: WRAPUP_LABEL,
+      /*
+       * 50분 판에서는 흐름에서 빠지고 「수업 후 이어서」로 내려간다 (3차 F.5).
+       * 이것이 가장 큰 절감이고, 학생이 혼자서도 가장 잘할 수 있는 부분이다.
+       * 사라지는 것이 아니다 — 여기서 낸 답도 포트폴리오에 똑같이 쌓인다.
+       */
+      tier: 'extended',
       shortTitle: '수업 정리',
       durationMinutes: spec.minutes[4],
       lead: '세 칸만 채우고 마칩니다. 바뀐 생각이 없어도 괜찮습니다.',
