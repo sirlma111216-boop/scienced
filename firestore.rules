@@ -75,10 +75,26 @@ service cloud.firestore {
       );
     }
 
-    // versions 는 뒤에 붙이기만 가능하다. 앞부분이 그대로여야 한다.
+    /**
+     * versions 는 뒤에 붙이기만 가능하다. 앞부분이 그대로여야 한다.
+     *
+     * 필드가 없을 수 있다는 것을 반드시 다뤄야 한다.
+     * 앱은 입력 중 draft 만 담은 문서를 먼저 만들고(versions 없음), 제출할 때 처음 붙인다.
+     * `resource.data.versions` 를 그냥 읽으면 그 첫 제출이 evaluation error 로 거부된다.
+     * get(키, 기본값) 으로 없는 경우를 빈 배열로 받는다.
+     */
+    function priorVersions() {
+      return resource.data.get('versions', []);
+    }
+
+    function nextVersions() {
+      return request.resource.data.get('versions', []);
+    }
+
     function versionsAppendOnly() {
-      return request.resource.data.versions.size() >= resource.data.versions.size()
-        && request.resource.data.versions[0] == resource.data.versions[0];
+      return nextVersions().size() >= priorVersions().size()
+        // 아직 아무 버전도 없으면 첫 제출이다. 비교할 앞부분이 없다.
+        && (priorVersions().size() == 0 || nextVersions()[0] == priorVersions()[0]);
     }
 
     /* ─────────────────────────── 사용자 ─────────────────────────── */

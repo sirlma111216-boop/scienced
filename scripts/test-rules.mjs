@@ -11,6 +11,19 @@
  * 실행:
  *   npm run emulators      (다른 터미널에서 먼저)
  *   npm run test:rules
+ *
+ * ── 로그의 `evaluation error` 를 읽는 법 ──
+ * 거부될 때 콘솔에 이런 줄이 섞여 나온다.
+ *   evaluation error at L163:31 for 'update' @ L163, false for 'update' @ L334,
+ *   false for 'update' @ L163, false for 'update' @ L334
+ * 규칙 엔진은 exists() 대상 문서를 아직 안 읽은 상태로 한 번 평가해 보고,
+ * 없으면 그 회차를 error 로 끝낸 뒤 문서를 불러 다시 평가한다.
+ * 그래서 뒤에 깨끗한 false 가 따라붙으면 정상이다. 최종 판정은 그 false 다.
+ *
+ * 위험한 것은 error 로 끝나고 뒤에 false 가 없는 경우, 그리고
+ * 통과해야 할 조작이 error 로 거부되는 경우다. 실제로 그런 버그가 있었다 —
+ * versionsAppendOnly() 가 versions 없는 문서에서 터져 첫 제출이 막혔다.
+ * 아래 '초안 → 제출' 검사가 그것을 잡는다. 지우지 마라.
  */
 import { readFile } from 'node:fs/promises'
 import { fail, pass, report } from './_report.mjs'
@@ -42,8 +55,9 @@ try {
   if (!res.ok && res.status !== 200 && res.status !== 404) throw new Error(String(res.status))
 } catch {
   // Firestore 에뮬레이터는 Java 로 돌아간다. 이것이 가장 흔한 실패 원인이라 먼저 짚는다.
-  const { spawnSync } = await import('node:child_process')
-  const hasJava = spawnSync('java', ['-version'], { shell: true }).status === 0
+  // PATH 에 없어도 흔한 설치 위치를 뒤져 본다 — 설치했는데 막히는 일이 잦다.
+  const { ensureJavaOnPath } = await import('./_java.mjs')
+  const hasJava = ensureJavaOnPath() !== null
 
   console.error(`\nFirestore 에뮬레이터(${HOST})에 닿지 못했습니다.\n`)
   if (!hasJava) {
@@ -170,6 +184,26 @@ const asAnon = env.unauthenticatedContext().firestore()
     }),
   )
   pass('응답 추가 전용', '남의 응답을 못 읽고, 기존 버전을 지우거나 앞을 바꾸지 못한다')
+}
+
+/* ── 실제 흐름: 자동 저장(초안) → 제출 ── */
+{
+  // 앱은 입력 중 draft 만 있는 문서를 먼저 만든다(versions 필드가 아예 없다).
+  await assertSucceeds(
+    asS1
+      .doc(`classes/${A}/lessons/01/steps/step-concepts/responses/${S1}`)
+      .set({ uid: S1, draft: { payload: { a: 1 }, savedAt: 1 } }),
+  )
+  // 그다음 제출이 versions 를 처음 붙인다. 이것이 막히면 앱이 동작하지 않는다.
+  await assertSucceeds(
+    asS1.doc(`classes/${A}/lessons/01/steps/step-concepts/responses/${S1}`).set({
+      uid: S1,
+      versions: [{ v: 1, payload: { a: 1 } }],
+      latestV: 1,
+      draft: null,
+    }),
+  )
+  pass('초안 → 제출', 'versions 가 없던 문서에 첫 제출이 들어간다')
 }
 
 /* ── 보관된 클래스는 읽기 전용 ── */

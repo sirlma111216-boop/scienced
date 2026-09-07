@@ -19,3 +19,10 @@ Thumbs.db
 reference/
 *.docx
 *.pdf
+
+# tsc 가 소스 옆에 뱉는 .js. 이 세 폴더는 전부 .ts/.tsx 라 .js 는 산출물뿐이다.
+# 한 번 실수로 68개가 커밋된 적이 있다. 그때는 typecheck 스크립트가 --noEmit 을 껐었다.
+/src/**/*.js
+/shared/**/*.js
+/functions/**/*.js
+/vite.config.js
