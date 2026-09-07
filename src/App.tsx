@@ -47,7 +47,16 @@ function Guard({
     )
   }
   if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />
-  if (user.mustResetPassword && loc.pathname !== '/reset-password') {
+  /*
+   * 닉네임이 없으면 무조건 여기로 보낸다.
+   *
+   * 예전에는 mustResetPassword 깃발만 봤다. 깃발이 빠진 문서가 만들어지자
+   * 닉네임 없는 계정이 그대로 통과했고, 그 뒤 수강 등록에서 터졌다.
+   * 깃발은 상태에 대한 이야기일 뿐이다. 상태 자체를 본다 —
+   * 닉네임이 비어 있으면 아직 시작할 준비가 안 된 것이다.
+   */
+  const needsSetup = user.mustResetPassword || !user.nickname?.trim()
+  if (needsSetup && loc.pathname !== '/reset-password') {
     return <Navigate to="/reset-password" replace />
   }
   // 클래스를 하나도 고르지 않으면 다른 화면에 접근할 수 없다 (2차 지시서 A.4).

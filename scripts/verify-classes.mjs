@@ -194,4 +194,20 @@ import { fail, pass, report, walk } from './_report.mjs'
   }
 }
 
+/*
+ * 닉네임이 없으면 설정 화면으로 보내는가.
+ *
+ * 깃발(mustResetPassword)만 보면, 그 깃발이 빠진 문서에서 닉네임 없는 계정이 통과한다.
+ * 실제로 그랬고 수강 등록에서 undefined 로 터졌다.
+ * 화면에 닉네임이 나가는 곳이 여러 곳이므로 상태 자체를 봐야 한다.
+ */
+{
+  const app = await readFile('src/App.tsx', 'utf8')
+  if (!/nickname/.test(app)) {
+    fail('닉네임 관문', 'App.tsx 의 라우트 보호가 닉네임을 보지 않는다 — 깃발만 보면 빠진 문서가 통과한다')
+  } else {
+    pass('닉네임 관문', '닉네임이 비어 있으면 설정 화면으로 보낸다')
+  }
+}
+
 report('verify:classes')
