@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/lib/auth'
+import { needsSetup, useAuth } from '@/lib/auth'
 import { isFirebaseConfigured } from '@/lib/firebase'
 import { Button, Caption, ColorBlock, Notice } from '@/components/ui'
 
@@ -25,7 +25,8 @@ export function Login() {
   const configured = isFirebaseConfigured()
 
   if (loading) return null
-  if (user) return <Navigate to={user.mustResetPassword ? '/reset-password' : '/'} replace />
+  // 관문과 같은 판정을 쓴다. 닉네임이 없으면 설정 화면으로 간다.
+  if (user) return <Navigate to={needsSetup(user) ? '/reset-password' : '/'} replace />
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()

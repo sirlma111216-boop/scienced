@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/lib/auth'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { needsSetup, useAuth } from '@/lib/auth'
 import { AppShell } from '@/components/layout/AppShell'
 import { Badge, Button, Caption, Card, ColorBlock, Notice } from '@/components/ui'
 
@@ -17,6 +17,7 @@ export function ClassSelect() {
   const [codes, setCodes] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   const mine = useMemo(
     () => classes.filter((c) => myClassIds.includes(c.id)),
@@ -32,13 +33,17 @@ export function ClassSelect() {
 
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
-  if (user.mustResetPassword) return <Navigate to="/reset-password" replace />
+  // 관문(App.tsx)과 같은 판정을 쓴다. 서로 다르면 두 화면이 무한히 오간다.
+  if (needsSetup(user)) return <Navigate to="/reset-password" replace />
 
   async function join(classId: string) {
     setBusy(classId)
     setError(null)
     try {
       await enrollIn(classId, codes[classId])
+      // 등록했으면 그 클래스로 바로 들어간다. 한 번 더 고르게 할 이유가 없다.
+      await selectClass(classId)
+      navigate('/')
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -82,7 +87,17 @@ export function ClassSelect() {
                       <Caption>보관된 학기 · 읽기 전용</Caption>
                     ) : null}
                   </div>
-                  <Button onClick={() => void selectClass(c.id)}>들어가기</Button>
+                  {/*
+                    고르기만 하고 이동하지 않으면 아무 일도 안 일어난 것처럼 보인다.
+                    실제로 그랬다 — 버튼을 눌러도 이 화면 그대로였다.
+                  */}
+                  <Button
+                    onClick={() => {
+                      void selectClass(c.id).then(() => navigate('/'))
+                    }}
+                  >
+                    들어가기
+                  </Button>
                 </div>
               </Card>
             ))}
