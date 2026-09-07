@@ -59,11 +59,14 @@ export const onRequestPost: PagesFunction<Env & { STUDENT_EMAIL_DOMAIN?: string 
   }
 
   let created = 0
+  /** 이미 계정이 있어서 명단 문서만 맞춘 수 */
+  let linked = 0
   const failures: string[] = []
 
   for (const row of rows) {
     const studentId = String(row.studentId).trim()
     const email = `${studentId}@${domain}`
+    const name = String(row.name ?? '').trim()
     try {
       // Identity Toolkit — 초기 비밀번호는 학번
       const res = await fetch(
@@ -75,41 +78,40 @@ export const onRequestPost: PagesFunction<Env & { STUDENT_EMAIL_DOMAIN?: string 
         },
       )
       const data = (await res.json()) as { localId?: string; error?: { message?: string } }
-      if (!data.localId) {
+
+      let uid = data.localId ?? null
+      let isNew = uid !== null
+
+      /*
+       * 이미 있는 계정은 실패가 아니다.
+       *
+       * 학기 중에 늦게 등록한 학생을 넣으려면 강사는 명단 전체를 다시 붙여넣는다.
+       * 그때마다 EMAIL_EXISTS 로 전부 막히면 이 화면은 한 번밖에 못 쓴다.
+       * 그래서 이미 있으면 그 계정을 찾아 명단 문서만 맞춘다.
+       *
+       * 비밀번호는 건드리지 않는다 — 학생이 이미 바꿨을 수 있다.
+       */
+      if (!uid && data.error?.message?.startsWith('EMAIL_EXISTS')) {
+        uid = await lookupUid(project, token, email)
+        isNew = false
+        if (!uid) {
+          failures.push(`${studentId}: 이미 있는 계정인데 찾지 못했습니다`)
+          continue
+        }
+      }
+
+      if (!uid) {
         failures.push(`${studentId}: ${data.error?.message ?? '생성 실패'}`)
         continue
       }
 
-      // users/{uid} 생성. 실명은 여기에만 둔다. 화면에는 닉네임만 나간다.
-      //
-      // 이 응답을 확인하지 않으면, Auth 계정은 생겼는데 문서가 없어서
-      // 명단에 뜨지 않는 상태가 조용히 만들어진다. 강사는 이유를 알 수 없다.
-      const docRes = await fetch(
-        `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents/users?documentId=${data.localId}`,
-        {
-          method: 'POST',
-          headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-          body: JSON.stringify({
-            fields: {
-              uid: { stringValue: data.localId },
-              role: { stringValue: 'student' },
-              studentId: { stringValue: studentId },
-              displayName: { stringValue: String(row.name ?? '').trim() },
-              nickname: { stringValue: '' },
-              mustResetPassword: { booleanValue: true },
-              groupId: { nullValue: null },
-              createdAt: { integerValue: String(Date.now()) },
-              lastLoginAt: { integerValue: '0' },
-            },
-          }),
-        },
-      )
-      if (!docRes.ok) {
-        const detail = (await docRes.text()).slice(0, 120)
-        failures.push(`${studentId}: 계정은 만들었으나 명단 문서 저장 실패 — ${detail}`)
+      const saved = await upsertUserDoc(project, token, uid, studentId, name, isNew)
+      if (!saved.ok) {
+        failures.push(`${studentId}: 계정은 준비됐으나 명단 문서 저장 실패 — ${saved.detail}`)
         continue
       }
-      created++
+      if (isNew) created++
+      else linked++
     } catch (err) {
       failures.push(`${studentId}: ${(err as Error).message}`)
     }
@@ -118,10 +120,86 @@ export const onRequestPost: PagesFunction<Env & { STUDENT_EMAIL_DOMAIN?: string 
   return json({
     ok: true,
     created,
+    linked,
     failed: failures.length,
     failures: failures.slice(0, 20),
     message: `${created}개 계정을 만들었습니다. 초기 비밀번호는 학번입니다.`,
   })
+}
+
+/** 이미 있는 계정의 uid 를 이메일로 찾는다. */
+async function lookupUid(
+  project: string,
+  token: string,
+  email: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/projects/${project}/accounts:lookup`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ email: [email] }),
+      },
+    )
+    const data = (await res.json()) as { users?: Array<{ localId?: string }> }
+    return data.users?.[0]?.localId ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * users/{uid} 문서를 맞춘다. 실명은 여기에만 둔다. 화면에는 닉네임만 나간다.
+ *
+ * 새 계정이면 전부 쓴다.
+ * 이미 있던 계정이면 학번·실명·역할만 맞추고 나머지는 그대로 둔다 —
+ * 학생이 정한 닉네임과 비밀번호 재설정 여부를 다시 눌렀다고 되돌리면 안 된다.
+ */
+async function upsertUserDoc(
+  project: string,
+  token: string,
+  uid: string,
+  studentId: string,
+  name: string,
+  isNew: boolean,
+): Promise<{ ok: boolean; detail: string }> {
+  const base = {
+    uid: { stringValue: uid },
+    role: { stringValue: 'student' },
+    studentId: { stringValue: studentId },
+    displayName: { stringValue: name },
+  }
+  const fields = isNew
+    ? {
+        ...base,
+        nickname: { stringValue: '' },
+        mustResetPassword: { booleanValue: true },
+        groupId: { nullValue: null },
+        createdAt: { integerValue: String(Date.now()) },
+        lastLoginAt: { integerValue: '0' },
+      }
+    : base
+
+  // PATCH + updateMask 는 문서가 없으면 만들고, 있으면 지정한 필드만 고친다.
+  const mask = Object.keys(fields)
+    .map((f) => `updateMask.fieldPaths=${f}`)
+    .join('&')
+
+  try {
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents/users/${uid}?${mask}`,
+      {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      },
+    )
+    if (res.ok) return { ok: true, detail: '' }
+    return { ok: false, detail: (await res.text()).slice(0, 120) }
+  } catch (err) {
+    return { ok: false, detail: (err as Error).message }
+  }
 }
 
 async function docExists(

@@ -56,6 +56,7 @@ export function InstructorStudents() {
         ok: boolean
         message?: string
         created?: number
+        linked?: number
         failed?: number
         failures?: string[]
       }>('/api/admin/students/import', { students: parsed })
@@ -71,12 +72,13 @@ export function InstructorStudents() {
        * 실제로 그 화면 앞에서 한참 막혔다. 이유는 서버가 이미 말하고 있었다.
        */
       const created = data.created ?? 0
+      const linked = data.linked ?? 0
       const failed = data.failed ?? 0
-      const lines = [
-        created > 0
-          ? `${created}개 계정을 만들었습니다. 초기 비밀번호는 학번입니다.`
-          : '계정이 하나도 만들어지지 않았습니다.',
-      ]
+      const lines: string[] = []
+      if (created > 0) lines.push(`${created}명 계정을 새로 만들었습니다. 초기 비밀번호는 학번입니다.`)
+      // 이미 있던 계정은 실패가 아니다. 명단만 맞춘 것이다.
+      if (linked > 0) lines.push(`${linked}명은 이미 계정이 있어 명단만 맞췄습니다.`)
+      if (created === 0 && linked === 0) lines.push('계정이 하나도 만들어지지 않았습니다.')
       if (failed > 0) {
         lines.push(`실패 ${failed}건:`)
         for (const f of data.failures ?? []) lines.push(`  · ${f}`)
