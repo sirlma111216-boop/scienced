@@ -17,7 +17,6 @@ export interface StepNavItem {
   label: string
   /** 알약에 실제로 그려지는 짧은 이름 (SHORT_TITLE_MAX 자 이하) */
   shortLabel: string
-  minutes: number
   done?: boolean
   /** 강사가 지금 보고 있는 단계 */
   instructorHere?: boolean
@@ -99,14 +98,14 @@ function StepTabs({
               className="tab-step"
               onClick={() => onSelectStep?.(s.id)}
               /* 알약에는 짧은 이름만 들어간다. 전체 이름은 여기서 읽힌다. */
-              aria-label={`${i + 1}단계 ${s.label} · ${s.minutes}분${
-                s.done ? ' · 제출함' : ''
-              }${s.instructorHere ? ' · 강사가 보고 있음' : ''}`}
-              title={`${s.label} · ${s.minutes}분`}
+              aria-label={`${i + 1}단계 ${s.label}${s.done ? ' · 제출함' : ''}${
+                s.instructorHere ? ' · 강사가 보고 있음' : ''
+              }`}
+              title={s.label}
             >
+              {/* 소요 시간은 넣지 않는다. 진행 속도는 강의자가 그 자리에서 정한다 (3차 D). */}
               <span className="step-meta" aria-hidden="true">
                 {String(i + 1).padStart(2, '0')}
-                <span className="hidden sm:inline"> · {s.minutes}분</span>
                 {/* 상태를 색만으로 구분하지 않는다 */}
                 {s.done ? ' ✓' : ''}
                 {s.instructorHere ? ' ●' : ''}

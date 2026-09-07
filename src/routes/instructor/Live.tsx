@@ -32,6 +32,11 @@ export function InstructorLive() {
   const [docs, setDocs] = useState<ResponseDoc[]>([])
   const [posts, setPosts] = useState<Post[]>([])
   const [proposals, setProposals] = useState<AiProposal[]>([])
+  /*
+   * 타이머는 남긴다. 강사가 직접 눌러 시작하는 진행 도구이지 차시 설계 표시가 아니다.
+   * 다만 기본값을 미리 채워 두지 않는다 (3차 D.3) — 몇 분을 줄지는 그때 정한다.
+   */
+  const [timerMinutes, setTimerMinutes] = useState('')
 
   const step = lesson?.steps[stepIndex]
 
@@ -100,7 +105,6 @@ export function InstructorLive() {
         id: s.id,
         label: s.title,
         shortLabel: s.shortTitle,
-        minutes: s.durationMinutes,
         instructorHere: session?.instructorAt === s.id,
       }))}
       activeStepId={step?.id}
@@ -120,13 +124,31 @@ export function InstructorLive() {
         >
           {session?.stepOpen ? '단계 닫기' : '단계 열기'}
         </Button>
+        <label className="flex items-center gap-xs">
+          <span className="caption">타이머</span>
+          <input
+            className="field"
+            type="number"
+            min={1}
+            max={90}
+            inputMode="numeric"
+            aria-label="타이머 길이 (분)"
+            value={timerMinutes}
+            onChange={(e) => setTimerMinutes(e.target.value)}
+            style={{ width: 88 }}
+          />
+          <span className="caption">분</span>
+        </label>
         <Button
           variant="secondary"
-          onClick={() =>
-            classId && void repo?.setSession(classId, lesson.id, { timerEndsAt: Date.now() + 5 * 60 * 1000 })
-          }
+          disabled={!(Number(timerMinutes) > 0)}
+          onClick={() => {
+            const m = Number(timerMinutes)
+            if (!(m > 0) || !classId) return
+            void repo?.setSession(classId, lesson.id, { timerEndsAt: Date.now() + m * 60 * 1000 })
+          }}
         >
-          5분 타이머
+          타이머 시작
         </Button>
         <Button
           variant="secondary"

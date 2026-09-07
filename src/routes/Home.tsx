@@ -79,8 +79,9 @@ export function Home() {
                     <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.78 }}>
                       {l.centralQuestion}
                     </p>
+                    {/* 소요 시간은 붙이지 않는다 (3차 D). */}
                     <p className="caption" style={{ marginTop: 12, opacity: 0.6 }}>
-                      {l.moduleName} · 50분
+                      {l.moduleName}
                     </p>
                   </Link>
                 </li>

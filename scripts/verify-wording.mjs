@@ -162,4 +162,60 @@ if (danglingLinks === 0) {
   pass('타임라인 링크', '모든 차시의 타임라인이 실제로 있는 단계를 가리킨다 — 이름을 바꾸다 만 곳이 없다')
 }
 
+/* ── ⑤ 화면에 「○분」을 쓰지 않는다 (3차 D) ── */
+
+/*
+ * 진행 시간은 강의자가 그 자리에서 판단한다. 화면에 5분·10분이 박혀 있으면
+ * 그것이 계획이 아니라 약속처럼 읽힌다 — 50분 반과 1시간 반이 같은 화면을 보는데도 그렇다.
+ * durationMinutes 데이터는 그대로 둔다. 화면에만 나가지 않는다.
+ *
+ * 단, 교재 내용 안의 시간은 다르다. 「45분 수업」·「8~10분 마이크로티칭」은
+ * 예비교사가 설계할 중등 수업의 길이이지 이 앱의 진행 시간이 아니다.
+ * 그런 줄에는 바로 위나 같은 줄에 `wording-ok: 이유` 를 적는다.
+ */
+/*
+ * 「분」이 시간 단위일 때만 잡는다.
+ * 「수업 시간의 3분할」처럼 뒤에 다른 글자가 붙어 낱말이 되는 경우는 시간이 아니다.
+ * 조사(5분으로 · 20분간)는 그대로 잡혀야 하므로 한글 전체를 배제할 수는 없다.
+ */
+const MINUTES_RE = /\d+\s*분(?![할석포류기리명명수자모단야위담열화산업])/
+
+/** 주석 자리를 공백으로 바꿔 줄 번호와 길이를 유지한다. 주석은 화면에 나가지 않는다. */
+function blankComments(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length))
+}
+
+let minuteHits = 0
+let exempted = 0
+
+for (const file of files) {
+  const raw = await readFile(file, 'utf8')
+  const rawLines = raw.split('\n')
+  const codeLines = blankComments(raw).split('\n')
+
+  for (let i = 0; i < codeLines.length; i++) {
+    if (!MINUTES_RE.test(codeLines[i])) continue
+    // 같은 줄이나 바로 윗줄의 면제 표시를 인정한다
+    const waiver = /wording-ok:\s*\S/.test(rawLines[i]) || /wording-ok:\s*\S/.test(rawLines[i - 1] ?? '')
+    if (waiver) {
+      exempted++
+      continue
+    }
+    fail(
+      '화면의 분 표시',
+      `${norm(file)}:${i + 1} 「${codeLines[i].match(MINUTES_RE)[0]}」 — ${rawLines[i].trim().slice(0, 70)}`,
+    )
+    minuteHits++
+  }
+}
+
+if (minuteHits === 0) {
+  pass(
+    '화면의 분 표시',
+    `화면 문구에 「○분」이 없다 (교재 내용으로 인정한 ${exempted}곳은 wording-ok 로 남겼다)`,
+  )
+}
+
 report('verify:wording')

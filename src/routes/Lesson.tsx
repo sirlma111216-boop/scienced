@@ -83,7 +83,6 @@ export function Lesson() {
     id: s.id,
     label: s.title,
     shortLabel: s.shortTitle,
-    minutes: s.durationMinutes,
     instructorHere: session?.instructorAt === s.id,
   }))
 
@@ -175,17 +174,21 @@ export function Lesson() {
             </ul>
           </div>
 
+          {/*
+            수업 흐름. 순서만 보이고 소요 시간은 넣지 않는다 (3차 D).
+            시간 배분은 데이터(durationMinutes)에 그대로 남아 있지만 화면에 나가지 않는다.
+          */}
           <div style={{ marginTop: 32 }}>
             <ScrollX>
-              <table style={{ borderCollapse: 'collapse', minWidth: 480 }}>
+              <table style={{ borderCollapse: 'collapse', minWidth: 320 }}>
                 <caption className="caption" style={{ textAlign: 'left', paddingBottom: 8 }}>
-                  50분 흐름
+                  수업 흐름
                 </caption>
                 <tbody>
-                  {lesson.timeline.map((t) => (
+                  {lesson.timeline.map((t, i) => (
                     <tr key={t.stepId} style={{ boxShadow: 'inset 0 -1px 0 #f1f1f1' }}>
                       <td className="font-mono text-body-sm" style={{ padding: '8px 16px 8px 0' }}>
-                        {t.minutes}분
+                        {String(i + 1).padStart(2, '0')}
                       </td>
                       <td className="text-body-sm" style={{ padding: '8px 0' }}>
                         {t.label}
@@ -211,12 +214,10 @@ export function Lesson() {
           <MustSay lines={lesson.instructorScript} stepId={step.id} isInstructor={isInstructor} />
 
           <section>
-            <div className="flex items-baseline gap-md" style={{ marginBottom: 8 }}>
-              <h2 className="text-headline" style={{ margin: 0 }}>
-                {step.title}
-              </h2>
-              <Caption>{step.durationMinutes}분</Caption>
-            </div>
+            {/* 단계 제목 옆에 소요 시간을 붙이지 않는다 (3차 D). */}
+            <h2 className="text-headline" style={{ margin: '0 0 8px' }}>
+              {step.title}
+            </h2>
             <p className="text-body-lg" style={{ whiteSpace: 'pre-line', marginTop: 0 }}>
               {step.lead}
             </p>
