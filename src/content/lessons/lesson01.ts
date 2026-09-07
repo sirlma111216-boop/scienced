@@ -438,7 +438,7 @@ export const lesson01: Lesson = {
             '수업 B에는 있는 ___가 수업 A에는 없기 때문입니다',
           ],
         },
-        { key: 'confidence', kind: 'confidence', label: '이 판단에 대한 확신도' },
+
       ],
       aiTasks: ['recall-probe'],
       wall: {
@@ -579,7 +579,7 @@ export const lesson01: Lesson = {
             '이번에도 ___는 그대로였다. 왜냐하면 ___이기 때문이다',
           ],
         },
-        { key: 'confidence', kind: 'confidence', label: '확신도' },
+
       ],
       aiTasks: ['wrapup-self-check'],
       wall: null,

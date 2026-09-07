@@ -4,7 +4,6 @@ import { useAuth } from '@/lib/auth'
 import type { ResponseDoc } from '@/lib/types'
 import { Button, Notice } from '@/components/ui'
 import { FieldRenderer } from './fields'
-import { VersionTimeline } from './VersionTimeline'
 
 /**
  * 답 + 이유 + 확신도를 받는다.
@@ -282,7 +281,12 @@ export function ResponseCollector({
         ) : null}
       </div>
 
-      {versionCount > 1 ? <VersionTimeline doc={doc!} fields={step.fields} /> : null}
+      {/*
+        「내 생각의 변화」 비교표를 학생 화면에서 뺐다.
+        한 자리에서 v1·v2 를 연달아 쓰면 거의 같은 두 줄이 나란히 뜬다. 읽는 시간만 쓴다.
+        ★ 버전은 그대로 쌓인다 — 18강에서 1강의 답을 다시 꺼내고,
+          강사의 학습 분석이 「확신은 올랐는데 이유는 그대로」를 여기서 읽는다.
+      */}
 
       {/* 제출한 사람에게만 열린다 */}
       {children?.(submitted, doc)}

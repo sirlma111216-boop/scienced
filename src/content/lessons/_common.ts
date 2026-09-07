@@ -52,6 +52,14 @@ export interface StandardSpec {
   minutes: [number, number, number, number, number]
 }
 
+/**
+ * 확신도.
+ *
+ * 모든 단계에 붙이지 않는다. 두 자리에서만 일한다.
+ *   step-open      예상 — 분포에서 「틀린 답을 높은 확신으로 고른 무리」가 보인다
+ *   step-formative 재응답 — 「확신은 올랐는데 이유는 그대로」를 학습 분석이 잡는다
+ * 그 밖에서는 비교할 앞이 없어 숫자만 남는다.
+ */
 const CONFIDENCE: FieldDef = { key: 'confidence', kind: 'confidence', label: '확신도' }
 
 const CHANGE_STARTERS = [
@@ -233,7 +241,14 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
           required: true,
           sentenceStarters: CHANGE_STARTERS,
         },
-        CONFIDENCE,
+        /*
+         * 확신도를 여기서 뺐다.
+         *
+         * 확신도가 일하는 자리는 둘뿐이다 —
+         *   step-open      예상할 때. 「틀린 답을 5/5로 고른 무리」가 분포에 드러난다.
+         *   step-formative 재응답할 때. 「확신은 올랐는데 이유는 그대로」를 잡는다.
+         * 정리 단계에서는 비교할 앞이 없어 숫자가 그냥 남기만 한다.
+         */
       ],
       aiTasks: ['wrapup-self-check'],
       wall: null,

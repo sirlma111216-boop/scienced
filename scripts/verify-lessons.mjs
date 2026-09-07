@@ -156,15 +156,38 @@ pass(
   `모든 단계의 알약 이름이 ${SHORT_TITLE_MAX}자 이하 — 375px 에서 잘리지 않는다`,
 )
 
-// 6. 확신도 입력이 차시마다 최소 한 번은 있는가 (컨텍스트 15.2)
+/*
+ * 6. 확신도는 일하는 자리에만 있는가.
+ *
+ * 모든 단계에 붙이면 숫자만 남는다. 두 곳에서만 실제로 쓰인다 —
+ *   예상 단계    분포에서 「틀린 답을 높은 확신으로 고른 무리」가 보인다
+ *   형성평가     학습 분석이 「확신은 올랐는데 이유는 그대로」를 잡는다
+ * 그래서 차시마다 하나 이상 있되, 세 개를 넘지 않아야 한다.
+ */
 for (const l of LESSONS) {
-  const hasConfidence = l.steps.some((s) => s.fields.some((f) => f.kind === 'confidence'))
-  if (!hasConfidence) fail('확신도', `${l.id}강에 확신도를 받는 칸이 없다`)
+  const withConf = l.steps.filter((s) => s.fields.some((f) => f.kind === 'confidence'))
+  if (withConf.length === 0) fail('확신도', `${l.id}강에 확신도를 받는 칸이 없다`)
+  /*
+   * 확신도는 예상 단계와 형성평가에 하나씩 둔다.
+   * 그 밖의 단계에 있으려면 같은 단계 안에 전/후 짝이 있어야 한다 —
+   * 2강의 「지금 나의 확신도」 → 「새 증거 뒤 확신도」가 그런 경우다.
+   * 혼자 있는 확신도는 비교할 앞이 없어 숫자만 남는다.
+   */
+  for (const st of withConf) {
+    if (st.id === 'step-open' || st.id === 'step-recall' || st.id === 'step-formative') continue
+    const n = st.fields.filter((f) => f.kind === 'confidence').length
+    if (n < 2) {
+      fail(
+        '확신도',
+        `${l.id}강 ${st.id} 에 확신도가 혼자 있다 — 전/후로 짝을 짓거나 빼야 한다`,
+      )
+    }
+  }
   const hasReason = l.steps.some((s) =>
     s.fields.some((f) => /reason|Reason|defense|changed/.test(f.key)),
   )
   if (!hasReason) fail('이유 수집', `${l.id}강에 이유를 받는 칸이 없다`)
 }
-pass('확신도와 이유', '모든 차시가 답과 함께 이유·확신도를 받는다')
+pass('확신도와 이유', '확신도는 일하는 두 자리에만 있고, 모든 차시가 이유를 받는다')
 
 report('verify:lessons')
