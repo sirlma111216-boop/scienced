@@ -32,7 +32,7 @@ export const lesson01: Lesson = {
     '드라이아이스 시범이 성공적으로 끝났지만 학생에게 “무엇을 알게 되었니?”라고 묻자 “연기가 신기했다”만 남은 수업. ' +
     '현상·목표·학생 사고·학습의 증거 가운데 무엇이 빠졌는지 찾는다.',
   flowSummary:
-    '회상 → 과학교육이 남겨야 하는 것 → 두 수업 비교 → 좋은 수업 경매와 사다리타기 → 이번 수업 정리',
+    '회상 → 과학교육이 남겨야 하는 것 → 두 수업 비교 → 좋은 수업이란? → 이번 수업 정리',
   curriculumLink: {
     label: '대표 예시',
     text:
@@ -41,7 +41,7 @@ export const lesson01: Lesson = {
       '나란히 놓고 겹치는 부분을 표시한다.',
     verified: false,
   },
-  moduleName: '수업 가치 경매 + 학기 기준선 기록',
+  moduleName: '좋은 수업의 조건 배분 + 학기 기준선 기록',
   published: true,
 
   keyConcepts: [
@@ -299,7 +299,7 @@ export const lesson01: Lesson = {
     { minutes: 5, label: '내가 기억하는 과학 수업', stepId: 'step-recall' },
     { minutes: 10, label: '과학 수업이 남겨야 하는 것', stepId: 'step-concepts' },
     { minutes: 15, label: '두 수업 비교', stepId: 'step-compare' },
-    { minutes: 15, label: '좋은 수업 경매 + 사다리타기', stepId: 'step-auction' },
+    { minutes: 15, label: '좋은 수업이란?', stepId: 'step-auction' },
     { minutes: 5, label: WRAPUP_LABEL, stepId: 'step-wrapup' },
   ],
 
@@ -358,10 +358,24 @@ export const lesson01: Lesson = {
     },
     {
       stepId: 'step-auction',
-      cue: '재배분 단계를 열면서',
-      sayThis: '바꿔도 되고 그대로 둬도 됩니다. 다만 왜 그렇게 했는지는 반드시 적습니다.',
+      cue: '모둠 번호를 고르게 하기 직전에',
+      sayThis:
+        '옆에 앉은 서너 명끼리 "우리는 몇 모둠" 하고 정한 다음, 같은 번호를 고르세요. ' +
+        '고르면 그 순간 우리 모둠의 평균과 각자가 쓴 문장이 화면에 모입니다.',
       whyNotSkip:
-        '바꾸는 것에만 점수를 주면 학생이 이유 없이 바꾼다. 유지도 근거가 있으면 좋은 판단이다.',
+        '명단으로 모둠을 짜면 자리를 옮기는 데만 시간이 간다. 번호를 맞추는 것이 모둠을 만드는 일이다. ' +
+        '이 말을 빼면 학생마다 다른 번호를 골라 1인 모둠이 열 개 생긴다.',
+      watchFor: '평균이 나온 뒤 자기 숫자와 크게 다른 사람 — 그 자리가 오늘 이야기할 지점이다.',
+    },
+    {
+      stepId: 'step-auction',
+      cue: '전체 공개가 끝나고 수업을 닫기 전에',
+      sayThis:
+        '생각이 바뀐 사람은 「고쳐 쓰기」를 눌러 배분을 고치고, 무엇을 왜 바꿨는지 적으세요. ' +
+        '처음 답은 지워지지 않습니다. 그대로 두는 것도 근거가 있으면 좋은 판단입니다.',
+      whyNotSkip:
+        '바꾸는 것에만 점수를 주면 학생이 이유 없이 바꾼다. 18강에서 오늘의 v1 을 다시 꺼내 볼 것이므로 ' +
+        '이 자리에서 v2 를 남겨 두는 것이 학기 전체의 기준선이 된다.',
       watchFor: '변경 사유 칸에 "그냥"이라고 적힌 응답 — 다음 시간 도입 자료로 쓴다.',
     },
     {
@@ -576,17 +590,18 @@ export const lesson01: Lesson = {
       id: 'step-auction',
       order: 4,
       type: 'auction',
-      title: '좋은 수업 경매 + 사다리타기',
-      shortTitle: '수업 경매',
+      title: '좋은 수업이란?',
+      shortTitle: '좋은 수업',
       durationMinutes: 15,
       lead:
-        '요소 카드 8장에 100포인트를 나눕니다. 합계는 정확히 100이어야 합니다.\n' +
-        '정답 배분은 없습니다. 갈리는 지점을 보려는 활동입니다.',
+        '요소 카드 8장에 100포인트를 나누고, 왜 그렇게 나눴는지 한 줄 적습니다.\n' +
+        '정답 배분은 없습니다. 갈리는 지점을 보려는 활동입니다.\n' +
+        '낸 뒤에 옆 사람과 모둠을 만들면, 우리 모둠의 평균과 각자의 문장이 한자리에 모입니다.',
       fields: [
         {
           key: 'allocation',
           kind: 'allocation',
-          label: '개인 배분 (합계 100)',
+          label: '내 배분 (합계 100)',
           help: '드래그 없이 숫자를 직접 입력해도 됩니다. 화살표 키로도 조절됩니다.',
           required: true,
           total: 100,
@@ -602,69 +617,50 @@ export const lesson01: Lesson = {
           ],
         },
         {
-          key: 'groupAllocation',
-          kind: 'allocation',
-          label: '모둠 공동 배분 (합계 100)',
-          help: '모둠원 배분을 모두 본 뒤 합의해서 하나로 만듭니다.',
-          total: 100,
-          items: [
-            { id: 'fun', label: '재미있는 현상' },
-            { id: 'explanation', label: '정확한 설명' },
-            { id: 'question', label: '학생의 질문' },
-            { id: 'collaboration', label: '협력' },
-            { id: 'evidence', label: '학습의 증거' },
-            { id: 'reallife', label: '실생활 연계' },
-            { id: 'safety', label: '안전' },
-            { id: 'participation', label: '모두의 참여' },
-          ],
-        },
-        {
-          key: 'defense',
+          key: 'opinion',
           kind: 'longtext',
-          label: '변호 문장',
-          help: '모둠이 합의한 한 문장.',
-          required: true,
-          sentenceStarters: ['우리 모둠이 ___에 가장 많이 준 이유는 ___이다'],
-        },
-        {
-          key: 'reallocation',
-          kind: 'allocation',
-          label: '재배분 (합계 100)',
-          help: '전체 공개와 발표를 듣고 나서. 바꿔도 되고 그대로 둬도 됩니다.',
-          total: 100,
-          items: [
-            { id: 'fun', label: '재미있는 현상' },
-            { id: 'explanation', label: '정확한 설명' },
-            { id: 'question', label: '학생의 질문' },
-            { id: 'collaboration', label: '협력' },
-            { id: 'evidence', label: '학습의 증거' },
-            { id: 'reallife', label: '실생활 연계' },
-            { id: 'safety', label: '안전' },
-            { id: 'participation', label: '모두의 참여' },
-          ],
-        },
-        {
-          key: 'changedReason',
-          kind: 'longtext',
-          label: '무엇을 왜 바꿨는가 / 왜 유지했는가',
-          help: '바꾸지 않았어도 이유를 적습니다. 유지도 근거가 있으면 좋은 판단입니다.',
+          label: '왜 그렇게 나눴는가',
+          help: '한두 문장이면 됩니다. 모둠에서 이 문장을 그대로 읽게 됩니다.',
           required: true,
           sentenceStarters: [
-            '나는 처음에 ___라고 생각했으나 ___ 때문에 ___로 수정했다',
-            '나는 ___ 이야기를 듣고도 ___ 때문에 그대로 두었다',
+            '내가 ___에 가장 많이 준 이유는 ___이다',
+            '나는 ___을 낮게 둔 대신 ___을 택했다',
           ],
         },
       ],
+
+      /*
+       * 모둠은 그 자리에서 만든다 (4차 지시).
+       *
+       * 강사가 명단을 짜지 않는다. 옆에 앉은 사람끼리 "우리가 몇 모둠" 하고 정해
+       * 같은 번호를 고르면 그것이 모둠이다. 고르는 순간 같은 번호를 고른 사람들의
+       * 평균 배분과 각자가 쓴 문장이 화면에 모이고, 그것을 보고 협의한다.
+       *
+       * 이 화면은 본인이 제출을 마친 뒤에만 열린다 — 남의 배분을 먼저 보고
+       * 자기 배분을 정하면 갈림이 사라지고, 갈림을 보는 것이 이 활동의 전부다.
+       */
+      groupBuild: {
+        allocationKey: 'allocation',
+        opinionKey: 'opinion',
+        groupCount: 8,
+        agreedLabel: '모둠이 합의한 한 문장',
+        agreedHelp:
+          '모둠에서 한 사람이 대표로 올립니다. 올리면 아래 의견 광장에 「N모둠」으로 뜨고, ' +
+          '다른 모둠이 댓글을 답니다.',
+        agreedStarters: ['우리 모둠이 ___에 가장 많이 준 이유는 ___이다'],
+      },
+
       aiTasks: [],
       wall: {
         enabled: true,
-        prompt: '우리 모둠의 변호 문장과, 전체 공개 뒤 내가 바꾼 것',
+        prompt: '우리 모둠의 한 문장, 그리고 다른 모둠 문장에 대한 의견',
         anonymous: false,
         opensAfterSubmit: true,
       },
       picker: { enabled: true, gameId: '01-auction', candidateRule: 'all' },
       printableAlternative:
-        '활동지 6면: 8칸 배분표 3개(개인·모둠·재배분) + 변호 문장 칸 + 변경 기록 칸. ' +
+        '활동지 6면: 8칸 배분표 + 이유 한 줄 칸 + 모둠 합의 문장 칸. ' +
+        '모둠은 앉은 자리대로 서너 명씩 묶고, 각자의 배분을 칠판 표에 적어 평균을 함께 계산한다. ' +
         '사다리는 종이에 그려 자리를 고르게 하고, 씨앗 숫자를 칠판에 적어 두면 나중에 같은 결과를 재현할 수 있다.',
     },
 

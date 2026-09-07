@@ -8,6 +8,7 @@ import type {
   ClassDoc,
   Enrollment,
   Group,
+  GroupShare,
   Participation,
   PickRecord,
   Post,
@@ -68,6 +69,7 @@ function subscribe(run: () => void): () => void {
 /* 모든 키가 클래스로 시작한다. 클래스가 다르면 키가 겹칠 수 없다. */
 const kResponse = (c: string, l: string, s: string, uid: string) => `c.${c}.res.${l}.${s}.${uid}`
 const kPosts = (c: string, l: string, s: string) => `c.${c}.posts.${l}.${s}`
+const kShares = (c: string, l: string, s: string) => `c.${c}.shares.${l}.${s}`
 const kSession = (c: string, l: string) => `c.${c}.session.${l}`
 const kPicks = (c: string) => `c.${c}.picks`
 const kGroups = (c: string) => `c.${c}.groups`
@@ -252,6 +254,22 @@ export function createLocalRepo(): Repo {
     },
 
     /* ── 의견 광장 ── */
+    watchGroupShares(classId, lessonId, stepId, cb) {
+      return subscribe(() => cb(read<GroupShare[]>(kShares(classId, lessonId, stepId), [])))
+    },
+
+    async setGroupShare(classId, lessonId, stepId, share) {
+      const key = kShares(classId, lessonId, stepId)
+      const list = read<GroupShare[]>(key, []).filter((s) => s.uid !== share.uid)
+      list.push({ ...share, updatedAt: Date.now() })
+      write(key, list)
+    },
+
+    async clearGroupShare(classId, lessonId, stepId, uid) {
+      const key = kShares(classId, lessonId, stepId)
+      write(key, read<GroupShare[]>(key, []).filter((s) => s.uid !== uid))
+    },
+
     watchPosts(classId, lessonId, stepId, cb) {
       return subscribe(() => cb(read<Post[]>(kPosts(classId, lessonId, stepId), [])))
     },

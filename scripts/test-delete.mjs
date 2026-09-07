@@ -66,6 +66,9 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await db
     .doc(`classes/${CID}/lessons/01/steps/step-recall/posts/p1`)
     .set({ uid: STUDENT, versions: [{ v: 1, content: '내 글' }], latestV: 1 })
+  await db
+    .doc(`classes/${CID}/lessons/01/steps/step-recall/groupshares/${STUDENT}`)
+    .set({ uid: STUDENT, groupId: '1', allocation: { fun: 100 }, opinion: '내 의견' })
 })
 
 /* 앱이 쓰는 그 코드로 지운다. */
@@ -97,10 +100,11 @@ await env.withSecurityRulesDisabled(async (ctx) => {
     gone('진행 상태', `classes/${CID}/sessions/01`),
     gone('학생 응답', `classes/${CID}/lessons/01/steps/step-recall/responses/${STUDENT}`),
     gone('의견 광장 글', `classes/${CID}/lessons/01/steps/step-recall/posts/p1`),
+    gone('즉석 모둠 자료', `classes/${CID}/lessons/01/steps/step-recall/groupshares/${STUDENT}`),
   ])
 
   if (checks.every(Boolean)) {
-    pass('클래스 지우기', '클래스 문서와 하위 자료 8종이 전부 사라졌다 — 실명·응답·의견 포함')
+    pass('클래스 지우기', '클래스 문서와 하위 자료 9종이 전부 사라졌다 — 실명·응답·의견 포함')
   }
 })
 

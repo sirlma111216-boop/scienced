@@ -21,7 +21,7 @@ export const GAMES: GameDef[] = [
     lead: '같은 수업을 두고도 무엇이 가장 중요한지는 갈립니다.\n두 분의 이유를 직접 들어보겠습니다.',
     hint: '자리를 하나 고르세요. 강사가 결과를 열면 사다리를 타고 내려갑니다.',
     choiceField: 'allocation',
-    reasonField: 'defense',
+    reasonField: 'opinion',
     askLine: '우리 모둠이 그 카드에 가장 많이 준 이유를 말해 주세요.',
     presenterAsk: '두 분의 이유가 어디에서 갈리는지 학급이 듣게 한다.',
     candidateRule: 'all',

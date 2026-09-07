@@ -6,6 +6,7 @@ import type {
   ClassDoc,
   Enrollment,
   Group,
+  GroupShare,
   LadderState,
   LessonState,
   Participation,
@@ -130,6 +131,30 @@ export interface Repo {
     stepId: string,
     cb: (docs: ResponseDoc[]) => void,
   ): () => void
+
+  /*
+   * ── 즉석 모둠 ──
+   * 같은 번호를 고른 사람들이 한 모둠이다. 본인이 제출을 마쳐야 읽고 쓸 수 있다.
+   * 모둠을 바꾸면 같은 문서를 덮어쓴다. 나가면 지운다 — 응답과 달리 기록이 아니라 자리다.
+   */
+  watchGroupShares(
+    classId: string,
+    lessonId: LessonId,
+    stepId: string,
+    cb: (list: GroupShare[]) => void,
+  ): () => void
+  setGroupShare(
+    classId: string,
+    lessonId: LessonId,
+    stepId: string,
+    share: GroupShare,
+  ): Promise<void>
+  clearGroupShare(
+    classId: string,
+    lessonId: LessonId,
+    stepId: string,
+    uid: string,
+  ): Promise<void>
 
   /* ── 의견 광장 ── */
   watchPosts(

@@ -450,6 +450,8 @@ export function WallCard({
       }}
     >
       <div className="flex items-center gap-xs" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+        {/* 모둠 이름으로 올린 글은 누가 눌렀는지보다 어느 모둠인지가 먼저다 */}
+        {post.groupId ? <Badge solid>{post.groupId}모둠</Badge> : null}
         <span className="text-body-sm" style={{ fontWeight: 480 }}>
           {post.nickname}
         </span>

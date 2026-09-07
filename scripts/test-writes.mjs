@@ -43,6 +43,7 @@ const env = await initializeTestEnvironment({
 
 const TEACHER = 'teacher-1'
 const STUDENT = 'student-1'
+const STUDENT2 = 'student-2'
 const CID = 'c-w1'
 
 await env.withSecurityRulesDisabled(async (ctx) => {
@@ -53,6 +54,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
     requireJoinCode: false, displayName: '과학교육론', courseTitle: '과학교육론',
   })
   await db.doc(`classes/${CID}/lessonState/01`).set({ lessonId: '01', published: true })
+  await db.doc(`classes/${CID}/enrollments/${STUDENT2}`).set({ uid: STUDENT2, status: 'active' })
   // 명단 가져오기가 만든 상태 그대로 (반쪽이 아닌 온전한 문서)
   await db.doc(`users/${STUDENT}`).set({
     uid: STUDENT, role: 'student', studentId: '2024123456', displayName: '이나나',
@@ -170,6 +172,93 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   } catch (err) {
     fail('1강 제출', `막힌다 — ${err.message}`)
   }
+}
+
+/* ── ⑦ 즉석 모둠: 같은 번호를 고른 두 사람이 서로 보이는가 ── */
+{
+  const repo2 = createFirestoreRepo(env.authenticatedContext(STUDENT2).firestore())
+  const STEP = 'step-auction'
+
+  /* 화면과 같은 순서다. 먼저 각자 제출해야 모둠 화면이 열린다. */
+  await studentRepo.submitResponse(CID, '01', STEP, STUDENT, {
+    allocation: { fun: 20, evidence: 60, safety: 20 }, opinion: '증거가 남아야 수업이다',
+  }, { confidence: null, changedReason: null })
+  await repo2.submitResponse(CID, '01', STEP, STUDENT2, {
+    allocation: { fun: 60, evidence: 20, safety: 20 }, opinion: '보고 싶어야 남는다',
+  }, { confidence: null, changedReason: null })
+
+  /* 제출 전에는 규칙이 막아야 한다 — 남의 배분을 먼저 보는 길이 없어야 한다. */
+  const NOTYET = 'step-compare'
+  let blocked = false
+  try {
+    await studentRepo.setGroupShare(CID, '01', NOTYET, {
+      uid: STUDENT, nickname: '나', groupId: '1', allocation: {}, opinion: 'x', updatedAt: Date.now(),
+    })
+  } catch {
+    blocked = true
+  }
+  if (!blocked) fail('즉석 모둠 관문', '제출하지 않은 단계에서도 모둠에 들어가진다')
+
+  /* 둘 다 1모둠을 고른다. */
+  await studentRepo.setGroupShare(CID, '01', STEP, {
+    uid: STUDENT, nickname: '이나나나', groupId: '1',
+    allocation: { fun: 20, evidence: 60, safety: 20 }, opinion: '증거가 남아야 수업이다',
+    updatedAt: Date.now(),
+  })
+  await repo2.setGroupShare(CID, '01', STEP, {
+    uid: STUDENT2, nickname: '박두두', groupId: '1',
+    allocation: { fun: 60, evidence: 20, safety: 20 }, opinion: '보고 싶어야 남는다',
+    updatedAt: Date.now(),
+  })
+
+  /* 화면이 쓰는 그 구독으로 읽는다. */
+  const seen = await new Promise((resolve) => {
+    const stop = studentRepo.watchGroupShares(CID, '01', STEP, (list) => {
+      if (list.length >= 2) {
+        stop()
+        resolve(list)
+      }
+    })
+    setTimeout(() => {
+      stop()
+      resolve([])
+    }, 5000)
+  })
+
+  if (seen.length !== 2) {
+    fail('즉석 모둠', `모둠원이 ${seen.length}명 보인다 — 2명이어야 한다`)
+  } else {
+    /* 화면이 그리는 그 평균을 여기서도 계산해 본다. */
+    const avg = (id) => Math.round(seen.reduce((s, g) => s + (g.allocation[id] || 0), 0) / seen.length)
+    if (avg('fun') !== 40 || avg('evidence') !== 40) {
+      fail('즉석 모둠 평균', `평균이 fun ${avg('fun')} · evidence ${avg('evidence')} 다 (둘 다 40이어야 한다)`)
+    } else {
+      /* 대표가 합의 문장을 올리면 의견 광장의 글이 된다. */
+      await studentRepo.addPost(CID, '01', STEP, {
+        uid: STUDENT, nickname: '이나나나', groupId: '1', content: '우리 모둠은 증거와 재미를 반씩 두었다',
+      })
+      const posts = await new Promise((resolve) => {
+        const stop = repo2.watchPosts(CID, '01', STEP, (list) => {
+          if (list.length > 0) {
+            stop()
+            resolve(list)
+          }
+        })
+        setTimeout(() => {
+          stop()
+          resolve([])
+        }, 5000)
+      })
+      if (posts.length !== 1 || posts[0].groupId !== '1') {
+        fail('모둠 문장 공개', '다른 모둠원이 합의 문장을 읽지 못한다')
+      } else {
+        pass('즉석 모둠', '제출 뒤에만 열리고, 같은 번호를 고른 두 사람의 평균이 맞고, 합의 문장이 광장에 뜬다')
+      }
+    }
+  }
+
+  /* 자리는 기록이 아니다. 나가면 사라져야 한다. */
+  await studentRepo.clearGroupShare(CID, '01', STEP, STUDENT)
 }
 
 await env.cleanup()

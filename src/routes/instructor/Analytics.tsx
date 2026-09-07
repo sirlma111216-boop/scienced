@@ -31,7 +31,7 @@ interface Row {
 function reasonOf(payload: Record<string, unknown> | undefined): string {
   if (!payload) return ''
   for (const [k, v] of Object.entries(payload)) {
-    if (/reason|이유|defense|changed/i.test(k) && typeof v === 'string') return v
+    if (/reason|이유|defense|changed|opinion/i.test(k) && typeof v === 'string') return v
   }
   return ''
 }

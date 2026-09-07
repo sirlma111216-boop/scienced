@@ -213,6 +213,28 @@ export interface SessionState {
   updatedAt: number
 }
 
+/**
+ * 모둠 만들기 — 그 자리에서 즉석으로.
+ *
+ * 옆에 앉은 사람끼리 "우리가 1모둠"이라 정하고 같은 번호를 고르면 그것이 모둠이다.
+ * 강사가 명단을 짜지 않는다. 그래서 모둠은 이 단계 안에서만 살고, 다음 주에 남지 않는다.
+ *
+ * ★ 이 문서는 같은 클래스의 다른 학생도 읽는다.
+ *   그래서 담는 것은 본인이 어차피 모둠에서 소리 내어 말할 것 — 배분과 한 문장뿐이다.
+ *   실명은 들어가지 않는다. 읽기는 본인이 제출을 마친 뒤에만 열린다(규칙에서 막는다).
+ */
+export interface GroupShare {
+  uid: string
+  nickname: string
+  /** '1' ~ '8'. 화면에서 고른 모둠 번호 그대로. */
+  groupId: string
+  /** 요소 id → 점수 */
+  allocation: Record<string, number>
+  /** 개인 의견 한 줄 */
+  opinion: string
+  updatedAt: number
+}
+
 export interface Group {
   id: string
   name: string

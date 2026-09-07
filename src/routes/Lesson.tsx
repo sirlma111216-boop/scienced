@@ -26,6 +26,7 @@ import { AppShell, InstructorMovedBanner } from '@/components/layout/AppShell'
 import { AiAssistPanel } from '@/components/ai/AiAssistPanel'
 import { ConceptCard } from '@/components/concept/ConceptCard'
 import { LadderGame } from '@/components/activity/LadderGame'
+import { GroupPanel } from '@/components/activity/GroupPanel'
 import { ModuleHost } from '@/components/activity/ModuleHost'
 import { DistributionView } from '@/components/response/DistributionView'
 import { ResponseCollector } from '@/components/response/ResponseCollector'
@@ -353,7 +354,7 @@ export function Lesson() {
                       : undefined
                   }
                 >
-                  {(submitted) => (
+                  {(submitted, doc) => (
                     <>
                       {submitted ? (
                         <div className="flex flex-col gap-xl" style={{ marginTop: 32 }}>
@@ -379,6 +380,24 @@ export function Lesson() {
                               inputs={{ context: step.title }}
                             />
                           ) : null}
+                        </div>
+                      ) : null}
+
+                      {/*
+                        즉석 모둠 — 제출한 뒤에만. 의견 광장보다 먼저 온다.
+                        모둠에서 합의한 문장이 의견 광장의 글이 되기 때문에 순서가 뒤집히면 안 된다.
+                      */}
+                      {step.groupBuild && submitted ? (
+                        <div style={{ marginTop: 32 }}>
+                          <GroupPanel
+                            classId={classId!}
+                            lessonId={lesson.id}
+                            step={step}
+                            config={step.groupBuild}
+                            myValues={
+                              doc?.versions?.[doc.versions.length - 1]?.payload ?? null
+                            }
+                          />
                         </div>
                       ) : null}
 

@@ -139,6 +139,7 @@ const asAnon = env.unauthenticatedContext().firestore()
   await assertFails(asS1.doc(`classes/${B}/lessonState/01`).get())
   await assertFails(asS1.doc(`classes/${B}/lessons/01/steps/step-open/responses/${S2}`).get())
   await assertFails(asS1.doc(`classes/${B}/lessons/01/steps/step-open/posts/p1`).get())
+  await assertFails(asS1.collection(`classes/${B}/lessons/01/steps/step-open/groupshares`).get())
   await assertFails(asS1.doc(`classes/${B}/sessions/01`).get())
   await assertFails(asS1.doc(`classes/${B}/picks/x`).get())
   await assertFails(asS1.doc(`classes/${B}/participation/${S2}`).get())
@@ -325,6 +326,31 @@ const asAnon = env.unauthenticatedContext().firestore()
   // 지우지 못한다
   await assertFails(asTeacher.doc(`classes/${A}/aiProposals/x`).delete())
   pass('AI 검토 관문', 'pending 강제 · 원문 잠금 · 삭제 금지가 규칙에서 실제로 막힌다')
+}
+
+/* ── 즉석 모둠: 제출 전에는 못 읽고, 남의 자리는 못 쓴다 ── */
+{
+  const path = (uid) => `classes/${A}/lessons/01/steps/step-open/groupshares/${uid}`
+  const share = (uid) => ({ uid, nickname: '닉', groupId: '1', allocation: { fun: 100 }, opinion: '한 줄' })
+
+  // S1 은 이 단계에 제출본이 있다 (위 사전 자료). 그래서 쓰고 읽는다.
+  await assertSucceeds(asS1.doc(path(S1)).set(share(S1)))
+  await assertSucceeds(asS1.collection(`classes/${A}/lessons/01/steps/step-open/groupshares`).get())
+
+  // 남의 자리에는 못 쓴다.
+  await assertFails(asS1.doc(path(S2)).set(share(S2)))
+  // uid 를 속여서도 못 쓴다.
+  await assertFails(asS1.doc(path(S1)).set({ ...share(S1), uid: S2 }))
+
+  // 제출본이 없는 단계에서는 읽지도 쓰지도 못한다 — 남의 배분을 먼저 보는 길을 막는다.
+  const unsubmitted = `classes/${A}/lessons/01/steps/step-none/groupshares`
+  await assertFails(asS1.doc(`${unsubmitted}/${S1}`).set(share(S1)))
+  await assertFails(asS1.collection(unsubmitted).get())
+
+  // 자리는 기록이 아니다. 본인은 지울 수 있다.
+  await assertSucceeds(asS1.doc(path(S1)).delete())
+
+  pass('즉석 모둠', '제출한 뒤에만 읽고, 남의 자리는 못 쓰며, 내 자리는 지울 수 있다')
 }
 
 await env.cleanup()

@@ -242,6 +242,29 @@ export type ModuleComponent =
  */
 export const SHORT_TITLE_MAX = 8
 
+/**
+ * 즉석 모둠 만들기.
+ *
+ * 강사가 명단을 짜지 않는다. 옆에 앉은 사람끼리 "우리가 몇 모둠" 하고 정해
+ * 같은 번호를 고르면 그것이 모둠이다. 고르는 순간 같은 번호를 고른 사람들의
+ * 평균 배분과 각자가 쓴 문장이 한자리에 모인다.
+ *
+ * 붙이면 본인이 제출을 마친 뒤에만 열린다. 남의 배분을 먼저 보고 자기 것을 정하면
+ * 갈림이 사라지고, 갈림을 보는 것이 이런 활동의 목적이다.
+ */
+export interface GroupBuildConfig {
+  /** 평균을 낼 배분 칸의 key. 그 칸의 items 가 요소 목록이 된다. */
+  allocationKey: string
+  /** 모둠원에게 모아 보여 줄 개인 의견 칸의 key */
+  opinionKey: string
+  /** 고를 수 있는 모둠 번호 개수 */
+  groupCount: number
+  /** 모둠 대표가 올리는 한 문장 */
+  agreedLabel: string
+  agreedHelp: string
+  agreedStarters: string[]
+}
+
 export interface Step {
   id: string
   order: number
@@ -255,6 +278,8 @@ export interface Step {
   fields: FieldDef[]
   /** 전용 모듈 화면. 없으면 fields 만 그린다. */
   moduleComponent?: ModuleComponent
+  /** 즉석 모둠 만들기. 제출 뒤 의견 광장 앞에 그려진다. */
+  groupBuild?: GroupBuildConfig
   /** 이 단계에서 쓰는 개념 카드 id (type === 'concepts') */
   conceptIds?: string[]
   /** 이 단계에서 쓰는 읽기 자료 */

@@ -22,6 +22,7 @@ import type {
   ClassDoc,
   Enrollment,
   Group,
+  GroupShare,
   LadderState,
   LessonState,
   Participation,
@@ -124,6 +125,7 @@ export function createFirestoreRepo(db: Firestore): Repo {
         for (const step of lesson.steps) {
           targets.push(cc(db, classId, ...stepPath(lesson.id, step.id), 'responses'))
           targets.push(cc(db, classId, ...stepPath(lesson.id, step.id), 'posts'))
+          targets.push(cc(db, classId, ...stepPath(lesson.id, step.id), 'groupshares'))
         }
       }
 
@@ -278,6 +280,28 @@ export function createFirestoreRepo(db: Firestore): Repo {
     },
 
     /* ── 의견 광장 ── */
+    watchGroupShares(classId, lessonId, stepId, cb) {
+      return onSnapshot(
+        cc(db, classId, ...stepPath(lessonId, stepId), 'groupshares'),
+        (snap) => cb(snap.docs.map((s) => s.data() as GroupShare)),
+        (err) => {
+          // 본인이 제출하기 전에는 규칙이 막는다. 그때는 빈 목록이 맞다.
+          // 그 밖의 이유라면 화면에는 「아직 아무도 없음」으로 보이므로 콘솔에 남긴다.
+          console.warn('[groupshares] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
+      )
+    },
+
+    async setGroupShare(classId, lessonId, stepId, share) {
+      const ref = cd(db, classId, ...stepPath(lessonId, stepId), 'groupshares', share.uid)
+      await setDoc(ref, { ...share, updatedAt: Date.now() })
+    },
+
+    async clearGroupShare(classId, lessonId, stepId, uid) {
+      await deleteDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'groupshares', uid))
+    },
+
     watchPosts(classId, lessonId, stepId, cb) {
       return onSnapshot(
         cc(db, classId, ...stepPath(lessonId, stepId), 'posts'),

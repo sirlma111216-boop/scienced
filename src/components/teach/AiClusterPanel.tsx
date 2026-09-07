@@ -42,7 +42,7 @@ export function AiClusterPanel({
       const last = d.versions?.[d.versions.length - 1]
       if (!last) continue
       for (const [k, val] of Object.entries(last.payload ?? {})) {
-        if (/reason|이유|defense/i.test(k) && typeof val === 'string' && val.trim()) {
+        if (/reason|이유|defense|opinion/i.test(k) && typeof val === 'string' && val.trim()) {
           out.push(val.trim())
         }
       }
