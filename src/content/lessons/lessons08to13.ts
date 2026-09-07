@@ -208,6 +208,7 @@ export const lesson08: Lesson = {
     conceptIds: ['c08-question', 'c08-types', 'c08-variables', 'c08-uncertainty'],
     module: {
       title: '실험 설계 샌드박스',
+      shortTitle: '실험 설계',
       lead:
         '변인·표본 수·측정오차를 고르면 가상 자료가 만들어집니다.\n' +
         '같은 현상에서도 설계에 따라 결론의 확실성이 얼마나 달라지는지 봅니다.',
@@ -468,6 +469,7 @@ export const lesson09: Lesson = {
     conceptIds: ['c09-practice', 'c09-model', 'c09-prediction', 'c09-revision'],
     module: {
       title: '모형 버전 관리',
+      shortTitle: '모형 버전',
       lead:
         '초기 모형(v1)을 만들고, 새 자료를 받은 뒤 v2를 만듭니다.\n' +
         'v1은 지워지지 않습니다. 무엇을 왜 바꿨는지 주석을 답니다.',
@@ -730,6 +732,7 @@ export const lesson10: Lesson = {
     conceptIds: ['c10-cycle', 'c10-5e', 'c10-poe', 'c10-guided'],
     module: {
       title: '모형 선택 의사결정 트리',
+      shortTitle: '모형 선택',
       lead:
         '목표와 학생 상태를 입력하면 가능한 모형과 주의점이 나옵니다.\n' +
         '트리가 제안한 것을 그대로 쓰면 저장되지 않습니다. 고른 이유를 직접 써야 저장됩니다.',
@@ -990,6 +993,7 @@ export const lesson11: Lesson = {
     conceptIds: ['c11-explanation', 'c11-analogy', 'c11-multirep', 'c11-conceptmap'],
     module: {
       title: '표상 번역기',
+      shortTitle: '표상 번역',
       lead:
         '한 표상이 주어집니다. 다른 형식으로 번역한 뒤 두 표상을 겹쳐 봅니다.\n' +
         '어긋난 자리가 학생이 실제로 헷갈리는 지점입니다.',
@@ -1255,6 +1259,7 @@ export const lesson12: Lesson = {
     conceptIds: ['c12-question', 'c12-waittime', 'c12-cer', 'c12-rebuttal'],
     module: {
       title: '논증 지도',
+      shortTitle: '논증 지도',
       lead:
         '주장·증거·추론·반론 노드를 연결합니다.\n' +
         '연결선마다 왜 그 증거가 그 주장을 지지하는지 한 줄씩 적습니다. 그것이 추론입니다.',
@@ -1521,6 +1526,7 @@ export const lesson13: Lesson = {
     conceptIds: ['c13-ssi', 'c13-source', 'c13-equity', 'c13-conditional'],
     module: {
       title: '의사결정 매트릭스와 결과도',
+      shortTitle: '의사결정',
       lead:
         '기준별 가중치를 조절하면 선택이 달라집니다.\n' +
         '가중치를 바꾸면 답이 바뀌는 것은 계산 오류가 아니라 이 문제의 성질입니다.',

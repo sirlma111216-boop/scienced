@@ -102,7 +102,7 @@ export function ColorBlock({
   className?: string
   as?: 'section' | 'div' | 'aside'
 }) {
-  return <Tag className={`block ${TONE_CLASS[tone]} ${className}`}>{children}</Tag>
+  return <Tag className={`color-block ${TONE_CLASS[tone]} ${className}`}>{children}</Tag>
 }
 
 /* ─────────────────────────── 텍스트 ─────────────────────────── */

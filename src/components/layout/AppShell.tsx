@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { buildShortName } from '@/content/classes'
 import { useAuth } from '@/lib/auth'
 import { Badge, Button, usePresent } from '@/components/ui'
@@ -15,10 +15,114 @@ import { Badge, Button, usePresent } from '@/components/ui'
 export interface StepNavItem {
   id: string
   label: string
+  /** 알약에 실제로 그려지는 짧은 이름 (SHORT_TITLE_MAX 자 이하) */
+  shortLabel: string
   minutes: number
   done?: boolean
   /** 강사가 지금 보고 있는 단계 */
   instructorHere?: boolean
+}
+
+/**
+ * 단계 알약 줄.
+ *
+ * tablist 로 만든다. 화살표 키로 단계를 옮길 수 있어야 하고,
+ * 스크린 리더가 "3 / 5"를 읽어 줘야 한다. nav + 링크로는 그 둘이 안 된다.
+ *
+ * 선택된 알약만 tabIndex 0 을 갖는다(roving tabindex). 그래야 Tab 키 한 번에
+ * 단계 줄을 지나갈 수 있다. 다섯 번 눌러야 본문에 닿으면 아무도 키보드를 쓰지 않는다.
+ */
+function StepTabs({
+  steps,
+  activeStepId,
+  onSelectStep,
+}: {
+  steps: StepNavItem[]
+  activeStepId?: string
+  onSelectStep?: (id: string) => void
+}) {
+  const refs = useRef(new Map<string, HTMLButtonElement>())
+  const activeIndex = Math.max(
+    0,
+    steps.findIndex((s) => s.id === activeStepId),
+  )
+
+  function move(to: number) {
+    const next = steps[(to + steps.length) % steps.length]
+    if (!next) return
+    onSelectStep?.(next.id)
+    refs.current.get(next.id)?.focus()
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        e.preventDefault()
+        return move(activeIndex + 1)
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        e.preventDefault()
+        return move(activeIndex - 1)
+      case 'Home':
+        e.preventDefault()
+        return move(0)
+      case 'End':
+        e.preventDefault()
+        return move(steps.length - 1)
+    }
+  }
+
+  return (
+    <ol
+      role="tablist"
+      aria-label="수업 단계"
+      aria-orientation="horizontal"
+      className="step-tabs"
+      onKeyDown={onKeyDown}
+    >
+      {steps.map((s, i) => {
+        const selected = s.id === activeStepId
+        return (
+          <li key={s.id} role="presentation">
+            <button
+              type="button"
+              role="tab"
+              id={`step-tab-${s.id}`}
+              aria-selected={selected}
+              aria-controls={`step-panel-${s.id}`}
+              tabIndex={selected ? 0 : -1}
+              ref={(el) => {
+                if (el) refs.current.set(s.id, el)
+                else refs.current.delete(s.id)
+              }}
+              className="tab-step"
+              onClick={() => onSelectStep?.(s.id)}
+              /* 알약에는 짧은 이름만 들어간다. 전체 이름은 여기서 읽힌다. */
+              aria-label={`${i + 1}단계 ${s.label} · ${s.minutes}분${
+                s.done ? ' · 제출함' : ''
+              }${s.instructorHere ? ' · 강사가 보고 있음' : ''}`}
+              title={`${s.label} · ${s.minutes}분`}
+            >
+              <span className="step-meta" aria-hidden="true">
+                {String(i + 1).padStart(2, '0')}
+                <span className="hidden sm:inline"> · {s.minutes}분</span>
+                {/* 상태를 색만으로 구분하지 않는다 */}
+                {s.done ? ' ✓' : ''}
+                {s.instructorHere ? ' ●' : ''}
+              </span>
+              <span className="step-name step-name-short" aria-hidden="true">
+                {s.shortLabel}
+              </span>
+              <span className="step-name step-name-full" aria-hidden="true">
+                {s.label}
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ol>
+  )
 }
 
 export function AppShell({
@@ -49,13 +153,31 @@ export function AppShell({
         본문으로 건너뛰기
       </a>
 
+      {/*
+        상단바는 md 부터만 화면에 붙는다.
+        375px 에서는 상단바 두 줄 + 단계 두 줄이 화면 높이의 4분의 1을 넘게 먹는다.
+        늘 보이는 대신 볼 것을 가리는 머리글은 도움이 안 된다.
+        좁은 화면에서는 스크롤에 따라 올라가고, 단계 이동은 본문 아래의 이전/다음이 맡는다.
+      */}
       <header
-        className="sticky top-0 z-10 bg-canvas no-print"
+        className="md:sticky md:top-0 z-10 bg-canvas no-print"
         style={{ boxShadow: 'inset 0 -1px 0 #e6e6e6' }}
       >
-        <div className="shell flex items-center gap-md" style={{ minHeight: 56 }}>
+        {/*
+          좁은 화면에서는 줄을 바꾼다.
+          한 줄로 두면 375px 에서 「강사」·「나가기」가 화면 밖으로 나가고,
+          그 두 버튼 때문에 페이지 전체에 가로 스크롤이 생긴다.
+          단계 줄을 아무리 잘 접어도 상단바 하나가 그것을 되돌린다.
+        */}
+        <div
+          className="shell flex flex-wrap items-center gap-xs md:gap-md"
+          style={{ minHeight: 56, paddingTop: 6, paddingBottom: 6 }}
+        >
           <Link to="/" className="btn-tertiary" style={{ paddingLeft: 0 }}>
-            <span style={{ fontWeight: 540 }}>Science Lesson Studio</span>
+            {/* 좁은 화면에서는 활자를 줄인다. 20px 로 두면 이름만으로 한 줄이 찬다. */}
+            <span className="text-body-sm md:text-link" style={{ fontWeight: 540 }}>
+              Science Lesson Studio
+            </span>
           </Link>
 
           {/* 지금 어느 학기를 보고 있는지 항상 보인다. 여러 클래스면 눌러서 전환한다. */}
@@ -124,9 +246,10 @@ export function AppShell({
 
           <Badge>{mode === 'realtime' ? '실시간 공유' : '로컬 저장'}</Badge>
 
+          {/* 발표 모드는 화면을 띄워 놓고 쓰는 기능이다. 손전화 폭에서는 자리만 차지한다. */}
           <button
             type="button"
-            className="tab"
+            className="tab hidden md:inline-flex"
             data-selected={present}
             aria-pressed={present}
             onClick={toggle}
@@ -151,41 +274,25 @@ export function AppShell({
         </div>
 
         {steps && steps.length > 0 ? (
-          <nav aria-label="수업 단계" className="shell" style={{ paddingBottom: 8 }}>
-            <ol className="flex gap-xs scroll-x" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {steps.map((s, i) => {
-                const selected = s.id === activeStepId
-                return (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      className="tab"
-                      data-selected={selected}
-                      aria-current={selected ? 'step' : undefined}
-                      onClick={() => onSelectStep?.(s.id)}
-                      style={{ whiteSpace: 'nowrap' }}
-                    >
-                      <span className="font-mono text-caption" style={{ marginRight: 6 }}>
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      {s.label}
-                      <span className="font-mono text-caption" style={{ marginLeft: 6, opacity: 0.7 }}>
-                        {s.minutes}분
-                      </span>
-                      {/* 상태를 색만으로 구분하지 않는다 */}
-                      {s.done ? <span aria-label="제출함"> ✓</span> : null}
-                      {s.instructorHere ? <span aria-label="강사 위치"> ●</span> : null}
-                    </button>
-                  </li>
-                )
-              })}
-            </ol>
-          </nav>
+          <div className="shell no-print" style={{ paddingBottom: 8 }}>
+            <StepTabs steps={steps} activeStepId={activeStepId} onSelectStep={onSelectStep} />
+          </div>
         ) : null}
       </header>
 
       <main id="main" className="flex-1 shell" style={{ paddingTop: 32, paddingBottom: 96 }}>
-        {children}
+        {steps && steps.length > 0 && activeStepId ? (
+          /* 선택된 단계의 화면만 그린다. tablist 의 짝이 되는 tabpanel 이다. */
+          <div
+            role="tabpanel"
+            id={`step-panel-${activeStepId}`}
+            aria-labelledby={`step-tab-${activeStepId}`}
+          >
+            {children}
+          </div>
+        ) : (
+          children
+        )}
       </main>
 
       <footer className="no-print" style={{ boxShadow: 'inset 0 1px 0 #f1f1f1' }}>

@@ -82,6 +82,7 @@ export function Lesson() {
   const navItems = lesson.steps.map((s) => ({
     id: s.id,
     label: s.title,
+    shortLabel: s.shortTitle,
     minutes: s.durationMinutes,
     instructorHere: session?.instructorAt === s.id,
   }))

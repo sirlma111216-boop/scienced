@@ -221,6 +221,7 @@ export const lesson02: Lesson = {
     conceptIds: ['c02-observation', 'c02-evidence', 'c02-tentative', 'c02-model'],
     module: {
       title: '주장－증거－확실성 슬라이더',
+      shortTitle: '주장·증거',
       lead:
         '뉴스에 실린 과학 주장 하나를 받습니다. 주장과 증거를 연결하고 확신도를 표시하세요.\n' +
         '그다음 새 증거 카드가 한 장 공개됩니다. 확신도가 어떻게 움직이는지 기록합니다.',
@@ -478,6 +479,7 @@ export const lesson03: Lesson = {
     conceptIds: ['c03-prior', 'c03-alternative', 'c03-diagnosis', 'c03-utterance'],
     module: {
       title: '오개념 분기 면담',
+      shortTitle: '오개념 면담',
       lead:
         '가상의 중학생 한 명과 면담합니다. 질문을 고르면 학생이 답합니다.\n' +
         '최종 진단이 아니라 질문이 끌어낸 정보량을 봅니다. 질문은 다섯 번까지 할 수 있습니다.',
@@ -735,6 +737,7 @@ export const lesson04: Lesson = {
     conceptIds: ['c04-assimilation', 'c04-meaningful', 'c04-zpd', 'c04-scaffold'],
     module: {
       title: '비계 조절 시뮬레이터',
+      shortTitle: '비계 조절',
       lead:
         '가상 학생에게 줄 힌트 수준을 단계마다 고릅니다.\n' +
         '독립 수행과 의존도가 함께 움직입니다. 과잉 도움과 조기 철회의 결과를 비교합니다.',
@@ -989,6 +992,7 @@ export const lesson05: Lesson = {
     conceptIds: ['c05-change', 'c05-conflict', 'c05-power', 'c05-transfer'],
     module: {
       title: '설명 생존 게임',
+      shortTitle: '설명 생존',
       lead:
         '증거 카드가 한 장씩 공개됩니다. 매 라운드 기존 설명을 유지·수정·교체할지 고르고 이유를 남깁니다.\n' +
         '오래 버틴 설명이 아니라 증거에 맞게 고친 설명을 봅니다.',
@@ -1250,6 +1254,7 @@ export const lesson06: Lesson = {
     conceptIds: ['c06-bigidea', 'c06-categories', 'c06-standard', 'c06-deep'],
     module: {
       title: '교육과정 맵 · 성취기준 해부',
+      shortTitle: '교육과정 맵',
       lead:
         '성취기준 하나를 골라 네 층으로 가릅니다.\n' +
         '내용 / 실행 / 인식론 / 가치·태도. 그다음 핵심 아이디어와 선수·후속 개념을 연결합니다.',
@@ -1503,6 +1508,7 @@ export const lesson07: Lesson = {
     conceptIds: ['c07-backward', 'c07-alignment', 'c07-success', 'c07-branch'],
     module: {
       title: '수업 정렬 검사기',
+      shortTitle: '정렬 검사',
       lead:
         '6강에서 고른 성취기준으로 목표·증거·활동·평가를 입력합니다.\n' +
         '검사기가 핵심 동사와 개념의 누락을 표시합니다. 그 표시는 제안일 뿐, 최종 판정은 여러분이 합니다.',

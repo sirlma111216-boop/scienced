@@ -154,4 +154,72 @@ const all = [...sources.values()].join('\n')
   pass('건너뛰기 링크', '본문으로 건너뛰기와 main 표지가 있다')
 }
 
+/* 9. 단계 네비게이션 — 전부 보이고 키보드로 다닐 수 있어야 한다 */
+{
+  const css = sources.get('src\\index.css') ?? sources.get('src/index.css') ?? ''
+  const shell = sources.get('src\\components\\layout\\AppShell.tsx')
+    ?? sources.get('src/components/layout/AppShell.tsx')
+    ?? ''
+
+  // 가로 스크롤로 도망가지 않는다. 밀어 봐야 보이는 단계는 없는 단계와 같다.
+  const stepTabsRule = css.match(/\.step-tabs\s*\{[^}]*\}/)?.[0] ?? ''
+  if (!stepTabsRule) fail('단계 알약', '.step-tabs 규칙이 없다')
+  if (/overflow-x/.test(stepTabsRule)) {
+    fail('단계 알약', '.step-tabs 에 overflow-x 가 있다 — 좁은 화면에서 뒤쪽 단계가 숨는다')
+  }
+  if (!/flex-wrap:\s*wrap/.test(stepTabsRule)) {
+    fail('단계 알약', '.step-tabs 가 줄바꿈하지 않는다 — 좁은 화면에서 넘친다')
+  }
+  // min-width:0 이 없으면 flex 항목이 내용보다 작아지기를 거부해 가로 스크롤이 되살아난다
+  if (!/\.step-tabs\s*>\s*li\s*\{[^}]*min-width:\s*0/.test(css)) {
+    fail('단계 알약', '.step-tabs > li 에 min-width: 0 이 없다')
+  }
+
+  // tablist 는 짝이 되는 tabpanel 이 있어야 성립한다
+  for (const [needle, label] of [
+    ['role="tablist"', 'tablist'],
+    ['role="tab"', 'tab'],
+    ['role="tabpanel"', 'tabpanel'],
+    ['aria-selected', 'aria-selected'],
+    ['aria-controls', 'aria-controls'],
+    ['aria-labelledby', 'aria-labelledby'],
+  ]) {
+    if (!shell.includes(needle)) fail('단계 알약', `단계 네비게이션에 ${label} 이 없다`)
+  }
+  for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End']) {
+    if (!shell.includes(key)) fail('단계 알약', `${key} 키로 단계를 옮길 수 없다`)
+  }
+  // roving tabindex — Tab 한 번에 단계 줄을 지나갈 수 있어야 한다
+  if (!/tabIndex=\{selected \? 0 : -1\}/.test(shell)) {
+    fail('단계 알약', '선택된 알약만 tabIndex 0 을 갖지 않는다 (roving tabindex)')
+  }
+  pass('단계 알약', '가로 스크롤 없이 줄바꿈하고, tablist·tabpanel·화살표 키가 모두 있다')
+}
+
+/*
+ * 10. Tailwind 유틸리티와 이름이 겹치는 컴포넌트 클래스 금지.
+ *
+ * .block 이라는 컴포넌트가 있었다. className 에 lg:block 이라고 쓰면 Tailwind 가
+ * display:block 이 아니라 그 컴포넌트의 lg 변형을 만든다 — padding 48px 이 딸려 온다.
+ * 오류도 경고도 없이 화면만 깨진다. 실제로 단계 알약이 한 글자씩 줄바꿈했다.
+ */
+{
+  const RESERVED = [
+    'block', 'inline', 'flex', 'grid', 'hidden', 'table', 'contents',
+    'container', 'static', 'fixed', 'absolute', 'relative', 'sticky', 'visible',
+  ]
+  const css = sources.get('src\\index.css') ?? sources.get('src/index.css') ?? ''
+  const declared = new Set()
+  for (const m of css.matchAll(/^\s*\.([a-z][a-z0-9-]*)[\s,{]/gim)) declared.add(m[1])
+  const clashes = RESERVED.filter((r) => declared.has(r))
+  if (clashes.length > 0) {
+    fail(
+      '이름 충돌',
+      `컴포넌트 클래스 ${clashes.map((c) => `.${c}`).join(' · ')} 가 Tailwind 유틸리티와 같은 이름이다 — 반응형 변형이 엉뚱하게 만들어진다`,
+    )
+  } else {
+    pass('이름 충돌', `컴포넌트 클래스가 Tailwind 유틸리티 ${RESERVED.length}종과 이름이 겹치지 않는다`)
+  }
+}
+
 report('verify:a11y')

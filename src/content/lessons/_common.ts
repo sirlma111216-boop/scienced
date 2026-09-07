@@ -29,6 +29,8 @@ export interface StandardSpec {
   /** 핵심 모듈 */
   module: {
     title: string
+    /** 단계 알약용 짧은 이름. SHORT_TITLE_MAX 자 이하 (verify:lessons 가 본다). */
+    shortTitle: string
     lead: string
     fields: FieldDef[]
     gameId: GameId
@@ -106,6 +108,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       order: 1,
       type: 'recall',
       title: '오늘의 문 · 내 생각 먼저',
+      shortTitle: '내 생각',
       durationMinutes: spec.minutes[0],
       lead: spec.openLead,
       material: [{ kind: 'note', title: spec.phenomenon.title, body: spec.phenomenon.body }],
@@ -127,6 +130,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       order: 2,
       type: 'concepts',
       title: '오늘의 개념 카드',
+      shortTitle: '개념 카드',
       durationMinutes: spec.minutes[1],
       lead:
         '카드 네 장을 한 장씩 엽니다. 쉬운 한 문장에서 시작해 정확한 정의까지 내려갑니다.\n' +
@@ -145,6 +149,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       order: 3,
       type: 'module',
       title: spec.module.title,
+      shortTitle: spec.module.shortTitle,
       durationMinutes: spec.minutes[2],
       lead: spec.module.lead,
       fields: spec.module.fields,
@@ -164,6 +169,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       order: 4,
       type: 'formative',
       title: '형성평가 · 다음 수를 두어라',
+      shortTitle: '형성평가',
       durationMinutes: spec.minutes[3],
       lead:
         '한 문항에 답하고 이유를 적습니다. 분포가 열리면 강사가 다음 행동을 고릅니다.\n' +
@@ -209,6 +215,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       order: 5,
       type: 'wrapup',
       title: WRAPUP_LABEL,
+      shortTitle: '수업 정리',
       durationMinutes: spec.minutes[4],
       lead: '세 칸만 채우고 마칩니다. 바뀐 생각이 없어도 괜찮습니다.',
       fields: [

@@ -91,6 +91,94 @@
     box-shadow: none;
   }
 
+  /*
+   * 단계 네비게이션.
+   *
+   * 예전에는 가로로 스크롤했다. 폭이 좁으면 뒤쪽 단계가 화면 밖으로 밀려나
+   * 학생이 스스로 밀어 보기 전에는 수업이 몇 단계인지 알 수 없었다.
+   * 지금은 줄을 바꿔서 전부 보인다. 375px 에서 여섯 단계면 세 개씩 두 줄이 된다.
+   *
+   * flex-basis 96px 은 최소가 아니라 희망 폭이다. min-width:0 이 있어야
+   * 글자가 길 때 알약이 줄어든다 — flex 항목의 기본값 min-width:auto 는
+   * 내용보다 작아지기를 거부해서, 그것 하나 때문에 가로 스크롤이 되살아난다.
+   */
+  .step-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .step-tabs > li {
+    flex: 1 1 96px;
+    min-width: 0;
+  }
+  .tab-step {
+    @apply btn bg-canvas text-ink;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    padding: 6px 10px;
+    box-shadow: inset 0 0 0 1px #e6e6e6;
+  }
+  .tab-step[aria-selected='true'] {
+    @apply bg-ink text-canvas;
+    box-shadow: none;
+  }
+  /* 알약 안의 두 줄. .btn 의 20px 버튼 활자는 여기서 쓰지 않는다. */
+  .tab-step .step-meta {
+    @apply font-mono text-caption;
+    opacity: 0.75;
+  }
+  .tab-step[aria-selected='true'] .step-meta {
+    opacity: 0.85;
+  }
+  .tab-step .step-name {
+    @apply text-caption;
+    line-height: 1.25;
+    letter-spacing: 0;
+    text-align: center;
+    /*
+     * 알약 안쪽 폭을 그대로 쓴다.
+     * .btn 의 align-items:center 때문에 이 칸은 기본적으로 글자 폭만큼만 넓어지는데,
+     * 거기에 overflow-wrap:anywhere 이 겹치면 최소 폭(= 한 글자)까지 줄어들어
+     * 「두 수업 비교」가 여섯 줄이 된다.
+     */
+    align-self: stretch;
+    /* 짧은 이름이라도 좁은 폭에서는 줄바꿈이 필요하다 */
+    overflow-wrap: anywhere;
+  }
+  /*
+   * 세 단계로 넓어진다.
+   *   ~767px   짧은 이름만. 분은 숨긴다 — 세 개씩 두 줄이라 자리가 없다.
+   *   768px~   짧은 이름 + 분, 활자를 키운다. 한 줄에 다 들어간다.
+   *   1024px~  전체 이름. 이때만 폭이 남는다.
+   *
+   * 전체/짧은 이름 전환에 Tailwind 의 lg:block 을 쓰지 않는다.
+   * 이 프로젝트에는 .block 컴포넌트가 있어 그 변형이 만들어지기 때문이다(위 .color-block 주석).
+   */
+  .tab-step .step-name-full {
+    display: none;
+  }
+  @media (min-width: 768px) {
+    .tab-step {
+      padding: 8px 14px;
+    }
+    .tab-step .step-name {
+      @apply text-body-sm;
+      line-height: 1.3;
+    }
+  }
+  @media (min-width: 1024px) {
+    .tab-step .step-name-short {
+      display: none;
+    }
+    .tab-step .step-name-full {
+      display: block;
+    }
+  }
+
   .field {
     @apply w-full bg-canvas text-ink text-body rounded-md;
     padding: 12px 14px;
@@ -102,14 +190,22 @@
     opacity: 0.32;
   }
 
-  /* 시그니처: 색 블록 섹션. 한 화면에 두 개를 겹쳐 놓지 않는다. */
-  .block {
+  /*
+   * 시그니처: 색 블록 섹션. 한 화면에 두 개를 겹쳐 놓지 않는다.
+   *
+   * 이름이 .block 이었는데, 그것은 Tailwind 의 display 유틸리티와 같은 이름이다.
+   * 그래서 className 에 lg:block 이라고 쓰면 Tailwind 가 display:block 이 아니라
+   * 이 컴포넌트에 lg 변형을 붙여 버린다 — 1024px 위에서 padding 48px 이 딸려 온다.
+   * 컴파일도 되고 경고도 없다. 단계 알약이 한 글자씩 줄바꿈해서야 알았다.
+   * 유틸리티와 겹치지 않는 이름으로 바꾼다. verify:a11y 가 재발을 막는다.
+   */
+  .color-block {
     @apply rounded-lg;
     padding: 48px;
   }
   @media (max-width: 768px) {
     /* DESIGN.md Responsive: 768px 아래에서는 모서리를 없애고 화면 끝까지 채운다 */
-    .block {
+    .color-block {
       @apply rounded-none;
       padding: 32px 24px;
       margin-left: calc(-1 * var(--gutter, 24px));
@@ -165,7 +261,7 @@
     .no-print {
       display: none !important;
     }
-    .block {
+    .color-block {
       background: #fff !important;
       box-shadow: inset 0 0 0 1px #000;
       padding: 16px;

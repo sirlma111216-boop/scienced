@@ -10,7 +10,7 @@
 import { fail, pass, report } from './_report.mjs'
 
 const { LESSONS } = await import('../src/content/lessons/index.ts')
-const { LESSON_IDS } = await import('../src/content/types.ts')
+const { LESSON_IDS, SHORT_TITLE_MAX } = await import('../src/content/types.ts')
 
 // 1. 18개가 다 있고 순서가 맞는가
 if (LESSONS.length !== 18) fail('차시 수', `18개가 아니라 ${LESSONS.length}개다`)
@@ -114,6 +114,16 @@ for (const l of LESSONS) {
     if (ids.has(s.id)) fail('단계 id', `${l.id}강에 ${s.id} 가 중복된다`)
     ids.add(s.id)
     if (!s.title || !s.lead) fail('단계', `${l.id}강 ${s.id} 에 제목이나 안내가 없다`)
+    // 단계 알약은 폭 375px 에서 여섯 개가 가로 스크롤 없이 들어가야 한다.
+    // 길면 넘치지 않고 잘려서, 무슨 단계인지 알 수 없는 알약이 된다.
+    if (!s.shortTitle) {
+      fail('짧은 이름', `${l.id}강 ${s.id} 에 알약용 shortTitle 이 없다`)
+    } else if ([...s.shortTitle].length > SHORT_TITLE_MAX) {
+      fail(
+        '짧은 이름',
+        `${l.id}강 ${s.id} 의 「${s.shortTitle}」가 ${[...s.shortTitle].length}자다 (${SHORT_TITLE_MAX}자 이하)`,
+      )
+    }
     if (!s.printableAlternative || s.printableAlternative.length < 20) {
       fail('인쇄 활동지', `${l.id}강 ${s.id} 에 인쇄 가능한 동일 목표 활동지 설명이 없다`)
     }
@@ -141,6 +151,10 @@ for (const l of LESSONS) {
   }
 }
 pass('단계와 타임라인', '차시마다 5단계 이상, 합계 50분, 인쇄 활동지 설명이 모두 있다')
+pass(
+  '짧은 이름',
+  `모든 단계의 알약 이름이 ${SHORT_TITLE_MAX}자 이하 — 375px 에서 잘리지 않는다`,
+)
 
 // 6. 확신도 입력이 차시마다 최소 한 번은 있는가 (컨텍스트 15.2)
 for (const l of LESSONS) {

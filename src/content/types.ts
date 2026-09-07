@@ -184,11 +184,23 @@ export type ModuleComponent =
   | 'videoAnnotator'  // 마이크로티칭 주석 (18강)
   | 'curriculumMap'   // 교육과정 맵 (6강)
 
+/**
+ * 단계 알약에 들어갈 짧은 이름의 최대 길이.
+ *
+ * 폭 375px 화면에서 단계 여섯 개가 가로 스크롤 없이 들어가야 한다.
+ * 한 알약에 쓸 수 있는 글자 폭이 두 줄 합쳐 여덟 자 남짓이다.
+ * 이보다 길면 넘치는 것이 아니라 말줄임으로 잘려 무슨 단계인지 알 수 없게 된다.
+ * verify:lessons 가 열여덟 차시의 모든 단계에서 이 길이를 확인한다.
+ */
+export const SHORT_TITLE_MAX = 8
+
 export interface Step {
   id: string
   order: number
   type: StepType
   title: string
+  /** 단계 알약에 쓰는 짧은 이름. SHORT_TITLE_MAX 자 이하. */
+  shortTitle: string
   durationMinutes: number
   /** 학생 화면 안내 */
   lead: string

@@ -259,6 +259,7 @@ export const lesson01: Lesson = {
       order: 1,
       type: 'recall',
       title: '내가 기억하는 과학 수업',
+      shortTitle: '기억 회상',
       durationMinutes: 5,
       lead:
         '중·고등학교에서 받은 과학 수업 중 아직 기억나는 장면 하나를 떠올려 주세요.\n' +
@@ -317,6 +318,7 @@ export const lesson01: Lesson = {
       order: 2,
       type: 'concepts',
       title: '과학 수업이 남겨야 하는 것',
+      shortTitle: '개념 카드',
       durationMinutes: 10,
       lead:
         '카드 네 장을 한 장씩 엽니다. 각 카드는 쉬운 한 문장에서 시작해 정확한 정의까지 내려갑니다.\n' +
@@ -336,6 +338,7 @@ export const lesson01: Lesson = {
       order: 3,
       type: 'compare',
       title: '두 수업 비교',
+      shortTitle: '두 수업 비교',
       durationMinutes: 15,
       lead:
         '같은 소재(드라이아이스)로 만든 두 수업의 기록입니다. 요약문이 아니라 실제 대본입니다.\n' +
@@ -451,6 +454,7 @@ export const lesson01: Lesson = {
       order: 4,
       type: 'auction',
       title: '좋은 수업 경매 + 사다리타기',
+      shortTitle: '수업 경매',
       durationMinutes: 15,
       lead:
         '요소 카드 8장에 100포인트를 나눕니다. 합계는 정확히 100이어야 합니다.\n' +
@@ -546,6 +550,7 @@ export const lesson01: Lesson = {
       order: 5,
       type: 'wrapup',
       title: WRAPUP_LABEL,
+      shortTitle: '수업 정리',
       durationMinutes: 5,
       lead:
         '수업을 마치기 전에 세 칸만 채웁니다.\n' +

@@ -216,6 +216,7 @@ export const lesson14: Lesson = {
     conceptIds: ['c14-interdependence', 'c14-accountability', 'c14-udl', 'c14-equity'],
     module: {
       title: '참여 균형 대시보드',
+      shortTitle: '참여 균형',
       lead:
         '발언 횟수를 세지 않습니다. 질문·근거 제시·설명 연결·요약·반론 초대 같은 기여 유형을 기록합니다.\n' +
         '이 기록은 순위를 만들지 않고, 다음 활동 구조를 고치는 데 씁니다.',
@@ -478,6 +479,7 @@ export const lesson15: Lesson = {
     conceptIds: ['c15-cycle', 'c15-interpret', 'c15-feedback', 'c15-recheck'],
     module: {
       title: '다음 수를 두어라',
+      shortTitle: '다음 수',
       lead:
         '실제 응답 분포와 이유 문장이 주어집니다. 유형으로 묶고, 다음 행동을 고르고, 근거를 변호하세요.\n' +
         '고르지 않는 것도 선택입니다. 다만 이유가 있어야 합니다.',
@@ -746,6 +748,7 @@ export const lesson16: Lesson = {
     conceptIds: ['c16-construct', 'c16-rubric', 'c16-validity', 'c16-portfolio'],
     module: {
       title: '루브릭 스튜디오',
+      shortTitle: '루브릭',
       lead:
         '모호한 표현이 표시됩니다. 문장을 늘리지 말고 관찰 가능한 수행으로 바꾸세요.\n' +
         '그다음 각 수준의 실제 학생 예시(앵커)를 붙입니다.',
@@ -1016,6 +1019,7 @@ export const lesson17: Lesson = {
     conceptIds: ['c17-simulation', 'c17-genai', 'c17-verify', 'c17-ethics'],
     module: {
       title: 'AI 응답 검증 보드',
+      shortTitle: 'AI 검증',
       lead:
         '문장마다 사실 / 해석 / 출처 필요 / 불확실 / 오류를 표시합니다.\n' +
         '표시한 문장은 원출처 링크와 수정 이유를 함께 남깁니다.',
@@ -1284,6 +1288,7 @@ export const lesson18: Lesson = {
     conceptIds: ['c18-pck', 'c18-reasoning', 'c18-microteaching', 'c18-reflection'],
     module: {
       title: '마이크로티칭 코치',
+      shortTitle: '마이크로티칭',
       lead:
         '관찰 코드 E·P·R·W·F·A·C 로 시간순 기록을 남깁니다.\n' +
         '“좋았다·아쉬웠다”는 쓰지 않습니다. 시간·발화·산출물 증거를 인용합니다.',
