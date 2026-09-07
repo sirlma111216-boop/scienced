@@ -166,6 +166,21 @@ export function ResponseCollector({
   }
 
   const locked = submitted && !revising
+
+  /**
+   * 잠금을 풀고 첫 칸으로 데려간다.
+   * 버튼이 화면 아래에 있어서, 풀어도 어디가 열렸는지 보이지 않으면 여전히 막힌 것 같다.
+   */
+  function startRevising() {
+    setRevising(true)
+    window.setTimeout(() => {
+      const first = document.querySelector<HTMLElement>(
+        '.flex.flex-col.gap-xl textarea:not([disabled]), .flex.flex-col.gap-xl input:not([disabled])',
+      )
+      first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      first?.focus()
+    }, 60)
+  }
   const versionCount = doc?.versions?.length ?? 0
 
   const savedLabel = useMemo(() => {
@@ -183,13 +198,24 @@ export function ResponseCollector({
 
   return (
     <div className="flex flex-col gap-lg">
+      {/*
+        잠긴 이유와 푸는 법을 칸 바로 위에서 말한다.
+        제출하면 칸이 잠기는데, 화면이 그것을 말하지 않으면 눌러도 안 써지는 것만 보인다.
+        「수정이 안 된다」로 읽힌다 — 실제로 그렇게 막혔다.
+        푸는 버튼을 아래쪽에만 두지 않고 여기에도 둔다.
+      */}
       {locked ? (
         <Notice tone="mint">
-          <p className="text-body-sm">
+          <p className="text-body-sm" style={{ margin: 0 }}>
             제출했습니다. 지금까지 <span className="font-mono">v{versionCount}</span>개 버전이
-            남아 있습니다. 생각이 바뀌면 새 버전으로 다시 낼 수 있고,{' '}
-            <strong>처음 답은 지워지지 않습니다.</strong>
+            남아 있습니다. <strong>지금은 칸이 잠겨 있습니다.</strong> 고치려면 아래 버튼을
+            누르세요 — <strong>처음 답은 지워지지 않고</strong> 새 버전으로 쌓입니다.
           </p>
+          <div style={{ marginTop: 12 }}>
+            <Button variant="secondary" onClick={startRevising}>
+              고쳐 쓰기
+            </Button>
+          </div>
         </Notice>
       ) : null}
 
@@ -236,8 +262,8 @@ export function ResponseCollector({
 
       <div className="flex flex-wrap items-center gap-md no-print">
         {locked ? (
-          <Button variant="secondary" onClick={() => setRevising(true)}>
-            생각이 바뀌었습니다 — 새 버전으로 내기
+          <Button variant="secondary" onClick={startRevising}>
+            고쳐 쓰기 — 새 버전으로 남습니다
           </Button>
         ) : (
           <Button onClick={() => void submit()}>
