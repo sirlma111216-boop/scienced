@@ -16,12 +16,14 @@ import { Badge, Button, Caption, Card, Notice } from '@/components/ui'
  *  · 이름·학번·닉네임·uid 는 넣지 않는다. 서버에서도 한 번 더 지운다.
  */
 export function AiClusterPanel({
+  classId,
   lessonId,
   stepId,
   stepTitle,
   docs,
   proposals,
 }: {
+  classId: string
   lessonId: LessonId
   stepId: string
   stepTitle: string
@@ -81,7 +83,7 @@ export function AiClusterPanel({
         return
       }
       // 곧바로 쓰지 않는다. 제안으로 넣는다.
-      await repo.addAiProposal({
+      await repo.addAiProposal(classId, {
         id: `cl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
         taskId: 'cluster-responses',
         lessonId,

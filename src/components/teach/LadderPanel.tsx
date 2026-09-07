@@ -46,6 +46,7 @@ async function requestSeed(gameId: string, round: number, idToken: string | null
 }
 
 export function LadderPanel({
+  classId,
   lessonId,
   stepId,
   game,
@@ -53,6 +54,7 @@ export function LadderPanel({
   users,
   participation,
 }: {
+  classId: string
   lessonId: LessonId
   stepId: string
   game: GameDef
@@ -95,7 +97,7 @@ export function LadderPanel({
     setBusy(true)
     const seed = await requestSeed(game.id, round, null)
     const columns = Math.max(2, candidates.length || 6)
-    await repo.setLadder(lessonId, game.id, {
+    await repo.setLadder(classId, lessonId, game.id, {
       gameId: game.id,
       phase: 'seating',
       round,
@@ -113,7 +115,7 @@ export function LadderPanel({
 
   async function lock() {
     if (!repo || !state) return
-    await repo.setLadder(lessonId, game.id, { ...state, phase: 'locked' })
+    await repo.setLadder(classId, lessonId, game.id, { ...state, phase: 'locked' })
   }
 
   async function reveal() {
@@ -125,13 +127,13 @@ export function LadderPanel({
       .map((s) => state.seats?.[String(s)])
       .filter(Boolean) as string[]
 
-    await repo.setLadder(lessonId, game.id, {
+    await repo.setLadder(classId, lessonId, game.id, {
       ...state,
       phase: 'running',
       winnerUids,
       runAt: Date.now(),
     })
-    await repo.recordPick({
+    await repo.recordPick(classId, {
       id: `${game.id}-r${state.round}-${Date.now().toString(36)}`,
       lessonId,
       stepId,
@@ -148,7 +150,7 @@ export function LadderPanel({
     // 발표 횟수를 올린다. 다음 추첨에서 이 사람들의 확률이 낮아진다.
     for (const uid of winnerUids) {
       const cur = participation.find((p) => p.uid === uid)
-      await repo.bumpParticipation(uid, {
+      await repo.bumpParticipation(classId, uid, {
         presentCount: (cur?.presentCount ?? 0) + 1,
         lastPresentedLessonId: lessonId,
       })
@@ -169,14 +171,14 @@ export function LadderPanel({
     const winnerUids = game.weightByFewPresentations
       ? weightedDraw(state.seed, weights, game.winnerCount)
       : emergencyDraw(state.seed, pool, game.winnerCount)
-    await repo.setLadder(lessonId, game.id, {
+    await repo.setLadder(classId, lessonId, game.id, {
       ...state,
       phase: 'done',
       emergency: true,
       winnerUids,
       runAt: Date.now(),
     })
-    await repo.recordPick({
+    await repo.recordPick(classId, {
       id: `${game.id}-emg-${Date.now().toString(36)}`,
       lessonId,
       stepId,

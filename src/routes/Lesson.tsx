@@ -25,7 +25,7 @@ import { Badge, Button, Caption, ColorBlock, Notice, ScrollX } from '@/component
  */
 export function Lesson() {
   const { id } = useParams()
-  const { repo, isInstructor } = useAuth()
+  const { repo, isInstructor, classId } = useAuth()
   const lesson = getLesson(id ?? '')
   const [stepIndex, setStepIndex] = useState(0)
   const [session, setSession] = useState<SessionState | null>(null)
@@ -38,29 +38,29 @@ export function Lesson() {
   const step: Step | undefined = lesson?.steps[stepIndex]
 
   useEffect(() => {
-    if (!repo) return
-    return repo.watchPublished(setPublished)
-  }, [repo])
+    if (!repo || !classId) return
+    return repo.watchLessonState(classId, setPublished)
+  }, [repo, classId])
 
   useEffect(() => {
-    if (!repo || !lesson) return
-    return repo.watchSession(lesson.id, setSession)
-  }, [repo, lesson])
+    if (!repo || !lesson || !classId) return
+    return repo.watchSession(classId, lesson.id, setSession)
+  }, [repo, lesson, classId])
 
   useEffect(() => {
-    if (!repo) return
+    if (!repo || !classId) return
     const a = repo.watchUsers(setUsers)
-    const b = repo.watchParticipation(setParticipation)
+    const b = repo.watchParticipation(classId, setParticipation)
     return () => {
       a()
       b()
     }
-  }, [repo])
+  }, [repo, classId])
 
   useEffect(() => {
-    if (!repo || !lesson || !step) return
-    return repo.watchAllResponses(lesson.id, step.id, setAllDocs)
-  }, [repo, lesson, step])
+    if (!repo || !lesson || !step || !classId) return
+    return repo.watchAllResponses(classId, lesson.id, step.id, setAllDocs)
+  }, [repo, lesson, step, classId])
 
   if (!lesson) return <Navigate to="/" replace />
 
@@ -248,6 +248,7 @@ export function Lesson() {
             {step.fields.length > 0 || step.moduleComponent ? (
               <div style={{ marginTop: 32 }}>
                 <ResponseCollector
+                  classId={classId!}
                   lessonId={lesson.id}
                   step={step}
                   renderModule={
@@ -296,6 +297,7 @@ export function Lesson() {
                       {step.wall?.enabled ? (
                         <div style={{ marginTop: 32 }}>
                           <ShareBar
+                            classId={classId!}
                             lessonId={lesson.id}
                             stepId={step.id}
                             prompt={step.wall.prompt}
@@ -313,6 +315,7 @@ export function Lesson() {
             {step.picker?.enabled && game ? (
               <div style={{ marginTop: 48 }}>
                 <LadderGame
+                  classId={classId!}
                   lessonId={lesson.id}
                   game={game}
                   state={ladder}

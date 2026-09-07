@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process'
 const CHECKS = [
   ['verify:ladder', '사다리 — 전단사·가로줄 인접 금지·발표자 수·씨앗 재현성·좌우 이동률'],
   ['verify:lessons', '18개 차시 메타데이터 · 개념 여섯 층 · 강사 대본'],
+  ['verify:classes', '수강 클래스 격리 · 실명 분리 · 보안 규칙'],
   ['verify:content', '교재 OCR 오독과 72회 반복 템플릿 유입 차단'],
   ['verify:standards', '원문 대조 전 성취기준의 「대표 예시」 라벨'],
   ['verify:games', '18개 게임 등록 · mode 고유 · 1강 ladder'],

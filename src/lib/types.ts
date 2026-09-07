@@ -1,19 +1,91 @@
+import type { Affiliation } from '@/content/classes'
 import type { GameId, LessonId } from '@/content/types'
 
 /** 저장 계층이 주고받는 타입. Firestore 구현과 로컬 구현이 이 모양을 공유한다. */
 
 export type Role = 'instructor' | 'student'
 
+/* ─────────────────────────── 수강 클래스 ─────────────────────────── */
+
+export type ClassStatus = 'active' | 'archived'
+
+/**
+ * 학기별 수강 클래스.
+ *
+ * 모든 학생 자료는 이 문서의 하위 컬렉션 안에서만 움직인다.
+ * 다른 클래스의 자료는 어떤 경로로도 읽히지 않아야 한다 (firestore.rules 참고).
+ */
+export interface ClassDoc {
+  id: string
+  ownerUid: string
+  affiliation: Affiliation
+  year: number
+  term: string
+  days: string[]
+  startTime: string
+  endTime: string
+  credits: number
+  displayName: string
+  /** 칠판에 적어 주는 6자리 코드 */
+  joinCode: string
+  requireJoinCode: boolean
+  enrollmentOpen: boolean
+  /** archived 이면 읽기 전용. 학생도 강사도 새 글을 쓸 수 없다. */
+  status: ClassStatus
+  createdAt: number
+}
+
+/** 차시 공개 여부는 클래스마다 따로다. 새 클래스는 01만 열려 있다. */
+export interface LessonState {
+  lessonId: LessonId
+  published: boolean
+  publishedAt: number | null
+}
+
+/** 학생도 자기 것을 읽는다. 실명은 여기 없다. */
+export interface Enrollment {
+  uid: string
+  studentId: string | null
+  nickname: string
+  groupId: string | null
+  joinedAt: number
+  lastSeenAt: number
+  status: 'active' | 'ended'
+}
+
+/**
+ * ★ 강사만 읽고 쓴다. 학생은 자기 것도 읽지 못한다.
+ *
+ * Firestore 보안 규칙은 필드 단위 읽기 제어를 하지 못한다.
+ * 한 문서에 실명을 넣고 화면에서만 가리면 학생 브라우저로 문서 전체가 내려간다.
+ * 그래서 별도 하위 컬렉션으로 분리했다. 이 구조를 enrollments 와 합치지 마라.
+ */
+export interface RosterEntry {
+  uid: string
+  /** 강사가 손으로 적는 실명 */
+  rosterName: string
+  /** 자리·특이사항 등 수업 중 메모 */
+  memo: string
+}
+
 export interface AppUser {
   uid: string
   role: Role
   studentId: string | null
-  /** 실명. 강사만 볼 수 있다. */
+  /**
+   * 실명.
+   *
+   * 학생 실명은 여기 두지 않는다 — `classes/{cid}/roster/{uid}` 에 둔다.
+   * 이 문서는 본인이 읽을 수 있으므로, 실명을 여기 두면 학생 브라우저로 내려간다.
+   * 강사 계정의 표시명 정도로만 쓴다.
+   */
   displayName: string | null
   /** 화면에 보이는 이름은 언제나 이쪽이다. */
   nickname: string
   mustResetPassword: boolean
   groupId: string | null
+  /** 마지막으로 본 클래스. 여러 학기를 수강하면 클래스가 쌓인다. */
+  lastClassId: string | null
   createdAt: number
   lastLoginAt: number
 }

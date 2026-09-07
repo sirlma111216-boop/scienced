@@ -13,13 +13,13 @@ import { Badge, Caption, ColorBlock } from '@/components/ui'
  * 프론트에서 거르기만 하는 것이 아니라 Firestore 규칙에서도 막는다.
  */
 export function Home() {
-  const { user, repo, isInstructor } = useAuth()
+  const { user, repo, isInstructor, classId } = useAuth()
   const [published, setPublished] = useState<LessonId[]>([])
 
   useEffect(() => {
-    if (!repo) return
-    return repo.watchPublished(setPublished)
-  }, [repo])
+    if (!repo || !classId) return
+    return repo.watchLessonState(classId, setPublished)
+  }, [repo, classId])
 
   // 미공개 차시는 목록에서 통째로 뺀다. 강사에게만 전체가 보인다.
   const visible = isInstructor ? LESSONS : LESSONS.filter((l) => published.includes(l.id))

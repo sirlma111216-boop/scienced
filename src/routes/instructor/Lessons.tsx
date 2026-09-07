@@ -12,13 +12,13 @@ import { Badge, Button, Caption, ScrollX } from '@/components/ui'
  * 공개를 끌 때 "이미 제출한 응답은 남습니다. 학생 화면에서만 숨겨집니다"를 확인받는다.
  */
 export function InstructorLessons() {
-  const { repo } = useAuth()
+  const { repo, classId } = useAuth()
   const [published, setPublished] = useState<LessonId[]>([])
 
   useEffect(() => {
-    if (!repo) return
-    return repo.watchPublished(setPublished)
-  }, [repo])
+    if (!repo || !classId) return
+    return repo.watchLessonState(classId, setPublished)
+  }, [repo, classId])
 
   async function toggle(id: LessonId, next: boolean) {
     if (!next) {
@@ -27,7 +27,7 @@ export function InstructorLessons() {
       )
       if (!ok) return
     }
-    await repo?.setPublished(id, next)
+    if (classId) await repo?.setLessonPublished(classId, id, next)
   }
 
   return (

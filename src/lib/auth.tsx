@@ -20,16 +20,18 @@ import { getFirebaseAuth, getDb, studentIdToEmail } from './firebase'
 import { createFirestoreRepo } from './repo-firestore'
 import { createLocalRepo } from './repo-local'
 import { getRepo, setRepo, type Repo } from './repo'
-import type { AppUser, StorageMode } from './types'
+import type { AppUser, ClassDoc, Enrollment, StorageMode } from './types'
 
 /**
- * 인증.
+ * 인증과 현재 클래스.
  *
  * 학생은 학번 + 비밀번호로 들어온다. 학번은 존재하지 않는 도메인의 이메일로 매핑된다.
  * 메일 발송 기능은 쓰지 않는다.
  *
- * Firebase 설정이 없으면 로컬 저장 모드로 간다. 이때는 서버 계정 없이
- * 이 브라우저 안에서만 유효한 신원을 쓴다. 강의 당일 설정이 어긋나도 수업이 멈추지 않게 하기 위해서다.
+ * 로그인 다음에 클래스를 고른다. 클래스를 고르기 전에는 다른 화면에 갈 수 없다.
+ * 여러 학기를 수강하면 클래스가 쌓이므로 상단바에서 전환할 수 있다.
+ *
+ * Firebase 설정이 없으면 로컬 저장 모드로 간다.
  */
 
 interface AuthState {
@@ -39,6 +41,18 @@ interface AuthState {
   repo: Repo | null
   /** 강사 여부는 instructors/{uid} 문서 존재로만 판정한다. 클라이언트 boolean 을 믿지 않는다. */
   isInstructor: boolean
+
+  /** 지금 보고 있는 클래스 id. 고르기 전에는 null. */
+  classId: string | null
+  /** 지금 보고 있는 클래스 문서 */
+  currentClass: ClassDoc | null
+  /** 전체 클래스 (강사는 전부, 학생은 모집 중인 것과 자기가 등록한 것) */
+  classes: ClassDoc[]
+  /** 내가 등록한 클래스 id */
+  myClassIds: string[]
+  selectClass: (classId: string) => Promise<void>
+  enrollIn: (classId: string, joinCode?: string) => Promise<void>
+
   signInStudent: (studentId: string, password: string) => Promise<void>
   signInInstructor: (email: string, password: string) => Promise<void>
   signInLocal: (nickname: string, asInstructor: boolean) => Promise<void>
@@ -74,6 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null)
   const [isInstructor, setIsInstructor] = useState(false)
   const [mode, setMode] = useState<StorageMode>('local')
+  const [classes, setClasses] = useState<ClassDoc[]>([])
+  const [classId, setClassId] = useState<string | null>(null)
+  const [myEnrollments, setMyEnrollments] = useState<Record<string, Enrollment>>({})
   const repoRef = useRef<Repo | null>(null)
 
   // 저장소를 한 번만 고른다.
@@ -87,6 +104,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMode(repo.mode)
   }, [repo.mode])
+
+  useEffect(() => {
+    return repo.watchClasses(setClasses)
+  }, [repo])
+
+  /** 내가 어느 클래스에 등록되어 있는지 확인한다. */
+  useEffect(() => {
+    if (!user) {
+      setMyEnrollments({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const found: Record<string, Enrollment> = {}
+      for (const c of classes) {
+        const e = await repo.getEnrollment(c.id, user.uid)
+        if (e) found[c.id] = e
+      }
+      if (!cancelled) setMyEnrollments(found)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [repo, user, classes])
 
   /** 로그인한 uid 로 users/{uid} 와 instructors/{uid} 를 확인한다. */
   const loadProfile = useCallback(
@@ -113,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 처음 들어온 계정은 비밀번호와 닉네임을 정하고 시작한다.
         mustResetPassword: true,
         groupId: null,
+        lastClassId: null,
         createdAt: Date.now(),
         lastLoginAt: Date.now(),
       }
@@ -124,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await repo.upsertUser(next)
       setIsInstructor(instructor)
       setUser(next)
+      if (next.lastClassId) setClassId(next.lastClassId)
     },
     [repo],
   )
@@ -135,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const local = readLocalUser()
       setUser(local)
       setIsInstructor(local?.role === 'instructor')
+      if (local?.lastClassId) setClassId(local.lastClassId)
       setLoading(false)
       return
     }
@@ -142,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!fb) {
         setUser(null)
         setIsInstructor(false)
+        setClassId(null)
         setLoading(false)
         return
       }
@@ -149,6 +194,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
   }, [loadProfile])
+
+  const persistLastClass = useCallback(
+    async (cid: string) => {
+      if (!user) return
+      const next = { ...user, lastClassId: cid }
+      await repo.upsertUser(next)
+      if (!getFirebaseAuth()) writeLocalUser(next)
+      setUser(next)
+    },
+    [repo, user],
+  )
+
+  const selectClass = useCallback(
+    async (cid: string) => {
+      setClassId(cid)
+      await persistLastClass(cid)
+    },
+    [persistLastClass],
+  )
+
+  const enrollIn = useCallback(
+    async (cid: string, joinCode?: string) => {
+      if (!user) throw new Error('로그인이 필요합니다.')
+      const target = classes.find((c) => c.id === cid)
+      if (!target) throw new Error('그 클래스를 찾을 수 없습니다.')
+      if (target.status !== 'active') throw new Error('보관된 클래스에는 등록할 수 없습니다.')
+      if (!target.enrollmentOpen) throw new Error('수강 등록이 마감된 클래스입니다.')
+      if (target.requireJoinCode) {
+        const given = (joinCode ?? '').trim().toUpperCase()
+        if (given !== target.joinCode) throw new Error('참여 코드가 맞지 않습니다.')
+      }
+      await repo.enroll(cid, {
+        uid: user.uid,
+        studentId: user.studentId,
+        nickname: user.nickname,
+        groupId: null,
+        joinedAt: Date.now(),
+        lastSeenAt: Date.now(),
+        status: 'active',
+      })
+      setMyEnrollments((m) => ({
+        ...m,
+        [cid]: {
+          uid: user.uid,
+          studentId: user.studentId,
+          nickname: user.nickname,
+          groupId: null,
+          joinedAt: Date.now(),
+          lastSeenAt: Date.now(),
+          status: 'active',
+        },
+      }))
+      await selectClass(cid)
+    },
+    [repo, user, classes, selectClass],
+  )
 
   const signInStudent = useCallback(async (studentId: string, password: string) => {
     const auth = getFirebaseAuth()
@@ -172,6 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         nickname: nickname.trim() || '이름 없음',
         mustResetPassword: false,
         groupId: null,
+        lastClassId: null,
         createdAt: Date.now(),
         lastLoginAt: Date.now(),
       }
@@ -189,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else writeLocalUser(null)
     setUser(null)
     setIsInstructor(false)
+    setClassId(null)
   }, [])
 
   const completeReset = useCallback(
@@ -216,8 +319,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await repo.upsertUser(next)
       if (!getFirebaseAuth()) writeLocalUser(next)
       setUser(next)
+      // 등록된 클래스의 표시 이름도 함께 바꾼다.
+      for (const cid of Object.keys(myEnrollments)) {
+        await repo.updateEnrollment(cid, user.uid, { nickname: next.nickname })
+      }
     },
-    [repo, user],
+    [repo, user, myEnrollments],
+  )
+
+  const myClassIds = useMemo(() => Object.keys(myEnrollments), [myEnrollments])
+  const currentClass = useMemo(
+    () => classes.find((c) => c.id === classId) ?? null,
+    [classes, classId],
   )
 
   const value = useMemo<AuthState>(
@@ -227,6 +340,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       repo,
       isInstructor,
+      classId,
+      currentClass,
+      classes,
+      myClassIds,
+      selectClass,
+      enrollIn,
       signInStudent,
       signInInstructor,
       signInLocal,
@@ -240,6 +359,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       repo,
       isInstructor,
+      classId,
+      currentClass,
+      classes,
+      myClassIds,
+      selectClass,
+      enrollIn,
       signInStudent,
       signInInstructor,
       signInLocal,
@@ -261,4 +386,14 @@ export function useAuth(): AuthState {
 /** 컴포넌트에서 저장소를 바로 쓸 때. */
 export function useRepo(): Repo {
   return getRepo()
+}
+
+/**
+ * 클래스가 정해진 화면에서만 쓴다.
+ * 클래스가 없으면 던진다 — 라우트 가드가 그 전에 막아야 한다는 뜻이다.
+ */
+export function useClassId(): string {
+  const { classId } = useAuth()
+  if (!classId) throw new Error('클래스를 먼저 골라야 합니다.')
+  return classId
 }

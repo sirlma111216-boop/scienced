@@ -37,29 +37,29 @@ function reasonOf(payload: Record<string, unknown> | undefined): string {
 }
 
 export function InstructorAnalytics() {
-  const { repo, isInstructor } = useAuth()
+  const { repo, isInstructor, classId } = useAuth()
   const [rows, setRows] = useState<Record<string, Row>>({})
   const [users, setUsers] = useState<AppUser[]>([])
   const [participation, setParticipation] = useState<Participation[]>([])
 
   useEffect(() => {
-    if (!repo) return
+    if (!repo || !classId) return
     const a = repo.watchUsers(setUsers)
-    const b = repo.watchParticipation(setParticipation)
+    const b = repo.watchParticipation(classId, setParticipation)
     return () => {
       a()
       b()
     }
-  }, [repo])
+  }, [repo, classId])
 
   useEffect(() => {
-    if (!repo) return
+    if (!repo || !classId) return
     const unsubs: Array<() => void> = []
     for (const l of LESSONS) {
       for (const s of l.steps) {
         const key = `${l.id}/${s.id}`
         unsubs.push(
-          repo.watchAllResponses(l.id, s.id, (docs) =>
+          repo.watchAllResponses(classId, l.id, s.id, (docs: ResponseDoc[]) =>
             setRows((prev) => ({
               ...prev,
               [key]: {
@@ -74,7 +74,7 @@ export function InstructorAnalytics() {
         )
         if (s.wall?.enabled) {
           unsubs.push(
-            repo.watchPosts(l.id, s.id, (posts) =>
+            repo.watchPosts(classId, l.id, s.id, (posts: Post[]) =>
               setRows((prev) => ({
                 ...prev,
                 [key]: {
@@ -91,7 +91,7 @@ export function InstructorAnalytics() {
       }
     }
     return () => unsubs.forEach((u) => u())
-  }, [repo])
+  }, [repo, classId])
 
   const all = useMemo(() => Object.values(rows).filter((r) => r.docs.length > 0), [rows])
 

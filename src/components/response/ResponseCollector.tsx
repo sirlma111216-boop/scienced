@@ -22,12 +22,14 @@ const AUTOSAVE_MS = 800
 export const MODULE_KEY = '__module'
 
 export function ResponseCollector({
+  classId,
   lessonId,
   step,
   onSubmitted,
   renderModule,
   children,
 }: {
+  classId: string
   lessonId: LessonId
   step: Step
   onSubmitted?: (payload: Record<string, unknown>) => void
@@ -58,7 +60,7 @@ export function ResponseCollector({
 
   useEffect(() => {
     if (!repo || !uid) return
-    return repo.watchResponse(lessonId, step.id, uid, (d) => {
+    return repo.watchResponse(classId, lessonId, step.id, uid, (d) => {
       setDoc(d)
       if (hydrated.current) return
       hydrated.current = true
@@ -66,7 +68,7 @@ export function ResponseCollector({
       const latest = d?.versions?.[d.versions.length - 1]
       setValues(d?.draft?.payload ?? latest?.payload ?? {})
     })
-  }, [repo, uid, lessonId, step.id])
+  }, [repo, uid, classId, lessonId, step.id])
 
   const submitted = (doc?.latestV ?? 0) > 0
 
@@ -76,10 +78,10 @@ export function ResponseCollector({
       if (!repo || !uid) return
       if (timer.current) window.clearTimeout(timer.current)
       timer.current = window.setTimeout(() => {
-        void repo.saveDraft(lessonId, step.id, uid, next).then(() => setSavedAt(Date.now()))
+        void repo.saveDraft(classId, lessonId, step.id, uid, next).then(() => setSavedAt(Date.now()))
       }, AUTOSAVE_MS)
     },
-    [repo, uid, lessonId, step.id],
+    [repo, uid, classId, lessonId, step.id],
   )
 
   useEffect(
@@ -145,7 +147,7 @@ export function ResponseCollector({
     }
     const confidenceField = step.fields.find((f) => f.kind === 'confidence')
     const confidence = confidenceField ? Number(values[confidenceField.key] ?? 3) : null
-    await repo.submitResponse(lessonId, step.id, uid, values, {
+    await repo.submitResponse(classId, lessonId, step.id, uid, values, {
       confidence,
       changedReason: submitted ? changedReason.trim() : null,
     })

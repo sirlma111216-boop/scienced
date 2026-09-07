@@ -1,5 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { buildShortName } from '@/content/classes'
 import { useAuth } from '@/lib/auth'
 import { Badge, Button, usePresent } from '@/components/ui'
 
@@ -33,9 +34,14 @@ export function AppShell({
   onSelectStep?: (id: string) => void
   title?: string
 }) {
-  const { user, mode, isInstructor, signOut } = useAuth()
+  const { user, mode, isInstructor, signOut, currentClass, classes, myClassIds, selectClass } =
+    useAuth()
   const { present, toggle } = usePresent()
   const navigate = useNavigate()
+  const [switching, setSwitching] = useState(false)
+
+  // 강사는 모든 클래스를, 학생은 자기가 등록한 클래스만 전환할 수 있다.
+  const switchable = isInstructor ? classes : classes.filter((c) => myClassIds.includes(c.id))
 
   return (
     <div className="min-h-screen bg-canvas text-ink flex flex-col">
@@ -51,6 +57,62 @@ export function AppShell({
           <Link to="/" className="btn-tertiary" style={{ paddingLeft: 0 }}>
             <span style={{ fontWeight: 540 }}>Science Lesson Studio</span>
           </Link>
+
+          {/* 지금 어느 학기를 보고 있는지 항상 보인다. 여러 클래스면 눌러서 전환한다. */}
+          {currentClass ? (
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className="tab"
+                aria-haspopup={switchable.length > 1 ? 'listbox' : undefined}
+                aria-expanded={switching}
+                disabled={switchable.length <= 1}
+                onClick={() => setSwitching((s) => !s)}
+                style={{ fontSize: 13, minHeight: 36, padding: '4px 12px', whiteSpace: 'nowrap' }}
+              >
+                {buildShortName(currentClass)}
+                {currentClass.status === 'archived' ? ' · 보관' : ''}
+                {switchable.length > 1 ? <span aria-hidden> ▾</span> : null}
+              </button>
+              {switching && switchable.length > 1 ? (
+                <ul
+                  role="listbox"
+                  aria-label="클래스 전환"
+                  className="bg-canvas rounded-md"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: 0,
+                    minWidth: 280,
+                    listStyle: 'none',
+                    padding: 6,
+                    margin: 0,
+                    zIndex: 40,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.06), inset 0 0 0 1px #e6e6e6',
+                  }}
+                >
+                  {switchable.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={c.id === currentClass.id}
+                        className="btn-tertiary"
+                        style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}
+                        onClick={() => {
+                          void selectClass(c.id)
+                          setSwitching(false)
+                        }}
+                      >
+                        {c.id === currentClass.id ? '● ' : '○ '}
+                        {c.displayName}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
 
           {title ? (
             <span className="caption hidden md:inline" style={{ opacity: 0.6 }}>

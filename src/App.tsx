@@ -9,12 +9,15 @@ import { Portfolio } from '@/routes/Portfolio'
 import { ConceptMap } from '@/routes/ConceptMap'
 import { Microteaching } from '@/routes/Microteaching'
 import { Curriculum } from '@/routes/Curriculum'
+import { ClassSelect } from '@/routes/ClassSelect'
 import { InstructorDashboard } from '@/routes/instructor/Dashboard'
 import { InstructorLessons } from '@/routes/instructor/Lessons'
 import { InstructorLive } from '@/routes/instructor/Live'
 import { InstructorStudents } from '@/routes/instructor/Students'
 import { InstructorAnalytics } from '@/routes/instructor/Analytics'
 import { InstructorAiReview } from '@/routes/instructor/AiReview'
+import { InstructorClasses } from '@/routes/instructor/Classes'
+import { InstructorClassStudents } from '@/routes/instructor/ClassStudents'
 
 /**
  * 라우트 보호 (지시서 4.5).
@@ -23,8 +26,17 @@ import { InstructorAiReview } from '@/routes/instructor/AiReview'
  *  - 학생이 /instructor/* → 403 안내
  *  - 미공개 차시 내용은 전송하지 않는다 (차시 화면과 Firestore 규칙 양쪽에서)
  */
-function Guard({ children, instructorOnly }: { children: React.ReactNode; instructorOnly?: boolean }) {
-  const { user, loading, isInstructor } = useAuth()
+function Guard({
+  children,
+  instructorOnly,
+  /** 클래스 없이도 열리는 화면 (클래스 선택·클래스 관리) */
+  classOptional,
+}: {
+  children: React.ReactNode
+  instructorOnly?: boolean
+  classOptional?: boolean
+}) {
+  const { user, loading, isInstructor, classId } = useAuth()
   const loc = useLocation()
 
   if (loading) {
@@ -38,6 +50,8 @@ function Guard({ children, instructorOnly }: { children: React.ReactNode; instru
   if (user.mustResetPassword && loc.pathname !== '/reset-password') {
     return <Navigate to="/reset-password" replace />
   }
+  // 클래스를 하나도 고르지 않으면 다른 화면에 접근할 수 없다 (2차 지시서 A.4).
+  if (!classOptional && !classId) return <Navigate to="/class" replace />
   if (instructorOnly && !isInstructor) {
     return (
       <div className="shell" style={{ paddingTop: 96, maxWidth: 640 }}>
@@ -61,6 +75,15 @@ export function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+
+          <Route
+            path="/class"
+            element={
+              <Guard classOptional>
+                <ClassSelect />
+              </Guard>
+            }
+          />
 
           <Route
             path="/"
@@ -112,9 +135,26 @@ export function App() {
           />
 
           <Route
+            path="/instructor/classes"
+            element={
+              <Guard instructorOnly classOptional>
+                <InstructorClasses />
+              </Guard>
+            }
+          />
+          <Route
+            path="/instructor/class/:classId/students"
+            element={
+              <Guard instructorOnly classOptional>
+                <InstructorClassStudents />
+              </Guard>
+            }
+          />
+
+          <Route
             path="/instructor"
             element={
-              <Guard instructorOnly>
+              <Guard instructorOnly classOptional>
                 <InstructorDashboard />
               </Guard>
             }

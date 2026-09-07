@@ -27,16 +27,16 @@ const TASK_LABEL: Record<string, string> = {
 }
 
 export function InstructorAiReview() {
-  const { user, repo, isInstructor } = useAuth()
+  const { user, repo, isInstructor, classId } = useAuth()
   const [list, setList] = useState<AiProposal[]>([])
   const [filter, setFilter] = useState<'pending' | 'accepted' | 'rejected' | 'all'>('pending')
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [reasons, setReasons] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (!repo) return
-    return repo.watchAiProposals(setList)
-  }, [repo])
+    if (!repo || !classId) return
+    return repo.watchAiProposals(classId, setList)
+  }, [repo, classId])
 
   const shown = useMemo(() => {
     const sorted = [...list].sort((a, b) => b.createdAt - a.createdAt)
@@ -58,11 +58,12 @@ export function InstructorAiReview() {
     p: AiProposal,
     status: AiProposal['status'],
   ) {
-    if (!repo || !user) return
+    if (!repo || !user || !classId) return
     if (status === 'rejected' && !reasons[p.id]?.trim()) {
       return
     }
     await repo.reviewAiProposal(
+      classId,
       p.id,
       {
         edited: drafts[p.id] ?? p.edited,

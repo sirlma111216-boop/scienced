@@ -4,12 +4,15 @@ import type { Repo } from './repo'
 import type {
   AiProposal,
   AppUser,
+  ClassDoc,
+  Enrollment,
   Group,
   Participation,
   PickRecord,
   Post,
   ResponseDoc,
   ResponseVersion,
+  RosterEntry,
   SessionState,
 } from './types'
 
@@ -21,6 +24,9 @@ import type {
  *
  * 강의 당일 네트워크나 Firebase 설정이 어긋나도 수업이 멈추지 않게 하려고 둔 폴백이다.
  * 데이터는 이 브라우저에만 남는다. 다른 기기·다른 브라우저에는 가지 않는다.
+ *
+ * 클래스 분리는 여기서도 지킨다 — 모든 키에 classId 가 들어간다.
+ * 그래야 로컬 모드로 리허설할 때도 실제와 같은 경계를 확인할 수 있다.
  */
 
 const NS = 'sls.v1'
@@ -58,13 +64,24 @@ function subscribe(run: () => void): () => void {
   return () => listeners.delete(run)
 }
 
-const responseKey = (l: string, s: string, uid: string) => `res.${l}.${s}.${uid}`
-const postsKey = (l: string, s: string) => `posts.${l}.${s}`
-const sessionKey = (l: string) => `session.${l}`
+/* 모든 키가 클래스로 시작한다. 클래스가 다르면 키가 겹칠 수 없다. */
+const kResponse = (c: string, l: string, s: string, uid: string) => `c.${c}.res.${l}.${s}.${uid}`
+const kPosts = (c: string, l: string, s: string) => `c.${c}.posts.${l}.${s}`
+const kSession = (c: string, l: string) => `c.${c}.session.${l}`
+const kPicks = (c: string) => `c.${c}.picks`
+const kGroups = (c: string) => `c.${c}.groups`
+const kParticipation = (c: string) => `c.${c}.participation`
+const kPublished = (c: string) => `c.${c}.published`
+const kEnrollments = (c: string) => `c.${c}.enrollments`
+const kRoster = (c: string) => `c.${c}.roster`
+const kProposals = (c: string) => `c.${c}.aiProposals`
 
 function newId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
+
+/** 새 클래스는 01만 열려 있다. */
+const seedPublished = (): LessonId[] => LESSONS.filter((l) => l.published).map((l) => l.id)
 
 export function createLocalRepo(): Repo {
   return {
@@ -86,9 +103,73 @@ export function createLocalRepo(): Repo {
       })
     },
 
+    /* ── 수강 클래스 ── */
+    watchClasses(cb) {
+      return subscribe(() => cb(read<ClassDoc[]>('classes', [])))
+    },
+    async createClass(c) {
+      const list = read<ClassDoc[]>('classes', [])
+      write('classes', [...list, c])
+      // 새 클래스는 01강만 공개 상태로 시작한다.
+      write(kPublished(c.id), seedPublished())
+    },
+    async updateClass(classId, patch) {
+      const list = read<ClassDoc[]>('classes', [])
+      write(
+        'classes',
+        list.map((c) => (c.id === classId ? { ...c, ...patch } : c)),
+      )
+    },
+
+    /* ── 차시 공개 ── */
+    watchLessonState(classId, cb) {
+      return subscribe(() => cb(read<LessonId[]>(kPublished(classId), seedPublished())))
+    },
+    async setLessonPublished(classId, lessonId, published) {
+      const cur = read<LessonId[]>(kPublished(classId), seedPublished())
+      const next = published
+        ? [...new Set([...cur, lessonId])]
+        : cur.filter((x) => x !== lessonId)
+      write(kPublished(classId), next.sort())
+    },
+
+    /* ── 수강 등록 ── */
+    watchEnrollments(classId, cb) {
+      return subscribe(() => cb(read<Enrollment[]>(kEnrollments(classId), [])))
+    },
+    async getEnrollment(classId, uid) {
+      return read<Enrollment[]>(kEnrollments(classId), []).find((e) => e.uid === uid) ?? null
+    },
+    async enroll(classId, e) {
+      const list = read<Enrollment[]>(kEnrollments(classId), [])
+      if (list.some((x) => x.uid === e.uid)) return
+      write(kEnrollments(classId), [...list, e])
+    },
+    async updateEnrollment(classId, uid, patch) {
+      const list = read<Enrollment[]>(kEnrollments(classId), [])
+      write(
+        kEnrollments(classId),
+        list.map((e) => (e.uid === uid ? { ...e, ...patch } : e)),
+      )
+    },
+
+    /* ── 명단 실명 (강사만) ── */
+    watchRoster(classId, cb) {
+      return subscribe(() => cb(read<RosterEntry[]>(kRoster(classId), [])))
+    },
+    async setRosterEntry(classId, uid, patch) {
+      const list = read<RosterEntry[]>(kRoster(classId), [])
+      const i = list.findIndex((r) => r.uid === uid)
+      const base: RosterEntry = list[i] ?? { uid, rosterName: '', memo: '' }
+      const next = { ...base, ...patch }
+      if (i >= 0) list[i] = next
+      else list.push(next)
+      write(kRoster(classId), list)
+    },
+
     /* ── 응답 ── */
-    async saveDraft(lessonId, stepId, uid, payload) {
-      const key = responseKey(lessonId, stepId, uid)
+    async saveDraft(classId, lessonId, stepId, uid, payload) {
+      const key = kResponse(classId, lessonId, stepId, uid)
       const doc = read<ResponseDoc | null>(key, null)
       write(key, {
         uid,
@@ -99,8 +180,8 @@ export function createLocalRepo(): Repo {
       } satisfies ResponseDoc)
     },
 
-    async submitResponse(lessonId, stepId, uid, payload, opts) {
-      const key = responseKey(lessonId, stepId, uid)
+    async submitResponse(classId, lessonId, stepId, uid, payload, opts) {
+      const key = kResponse(classId, lessonId, stepId, uid)
       const doc = read<ResponseDoc | null>(key, null)
       const versions = doc?.versions ?? []
       const next: ResponseVersion = {
@@ -120,32 +201,34 @@ export function createLocalRepo(): Repo {
       } satisfies ResponseDoc)
     },
 
-    async getResponse(lessonId, stepId, uid) {
-      return read<ResponseDoc | null>(responseKey(lessonId, stepId, uid), null)
+    async getResponse(classId, lessonId, stepId, uid) {
+      return read<ResponseDoc | null>(kResponse(classId, lessonId, stepId, uid), null)
     },
 
-    watchResponse(lessonId, stepId, uid, cb) {
-      return subscribe(() => cb(read<ResponseDoc | null>(responseKey(lessonId, stepId, uid), null)))
+    watchResponse(classId, lessonId, stepId, uid, cb) {
+      return subscribe(() =>
+        cb(read<ResponseDoc | null>(kResponse(classId, lessonId, stepId, uid), null)),
+      )
     },
 
-    watchAllResponses(lessonId, stepId, cb) {
-      // 로컬 모드에서는 본인 것만 있다. 그래서 분포도 1명짜리다.
+    watchAllResponses(classId, lessonId, stepId, cb) {
+      // 로컬 모드에서는 이 브라우저의 사용자 것만 있다. 그래서 분포도 작다.
       return subscribe(() => {
         const ids = read<string[]>('users', [])
         const docs = ids
-          .map((uid) => read<ResponseDoc | null>(responseKey(lessonId, stepId, uid), null))
+          .map((uid) => read<ResponseDoc | null>(kResponse(classId, lessonId, stepId, uid), null))
           .filter(Boolean) as ResponseDoc[]
         cb(docs)
       })
     },
 
     /* ── 의견 광장 ── */
-    watchPosts(lessonId, stepId, cb) {
-      return subscribe(() => cb(read<Post[]>(postsKey(lessonId, stepId), [])))
+    watchPosts(classId, lessonId, stepId, cb) {
+      return subscribe(() => cb(read<Post[]>(kPosts(classId, lessonId, stepId), [])))
     },
 
-    async addPost(lessonId, stepId, post) {
-      const key = postsKey(lessonId, stepId)
+    async addPost(classId, lessonId, stepId, post) {
+      const key = kPosts(classId, lessonId, stepId)
       const posts = read<Post[]>(key, [])
       const now = Date.now()
       posts.push({
@@ -165,8 +248,8 @@ export function createLocalRepo(): Repo {
       write(key, posts)
     },
 
-    async revisePost(lessonId, stepId, postId, content, changedReason) {
-      const key = postsKey(lessonId, stepId)
+    async revisePost(classId, lessonId, stepId, postId, content, changedReason) {
+      const key = kPosts(classId, lessonId, stepId)
       const posts = read<Post[]>(key, [])
       const p = posts.find((x) => x.id === postId)
       if (!p) return
@@ -176,22 +259,22 @@ export function createLocalRepo(): Repo {
       write(key, posts)
     },
 
-    async toggleReaction(lessonId, stepId, postId, uid, reaction) {
-      const key = postsKey(lessonId, stepId)
+    async toggleReaction(classId, lessonId, stepId, postId, uid, reaction) {
+      const key = kPosts(classId, lessonId, stepId)
       const posts = read<Post[]>(key, [])
       const p = posts.find((x) => x.id === postId)
       if (!p) return
+      const had = (p.reactions?.[reaction] ?? []).includes(uid)
       // 한 사람이 한 글에 하나만. 다른 반응을 누르면 옮겨 간다.
       for (const k of Object.keys(p.reactions)) {
         p.reactions[k] = (p.reactions[k] ?? []).filter((u) => u !== uid)
       }
-      const had = read<Post[]>(key, []).find((x) => x.id === postId)?.reactions[reaction]?.includes(uid)
       if (!had) p.reactions[reaction] = [...(p.reactions[reaction] ?? []), uid]
       write(key, posts)
     },
 
-    async addComment(lessonId, stepId, postId, comment) {
-      const key = postsKey(lessonId, stepId)
+    async addComment(classId, lessonId, stepId, postId, comment) {
+      const key = kPosts(classId, lessonId, stepId)
       const posts = read<Post[]>(key, [])
       const p = posts.find((x) => x.id === postId)
       if (!p) return
@@ -199,15 +282,15 @@ export function createLocalRepo(): Repo {
       write(key, posts)
     },
 
-    async pinPost(lessonId, stepId, postId, pinned) {
-      const key = postsKey(lessonId, stepId)
+    async pinPost(classId, lessonId, stepId, postId, pinned) {
+      const key = kPosts(classId, lessonId, stepId)
       const posts = read<Post[]>(key, [])
       for (const p of posts) if (p.id === postId) p.isPinned = pinned
       write(key, posts)
     },
 
-    async hidePost(lessonId, stepId, postId, hidden, reason) {
-      const key = postsKey(lessonId, stepId)
+    async hidePost(classId, lessonId, stepId, postId, hidden, reason) {
+      const key = kPosts(classId, lessonId, stepId)
       const posts = read<Post[]>(key, [])
       for (const p of posts) {
         if (p.id !== postId) continue
@@ -217,8 +300,8 @@ export function createLocalRepo(): Repo {
       write(key, posts)
     },
 
-    async deletePost(lessonId, stepId, postId, uid) {
-      const key = postsKey(lessonId, stepId)
+    async deletePost(classId, lessonId, stepId, postId, uid) {
+      const key = kPosts(classId, lessonId, stepId)
       const posts = read<Post[]>(key, [])
       // 삭제는 작성자만.
       write(
@@ -228,12 +311,12 @@ export function createLocalRepo(): Repo {
     },
 
     /* ── 진행 세션 ── */
-    watchSession(lessonId, cb) {
-      return subscribe(() => cb(read<SessionState | null>(sessionKey(lessonId), null)))
+    watchSession(classId, lessonId, cb) {
+      return subscribe(() => cb(read<SessionState | null>(kSession(classId, lessonId), null)))
     },
 
-    async setSession(lessonId, patch) {
-      const key = sessionKey(lessonId)
+    async setSession(classId, lessonId, patch) {
+      const key = kSession(classId, lessonId)
       const cur = read<SessionState | null>(key, null)
       write(key, {
         lessonId,
@@ -251,8 +334,8 @@ export function createLocalRepo(): Repo {
     },
 
     /* ── 사다리 ── */
-    async joinLadder(lessonId, gameId, uid) {
-      const key = sessionKey(lessonId)
+    async joinLadder(classId, lessonId, gameId, uid) {
+      const key = kSession(classId, lessonId)
       const s = read<SessionState | null>(key, null)
       if (!s?.ladders?.[gameId]) return
       const l = s.ladders[gameId]!
@@ -262,8 +345,8 @@ export function createLocalRepo(): Repo {
       }
     },
 
-    async claimLadderSeat(lessonId, gameId, seat, uid) {
-      const key = sessionKey(lessonId)
+    async claimLadderSeat(classId, lessonId, gameId, seat, uid) {
+      const key = kSession(classId, lessonId)
       const s = read<SessionState | null>(key, null)
       const l = s?.ladders?.[gameId]
       if (!s || !l) return false
@@ -277,8 +360,8 @@ export function createLocalRepo(): Repo {
       return true
     },
 
-    async setLadder(lessonId, gameId, state) {
-      const key = sessionKey(lessonId)
+    async setLadder(classId, lessonId, gameId, state) {
+      const key = kSession(classId, lessonId)
       const s = read<SessionState | null>(key, null)
       write(key, {
         lessonId,
@@ -294,27 +377,27 @@ export function createLocalRepo(): Repo {
       } as SessionState)
     },
 
-    async recordPick(pick) {
-      const picks = read<PickRecord[]>('picks', [])
-      write('picks', [...picks, pick])
+    async recordPick(classId, pick) {
+      const picks = read<PickRecord[]>(kPicks(classId), [])
+      write(kPicks(classId), [...picks, pick])
     },
 
-    watchPicks(cb) {
-      return subscribe(() => cb(read<PickRecord[]>('picks', [])))
+    watchPicks(classId, cb) {
+      return subscribe(() => cb(read<PickRecord[]>(kPicks(classId), [])))
     },
 
     /* ── 모둠·참여 ── */
-    watchGroups(cb) {
-      return subscribe(() => cb(read<Group[]>('groups', [])))
+    watchGroups(classId, cb) {
+      return subscribe(() => cb(read<Group[]>(kGroups(classId), [])))
     },
-    async setGroups(groups) {
-      write('groups', groups)
+    async setGroups(classId, groups) {
+      write(kGroups(classId), groups)
     },
-    watchParticipation(cb) {
-      return subscribe(() => cb(read<Participation[]>('participation', [])))
+    watchParticipation(classId, cb) {
+      return subscribe(() => cb(read<Participation[]>(kParticipation(classId), [])))
     },
-    async bumpParticipation(uid, patch) {
-      const list = read<Participation[]>('participation', [])
+    async bumpParticipation(classId, uid, patch) {
+      const list = read<Participation[]>(kParticipation(classId), [])
       const i = list.findIndex((p) => p.uid === uid)
       const base: Participation = list[i] ?? {
         uid,
@@ -327,38 +410,27 @@ export function createLocalRepo(): Repo {
       const next = { ...base, ...patch }
       if (i >= 0) list[i] = next
       else list.push(next)
-      write('participation', list)
-    },
-
-    /* ── 공개 제어 ── */
-    watchPublished(cb) {
-      return subscribe(() => {
-        const seed = LESSONS.filter((l) => l.published).map((l) => l.id)
-        cb(read<LessonId[]>('published', seed))
-      })
-    },
-    async setPublished(lessonId, published) {
-      const seed = LESSONS.filter((l) => l.published).map((l) => l.id)
-      const cur = read<LessonId[]>('published', seed)
-      const next = published ? [...new Set([...cur, lessonId])] : cur.filter((x) => x !== lessonId)
-      write('published', next.sort())
+      write(kParticipation(classId), list)
     },
 
     /* ── AI 제안 ── */
-    async addAiProposal(p) {
-      const list = read<AiProposal[]>('aiProposals', [])
+    async addAiProposal(classId, p) {
+      const list = read<AiProposal[]>(kProposals(classId), [])
       // 언제나 pending 으로 들어간다. 호출자가 status 를 바꿔 보내도 무시한다.
-      write('aiProposals', [...list, { ...p, status: 'pending', reviewedAt: null, reviewedBy: null }])
+      write(kProposals(classId), [
+        ...list,
+        { ...p, status: 'pending', reviewedAt: null, reviewedBy: null },
+      ])
     },
 
-    watchAiProposals(cb) {
-      return subscribe(() => cb(read<AiProposal[]>('aiProposals', [])))
+    watchAiProposals(classId, cb) {
+      return subscribe(() => cb(read<AiProposal[]>(kProposals(classId), [])))
     },
 
-    async reviewAiProposal(id, patch, reviewedBy) {
-      const list = read<AiProposal[]>('aiProposals', [])
+    async reviewAiProposal(classId, id, patch, reviewedBy) {
+      const list = read<AiProposal[]>(kProposals(classId), [])
       write(
-        'aiProposals',
+        kProposals(classId),
         list.map((p) =>
           p.id !== id
             ? p

@@ -19,12 +19,14 @@ import { PickerVisual } from './PickerVisual'
  */
 
 export function LadderGame({
+  classId,
   lessonId,
   game,
   state,
   nicknames,
   weights,
 }: {
+  classId: string
   lessonId: LessonId
   game: GameDef
   state: LadderState | null
@@ -71,7 +73,7 @@ export function LadderGame({
   async function claim(seat: number) {
     if (!repo || !user) return
     setConflict(null)
-    const ok = await repo.claimLadderSeat(lessonId, game.id, seat, user.uid)
+    const ok = await repo.claimLadderSeat(classId, lessonId, game.id, seat, user.uid)
     if (!ok) setConflict('방금 다른 분이 그 자리를 가져갔습니다. 다른 자리를 골라 주세요.')
   }
 

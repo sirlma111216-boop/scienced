@@ -9,22 +9,22 @@ import { Badge, Caption, ColorBlock, ScrollX } from '@/components/ui'
 
 /** 강사 대시보드. */
 export function InstructorDashboard() {
-  const { repo, isInstructor } = useAuth()
+  const { repo, isInstructor, classId } = useAuth()
   const [published, setPublished] = useState<LessonId[]>([])
   const [users, setUsers] = useState<AppUser[]>([])
   const [picks, setPicks] = useState<PickRecord[]>([])
 
   useEffect(() => {
-    if (!repo) return
-    const a = repo.watchPublished(setPublished)
+    if (!repo || !classId) return
+    const a = repo.watchLessonState(classId, setPublished)
     const b = repo.watchUsers(setUsers)
-    const c = repo.watchPicks(setPicks)
+    const c = repo.watchPicks(classId, setPicks)
     return () => {
       a()
       b()
       c()
     }
-  }, [repo])
+  }, [repo, classId])
 
   if (!isInstructor) return <Navigate to="/" replace />
 
@@ -46,6 +46,14 @@ export function InstructorDashboard() {
           marginTop: 32,
         }}
       >
+        <Link to="/instructor/classes" className="tile" style={{ color: 'inherit' }}>
+          <p className="text-card-title" style={{ margin: 0 }}>
+            수강 클래스
+          </p>
+          <p className="text-body-sm" style={{ marginTop: 8 }}>
+            학기마다 따로 · 자료가 섞이지 않습니다
+          </p>
+        </Link>
         <Link to="/instructor/lessons" className="tile" style={{ color: 'inherit' }}>
           <p className="text-card-title" style={{ margin: 0 }}>
             차시

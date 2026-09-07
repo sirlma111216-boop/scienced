@@ -35,11 +35,13 @@ function relativeTime(ts: number): string {
 /* ─────────────────────────── ShareBar ─────────────────────────── */
 
 export function ShareBar({
+  classId,
   lessonId,
   stepId,
   prompt,
   unlocked,
 }: {
+  classId: string
   lessonId: LessonId
   stepId: string
   prompt: string
@@ -53,8 +55,8 @@ export function ShareBar({
 
   useEffect(() => {
     if (!repo || !unlocked) return
-    return repo.watchPosts(lessonId, stepId, setPosts)
-  }, [repo, lessonId, stepId, unlocked])
+    return repo.watchPosts(classId, lessonId, stepId, setPosts)
+  }, [repo, classId, lessonId, stepId, unlocked])
 
   if (!unlocked) {
     return (
@@ -83,6 +85,7 @@ export function ShareBar({
 
       {composing ? (
         <ComposeDialog
+          classId={classId}
           lessonId={lessonId}
           stepId={stepId}
           prompt={prompt}
@@ -96,6 +99,7 @@ export function ShareBar({
 
       {open ? (
         <WallDialog
+          classId={classId}
           lessonId={lessonId}
           stepId={stepId}
           prompt={prompt}
@@ -181,12 +185,14 @@ function Dialog({
 /* ─────────────────────────── 쓰기 ─────────────────────────── */
 
 function ComposeDialog({
+  classId,
   lessonId,
   stepId,
   prompt,
   onClose,
   onDone,
 }: {
+  classId: string
   lessonId: LessonId
   stepId: string
   prompt: string
@@ -203,13 +209,13 @@ function ComposeDialog({
       setError('내용을 적어 주세요.')
       return
     }
-    await repo.addPost(lessonId, stepId, {
+    await repo.addPost(classId, lessonId, stepId, {
       uid: user.uid,
       nickname: user.nickname || '이름 없음',
       groupId: user.groupId,
       content: text.trim(),
     })
-    await repo.bumpParticipation(user.uid, {})
+    await repo.bumpParticipation(classId, user.uid, {})
     onDone()
   }
 
@@ -246,12 +252,14 @@ function ComposeDialog({
 /* ─────────────────────────── 벽 ─────────────────────────── */
 
 export function WallDialog({
+  classId,
   lessonId,
   stepId,
   prompt,
   posts,
   onClose,
 }: {
+  classId: string
   lessonId: LessonId
   stepId: string
   prompt: string
@@ -329,7 +337,7 @@ export function WallDialog({
         // 벽돌 배치. 1/2/3열 반응형.
         <div style={{ columnWidth: 300, columnGap: 16 }}>
           {list.map((p) => (
-            <WallCard key={p.id} lessonId={lessonId} stepId={stepId} post={p} />
+            <WallCard key={p.id} classId={classId} lessonId={lessonId} stepId={stepId} post={p} />
           ))}
         </div>
       )}
@@ -340,10 +348,12 @@ export function WallDialog({
 /* ─────────────────────────── 카드 ─────────────────────────── */
 
 export function WallCard({
+  classId,
   lessonId,
   stepId,
   post,
 }: {
+  classId: string
   lessonId: LessonId
   stepId: string
   post: Post
@@ -362,12 +372,12 @@ export function WallCard({
 
   async function react(key: string) {
     if (!repo || !user) return
-    await repo.toggleReaction(lessonId, stepId, post.id, user.uid, key)
+    await repo.toggleReaction(classId, lessonId, stepId, post.id, user.uid, key)
   }
 
   async function send() {
     if (!repo || !user || !comment.trim()) return
-    await repo.addComment(lessonId, stepId, post.id, {
+    await repo.addComment(classId, lessonId, stepId, post.id, {
       uid: user.uid,
       nickname: user.nickname || '이름 없음',
       text: comment.trim().slice(0, COMMENT_MAX),
@@ -377,7 +387,7 @@ export function WallCard({
 
   async function saveRevision() {
     if (!repo || !reviseText.trim() || !reviseReason.trim()) return
-    await repo.revisePost(lessonId, stepId, post.id, reviseText.trim(), reviseReason.trim())
+    await repo.revisePost(classId, lessonId, stepId, post.id, reviseText.trim(), reviseReason.trim())
     setRevising(false)
   }
 
@@ -532,7 +542,7 @@ export function WallCard({
                 style={{ fontSize: 13, minHeight: 32 }}
                 onClick={() => {
                   if (confirm('이 글을 지웁니다. 되돌릴 수 없습니다.')) {
-                    void repo?.deletePost(lessonId, stepId, post.id, user!.uid)
+                    void repo?.deletePost(classId, lessonId, stepId, post.id, user!.uid)
                   }
                 }}
               >
@@ -546,7 +556,7 @@ export function WallCard({
                 type="button"
                 className="btn-tertiary"
                 style={{ fontSize: 13, minHeight: 32 }}
-                onClick={() => void repo?.pinPost(lessonId, stepId, post.id, !post.isPinned)}
+                onClick={() => void repo?.pinPost(classId, lessonId, stepId, post.id, !post.isPinned)}
               >
                 {post.isPinned ? '고정 해제' : '함께 보기(고정)'}
               </button>
@@ -558,7 +568,7 @@ export function WallCard({
                   // 강사는 삭제하지 않는다. 숨김이고, 작성자에게 사유가 보인다.
                   const reason = post.isHidden ? '' : prompt('숨김 사유를 적어 주세요.') || ''
                   if (!post.isHidden && !reason) return
-                  void repo?.hidePost(lessonId, stepId, post.id, !post.isHidden, reason)
+                  void repo?.hidePost(classId, lessonId, stepId, post.id, !post.isHidden, reason)
                 }}
               >
                 {post.isHidden ? '숨김 해제' : '숨김'}

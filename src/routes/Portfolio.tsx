@@ -12,16 +12,16 @@ import { Badge, Button, Caption, ColorBlock } from '@/components/ui'
  * 여기서는 각 차시의 응답 버전을 모아 보여 주고, 인쇄와 내려받기를 제공한다.
  */
 export function Portfolio() {
-  const { user, repo } = useAuth()
+  const { user, repo, classId } = useAuth()
   const [byStep, setByStep] = useState<Record<string, ResponseDoc>>({})
 
   useEffect(() => {
-    if (!repo || !user) return
+    if (!repo || !user || !classId) return
     const unsubs: Array<() => void> = []
     for (const l of LESSONS) {
       for (const s of l.steps) {
         unsubs.push(
-          repo.watchResponse(l.id, s.id, user.uid, (d) => {
+          repo.watchResponse(classId, l.id, s.id, user.uid, (d: ResponseDoc | null) => {
             if (!d || (d.latestV ?? 0) === 0) return
             setByStep((prev) => ({ ...prev, [`${l.id}/${s.id}`]: d }))
           }),
@@ -29,7 +29,7 @@ export function Portfolio() {
       }
     }
     return () => unsubs.forEach((u) => u())
-  }, [repo, user])
+  }, [repo, user, classId])
 
   const entries = Object.entries(byStep)
   const totalVersions = entries.reduce((s, [, d]) => s + (d.versions?.length ?? 0), 0)

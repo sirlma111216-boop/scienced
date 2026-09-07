@@ -2,12 +2,16 @@ import type { GameId, LessonId } from '@/content/types'
 import type {
   AiProposal,
   AppUser,
+  ClassDoc,
+  Enrollment,
   Group,
   LadderState,
+  LessonState,
   Participation,
   PickRecord,
   Post,
   ResponseDoc,
+  RosterEntry,
   SessionState,
   StorageMode,
 } from './types'
@@ -22,18 +26,45 @@ import type {
  * 이름은 기존 앱(`2022co`)의 repo 를 그대로 따른다. 한 곳만 다르다:
  * `toggleLike` → `toggleReaction`. 좋아요 하나가 아니라 반응 4종이 되었기 때문에
  * 이름을 그대로 두면 하는 일과 이름이 어긋난다.
+ *
+ * ★ 학생 자료를 다루는 함수는 전부 `classId` 를 첫 인자로 받는다.
+ *   짧게 줄일 수도 있었지만, 어느 클래스를 건드리는지 호출부에서 눈에 보여야
+ *   학기 사이에 자료가 새는 실수를 잡을 수 있다. 그것이 이 구조의 목적이다.
  */
 export interface Repo {
   readonly mode: StorageMode
 
-  /* ── 사용자 ── */
+  /* ── 사용자 (클래스와 무관) ── */
   getUser(uid: string): Promise<AppUser | null>
   upsertUser(user: AppUser): Promise<void>
   watchUsers(cb: (users: AppUser[]) => void): () => void
 
+  /* ── 수강 클래스 ── */
+  watchClasses(cb: (list: ClassDoc[]) => void): () => void
+  createClass(c: ClassDoc): Promise<void>
+  updateClass(classId: string, patch: Partial<ClassDoc>): Promise<void>
+
+  /* ── 차시 공개 (클래스마다 따로) ── */
+  watchLessonState(classId: string, cb: (published: LessonId[]) => void): () => void
+  setLessonPublished(classId: string, lessonId: LessonId, published: boolean): Promise<void>
+
+  /* ── 수강 등록 ── */
+  watchEnrollments(classId: string, cb: (list: Enrollment[]) => void): () => void
+  getEnrollment(classId: string, uid: string): Promise<Enrollment | null>
+  enroll(classId: string, e: Enrollment): Promise<void>
+  updateEnrollment(classId: string, uid: string, patch: Partial<Enrollment>): Promise<void>
+
+  /**
+   * 명단 실명 — 강사만.
+   * 학생은 자기 것도 읽지 못한다. 규칙에서 막혀 있다.
+   */
+  watchRoster(classId: string, cb: (list: RosterEntry[]) => void): () => void
+  setRosterEntry(classId: string, uid: string, patch: Partial<RosterEntry>): Promise<void>
+
   /* ── 응답 ── */
   /** 입력 중 자동 저장. 버전으로 세지 않는다. */
   saveDraft(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     uid: string,
@@ -44,14 +75,21 @@ export interface Repo {
    * 최초 답을 지우지 않는 것이 이 앱의 첫 번째 원칙이다.
    */
   submitResponse(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     uid: string,
     payload: Record<string, unknown>,
     opts: { confidence: number | null; changedReason: string | null },
   ): Promise<void>
-  getResponse(lessonId: LessonId, stepId: string, uid: string): Promise<ResponseDoc | null>
+  getResponse(
+    classId: string,
+    lessonId: LessonId,
+    stepId: string,
+    uid: string,
+  ): Promise<ResponseDoc | null>
   watchResponse(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     uid: string,
@@ -59,20 +97,28 @@ export interface Repo {
   ): () => void
   /** 강사만. 익명 분포와 제출/미제출 명단에 쓴다. */
   watchAllResponses(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     cb: (docs: ResponseDoc[]) => void,
   ): () => void
 
   /* ── 의견 광장 ── */
-  watchPosts(lessonId: LessonId, stepId: string, cb: (posts: Post[]) => void): () => void
+  watchPosts(
+    classId: string,
+    lessonId: LessonId,
+    stepId: string,
+    cb: (posts: Post[]) => void,
+  ): () => void
   addPost(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     post: { uid: string; nickname: string; groupId: string | null; content: string },
   ): Promise<void>
   /** 수정은 덮어쓰기가 아니라 새 버전 쌓기다. */
   revisePost(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     postId: string,
@@ -81,6 +127,7 @@ export interface Repo {
   ): Promise<void>
   /** 한 사람이 한 글에 하나만. 같은 걸 다시 누르면 취소된다. */
   toggleReaction(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     postId: string,
@@ -88,68 +135,87 @@ export interface Repo {
     reaction: string,
   ): Promise<void>
   addComment(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     postId: string,
     comment: { uid: string; nickname: string; text: string },
   ): Promise<void>
   /** 강사만. 발표 모드 대형 화면에 띄운다. */
-  pinPost(lessonId: LessonId, stepId: string, postId: string, pinned: boolean): Promise<void>
+  pinPost(
+    classId: string,
+    lessonId: LessonId,
+    stepId: string,
+    postId: string,
+    pinned: boolean,
+  ): Promise<void>
   /** 강사는 숨김만. 삭제는 작성자만. 기록을 보존한다. */
   hidePost(
+    classId: string,
     lessonId: LessonId,
     stepId: string,
     postId: string,
     hidden: boolean,
     reason: string,
   ): Promise<void>
-  deletePost(lessonId: LessonId, stepId: string, postId: string, uid: string): Promise<void>
+  deletePost(
+    classId: string,
+    lessonId: LessonId,
+    stepId: string,
+    postId: string,
+    uid: string,
+  ): Promise<void>
 
   /* ── 진행 세션 ── */
-  watchSession(lessonId: LessonId, cb: (s: SessionState | null) => void): () => void
-  setSession(lessonId: LessonId, patch: Partial<SessionState>): Promise<void>
+  watchSession(classId: string, lessonId: LessonId, cb: (s: SessionState | null) => void): () => void
+  setSession(classId: string, lessonId: LessonId, patch: Partial<SessionState>): Promise<void>
 
   /* ── 사다리·추첨 ── */
-  /** 학생이 판에 들어온다. */
-  joinLadder(lessonId: LessonId, gameId: GameId, uid: string): Promise<void>
+  joinLadder(classId: string, lessonId: LessonId, gameId: GameId, uid: string): Promise<void>
   /**
    * 자리 선점. 이미 다른 사람이 가져갔으면 false 를 돌려준다.
    * 화면은 "방금 다른 분이 그 자리를 가져갔습니다"를 띄운다.
    */
   claimLadderSeat(
+    classId: string,
     lessonId: LessonId,
     gameId: GameId,
     seat: number,
     uid: string,
   ): Promise<boolean>
-  setLadder(lessonId: LessonId, gameId: GameId, state: LadderState): Promise<void>
-  recordPick(pick: PickRecord): Promise<void>
-  watchPicks(cb: (picks: PickRecord[]) => void): () => void
+  setLadder(
+    classId: string,
+    lessonId: LessonId,
+    gameId: GameId,
+    state: LadderState,
+  ): Promise<void>
+  recordPick(classId: string, pick: PickRecord): Promise<void>
+  watchPicks(classId: string, cb: (picks: PickRecord[]) => void): () => void
 
   /* ── 모둠·참여 ── */
-  watchGroups(cb: (groups: Group[]) => void): () => void
-  setGroups(groups: Group[]): Promise<void>
-  watchParticipation(cb: (p: Participation[]) => void): () => void
-  bumpParticipation(uid: string, patch: Partial<Participation>): Promise<void>
-
-  /* ── 공개 제어 ── */
-  watchPublished(cb: (ids: LessonId[]) => void): () => void
-  setPublished(lessonId: LessonId, published: boolean): Promise<void>
+  watchGroups(classId: string, cb: (groups: Group[]) => void): () => void
+  setGroups(classId: string, groups: Group[]): Promise<void>
+  watchParticipation(classId: string, cb: (p: Participation[]) => void): () => void
+  bumpParticipation(classId: string, uid: string, patch: Partial<Participation>): Promise<void>
 
   /* ── AI 제안 (교사 검토 관문) ── */
   /**
    * AI 결과를 제안으로 넣는다. 언제나 pending 으로 들어간다.
    * 이 함수 말고는 AI 결과가 저장되는 경로가 없다.
    */
-  addAiProposal(p: AiProposal): Promise<void>
-  watchAiProposals(cb: (list: AiProposal[]) => void): () => void
+  addAiProposal(classId: string, p: AiProposal): Promise<void>
+  watchAiProposals(classId: string, cb: (list: AiProposal[]) => void): () => void
   /** 교사가 고치거나 채택하거나 거부한다. original 은 바뀌지 않는다. */
   reviewAiProposal(
+    classId: string,
     id: string,
     patch: { edited?: string; status?: AiProposal['status']; rejectedReason?: string | null },
     reviewedBy: string,
   ): Promise<void>
 }
+
+/** 클래스 문서를 만들 때 필요한 것 중 저장소가 채워 주는 부분 */
+export type { LessonState }
 
 let current: Repo | null = null
 

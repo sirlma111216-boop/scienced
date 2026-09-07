@@ -14,7 +14,7 @@ import { Badge, Button, Caption, Card, Notice, ScrollX } from '@/components/ui'
  * 계정 생성·초기화는 전부 서버에서 한다. 이 화면은 요청만 보낸다.
  */
 export function InstructorStudents() {
-  const { repo, isInstructor } = useAuth()
+  const { repo, isInstructor, classId } = useAuth()
   const [users, setUsers] = useState<AppUser[]>([])
   const [participation, setParticipation] = useState<Participation[]>([])
   const [csv, setCsv] = useState('')
@@ -24,7 +24,7 @@ export function InstructorStudents() {
   useEffect(() => {
     if (!repo) return
     const a = repo.watchUsers(setUsers)
-    const b = repo.watchParticipation(setParticipation)
+    const b = classId ? repo.watchParticipation(classId, setParticipation) : () => {}
     return () => {
       a()
       b()

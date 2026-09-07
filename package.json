@@ -11,10 +11,13 @@
     "firebase:login": "npx --yes --package=firebase-tools firebase login",
     "deploy:rules": "npx --yes --package=firebase-tools firebase deploy --only firestore:rules",
     "emulators": "npx --yes --package=firebase-tools firebase emulators:start",
+    "test:rules": "node scripts/test-rules.mjs",
+    "migrate:classes": "node scripts/migrate-to-classes.mjs",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false || tsc -b",
     "verify:ladder": "node --import ./scripts/_loader.mjs scripts/verify-ladder.mjs",
     "verify:lessons": "node --import ./scripts/_loader.mjs scripts/verify-lessons.mjs",
+    "verify:classes": "node --import ./scripts/_loader.mjs scripts/verify-classes.mjs",
     "verify:content": "node --import ./scripts/_loader.mjs scripts/verify-content.mjs",
     "verify:standards": "node --import ./scripts/_loader.mjs scripts/verify-standards.mjs",
     "verify:games": "node --import ./scripts/_loader.mjs scripts/verify-games.mjs",
@@ -34,6 +37,7 @@
     "react-router-dom": "^6.24.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

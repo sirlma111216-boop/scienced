@@ -23,7 +23,7 @@ import { Badge, Button, Caption, Card, ColorBlock, ScrollX } from '@/components/
  */
 export function InstructorLive() {
   const { id } = useParams()
-  const { repo, isInstructor } = useAuth()
+  const { repo, isInstructor, classId } = useAuth()
   const lesson = getLesson(id ?? '')
   const [stepIndex, setStepIndex] = useState(0)
   const [session, setSession] = useState<SessionState | null>(null)
@@ -36,31 +36,31 @@ export function InstructorLive() {
   const step = lesson?.steps[stepIndex]
 
   useEffect(() => {
-    if (!repo || !lesson) return
-    return repo.watchSession(lesson.id, setSession)
-  }, [repo, lesson])
+    if (!repo || !lesson || !classId) return
+    return repo.watchSession(classId, lesson.id, setSession)
+  }, [repo, lesson, classId])
 
   useEffect(() => {
-    if (!repo) return
+    if (!repo || !classId) return
     const a = repo.watchUsers(setUsers)
-    const b = repo.watchParticipation(setParticipation)
-    const c = repo.watchAiProposals(setProposals)
+    const b = repo.watchParticipation(classId, setParticipation)
+    const c = repo.watchAiProposals(classId, setProposals)
     return () => {
       a()
       b()
       c()
     }
-  }, [repo])
+  }, [repo, classId])
 
   useEffect(() => {
-    if (!repo || !lesson || !step) return
-    const a = repo.watchAllResponses(lesson.id, step.id, setDocs)
-    const b = repo.watchPosts(lesson.id, step.id, setPosts)
+    if (!repo || !lesson || !step || !classId) return
+    const a = repo.watchAllResponses(classId, lesson.id, step.id, setDocs)
+    const b = repo.watchPosts(classId, lesson.id, step.id, setPosts)
     return () => {
       a()
       b()
     }
-  }, [repo, lesson, step])
+  }, [repo, lesson, step, classId])
 
   const students = useMemo(() => users.filter((u) => u.role === 'student'), [users])
   const submittedUids = useMemo(
@@ -90,7 +90,7 @@ export function InstructorLive() {
     setStepIndex(i)
     const s = lesson!.steps[i]
     // 학생 화면을 강제로 옮기지 않는다. 어디에 있는지만 알린다.
-    await repo?.setSession(lesson!.id, { instructorAt: s.id, currentStepId: s.id })
+    if (classId) await repo?.setSession(classId, lesson!.id, { instructorAt: s.id, currentStepId: s.id })
   }
 
   return (
@@ -115,21 +115,21 @@ export function InstructorLive() {
 
       <div className="flex flex-wrap gap-xs" style={{ marginTop: 24 }}>
         <Button
-          onClick={() => void repo?.setSession(lesson.id, { stepOpen: !session?.stepOpen })}
+          onClick={() => classId && void repo?.setSession(classId, lesson.id, { stepOpen: !session?.stepOpen })}
         >
           {session?.stepOpen ? '단계 닫기' : '단계 열기'}
         </Button>
         <Button
           variant="secondary"
           onClick={() =>
-            void repo?.setSession(lesson.id, { timerEndsAt: Date.now() + 5 * 60 * 1000 })
+            classId && void repo?.setSession(classId, lesson.id, { timerEndsAt: Date.now() + 5 * 60 * 1000 })
           }
         >
           5분 타이머
         </Button>
         <Button
           variant="secondary"
-          onClick={() => void repo?.setSession(lesson.id, { timerEndsAt: null })}
+          onClick={() => classId && void repo?.setSession(classId, lesson.id, { timerEndsAt: null })}
         >
           타이머 해제
         </Button>
@@ -202,6 +202,7 @@ export function InstructorLive() {
           {step.aiTasks.includes('cluster-responses') ? (
             <div style={{ marginTop: 32 }}>
               <AiClusterPanel
+                classId={classId!}
                 lessonId={lesson.id}
                 stepId={step.id}
                 stepTitle={`${lesson.id}강 ${step.title}`}
@@ -224,7 +225,7 @@ export function InstructorLive() {
                   '지금은 넘어가고 다음 차시에 다룬다',
                 ]}
                 onPush={(branch, note) => {
-                  void repo?.setSession(lesson.id, {
+                  if (classId) void repo?.setSession(classId, lesson.id, {
                     pollResults: {
                       ...(session?.pollResults ?? {}),
                       [`branch_${step.id}`]: 1,
@@ -255,7 +256,7 @@ export function InstructorLive() {
                 </p>
                 <div style={{ columnWidth: 300, columnGap: 16, marginTop: 16 }}>
                   {(splitPosts.length > 0 ? splitPosts : posts).slice(0, 12).map((p) => (
-                    <WallCard key={p.id} lessonId={lesson.id} stepId={step.id} post={p} />
+                    <WallCard key={p.id} classId={classId!} lessonId={lesson.id} stepId={step.id} post={p} />
                   ))}
                 </div>
               </Card>
@@ -266,6 +267,7 @@ export function InstructorLive() {
           {step.picker?.enabled && game ? (
             <div style={{ marginTop: 32 }}>
               <LadderPanel
+                classId={classId!}
                 lessonId={lesson.id}
                 stepId={step.id}
                 game={game}
