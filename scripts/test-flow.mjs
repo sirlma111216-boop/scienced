@@ -56,9 +56,27 @@ const TEACHER = 'teacher-1'
 const STUDENT = 'student-1'
 const CID = 'c-flow-1'
 
-/* 강사 판정의 유일한 근거. 콘솔에서만 만든다. */
+/*
+ * 규칙을 우회하는 설정은 여기서 한 번에 끝낸다.
+ * 인증 컨텍스트를 만든 뒤에 다시 부르면 SDK 가 "Firestore has already been started" 로 거부한다.
+ */
 await env.withSecurityRulesDisabled(async (ctx) => {
-  await ctx.firestore().doc(`instructors/${TEACHER}`).set({ role: 'instructor' })
+  const db = ctx.firestore()
+  // 강사 판정의 유일한 근거. 콘솔에서만 만든다.
+  await db.doc(`instructors/${TEACHER}`).set({ role: 'instructor' })
+  // ⑩ 에서 쓸 남의 학기
+  await db.doc('classes/c-other').set({
+    id: 'c-other',
+    ownerUid: TEACHER,
+    status: 'active',
+    enrollmentOpen: true,
+    requireJoinCode: false,
+    displayName: '다른 학기',
+  })
+  await db.doc('classes/c-other/lessonState/01').set({ lessonId: '01', published: true })
+  await db
+    .doc('classes/c-other/lessons/01/steps/step-recall/responses/other')
+    .set({ uid: 'other', versions: [], latestV: 0 })
 })
 
 const asTeacher = env.authenticatedContext(TEACHER).firestore()
@@ -101,7 +119,7 @@ const asStudent = env.authenticatedContext(STUDENT).firestore()
 /* ── ② 강사 화면의 목록이 그것을 읽는다 ── */
 {
   const snap = await assertSucceeds(asTeacher.collection('classes').get())
-  if (snap.size !== 1) fail('② 강사 목록', `클래스가 ${snap.size}개로 읽힌다 (1개여야 한다)`)
+  if (snap.size !== 2) fail('② 강사 목록', `클래스가 ${snap.size}개로 읽힌다 (2개여야 한다)`)
   else pass('② 강사 목록', '만든 클래스가 강사 목록 조회에 잡힌다')
 }
 
@@ -109,10 +127,10 @@ const asStudent = env.authenticatedContext(STUDENT).firestore()
 {
   // 등록할 클래스를 고르려면 등록 전에 목록이 보여야 한다.
   const snap = await assertSucceeds(asStudent.collection('classes').get())
-  if (snap.size !== 1) {
+  if (snap.size !== 2) {
     fail('③ 학생 목록', `학생에게 클래스가 ${snap.size}개로 읽힌다 — 고를 것이 없으면 등록을 못 한다`)
   } else {
-    const c = snap.docs[0].data()
+    const c = snap.docs.find((d) => d.id === CID).data()
     if (c.status !== 'active' || c.enrollmentOpen !== true) {
       fail('③ 학생 목록', '읽히기는 하는데 모집 조건에 걸려 화면 목록에서 빠진다')
     } else {
@@ -216,21 +234,6 @@ const asStudent = env.authenticatedContext(STUDENT).firestore()
 
 /* ── ⑩ 남의 학기는 여전히 막혀 있다 ── */
 {
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await ctx.firestore().doc('classes/c-other').set({
-      id: 'c-other',
-      ownerUid: TEACHER,
-      status: 'active',
-      enrollmentOpen: true,
-      requireJoinCode: false,
-      displayName: '다른 학기',
-    })
-    await ctx.firestore().doc('classes/c-other/lessonState/01').set({ lessonId: '01', published: true })
-    await ctx
-      .firestore()
-      .doc('classes/c-other/lessons/01/steps/step-recall/responses/other')
-      .set({ uid: 'other', versions: [], latestV: 0 })
-  })
   await assertFails(
     asStudent.doc('classes/c-other/lessons/01/steps/step-recall/responses/other').get(),
   )
