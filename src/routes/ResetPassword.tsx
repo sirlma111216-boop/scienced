@@ -10,12 +10,14 @@ import { Button, Caption, Notice } from '@/components/ui'
  * 최초 로그인도 같은 흐름을 쓴다. 첫 로그인 때 닉네임도 함께 정한다.
  */
 export function ResetPassword() {
-  const { user, completeReset, loading } = useAuth()
+  const { user, completeReset, loading, signOut } = useAuth()
   const [pw1, setPw1] = useState('')
   const [pw2, setPw2] = useState('')
   const [nickname, setNickname] = useState(user?.nickname ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /* 다시 로그인해야만 풀리는 상태인가 */
+  const [stuck, setStuck] = useState(false)
 
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
@@ -39,7 +41,14 @@ export function ResetPassword() {
     try {
       await completeReset(pw1, nickname)
     } catch (err) {
-      setError((err as Error).message)
+      const message = (err as Error).message
+      setError(message)
+      /*
+       * 「나갔다가 다시 로그인해 주세요」라고만 하면 막다른 길이다.
+       * 이 화면에는 상단바가 없어 나갈 버튼이 없고,
+       * 라우트 보호가 다른 화면을 전부 막는다. 나가는 길을 여기서 준다.
+       */
+      setStuck(message.includes('다시 로그인'))
     } finally {
       setBusy(false)
     }
@@ -115,9 +124,20 @@ export function ResetPassword() {
             </p>
           ) : null}
 
-          <div>
+          <div className="flex flex-wrap items-center gap-md">
             <Button type="submit" disabled={busy}>
               {busy ? '저장 중…' : '저장하고 시작하기'}
+            </Button>
+            {/*
+              나가는 길은 늘 열어 둔다.
+              계정을 잘못 골랐거나 오래된 로그인으로 막혔을 때 여기서 빠져나간다.
+            */}
+            <Button
+              type="button"
+              variant={stuck ? 'primary' : 'tertiary'}
+              onClick={() => void signOut()}
+            >
+              {stuck ? '나가서 다시 로그인하기' : '나가기'}
             </Button>
           </div>
         </form>
