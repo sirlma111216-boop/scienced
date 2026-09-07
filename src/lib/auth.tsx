@@ -105,9 +105,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMode(repo.mode)
   }, [repo.mode])
 
+  /*
+   * ★ 로그인한 uid 가 바뀌면 다시 구독한다.
+   *
+   * classes 컬렉션은 보안 규칙이 signedIn() 을 요구한다.
+   * 로그인 전에 구독하면 첫 스냅숏이 permission-denied 로 끝나는데,
+   * onSnapshot 은 오류가 나면 리스너를 떼어 버리고 다시 붙지 않는다.
+   * 의존성이 [repo] 뿐이면 그 뒤에 로그인해도 목록이 영영 비어 있다.
+   *
+   * 그래서 학생은 로그인 직후 「등록할 수 있는 클래스 0개」를 봤다.
+   * 강사가 못 본 것은 이미 로그인된 상태로 새로고침했기 때문이다 —
+   * 그때는 첫 스냅숏이 성공한다. 첫 수업 날 아무도 등록하지 못할 자리였다.
+   */
   useEffect(() => {
     return repo.watchClasses(setClasses)
-  }, [repo])
+  }, [repo, user?.uid])
 
   /** 내가 어느 클래스에 등록되어 있는지 확인한다. */
   useEffect(() => {

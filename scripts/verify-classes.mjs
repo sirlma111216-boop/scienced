@@ -169,4 +169,29 @@ import { fail, pass, report, walk } from './_report.mjs'
   pass('클래스 만들기', '학기 상수 · 혼동 글자 제외 코드 · 시간 순서 검사가 있다')
 }
 
+/*
+ * 로그인 뒤에 클래스 목록을 다시 구독하는가.
+ *
+ * classes 컬렉션은 규칙이 signedIn() 을 요구한다. 로그인 전에 구독하면
+ * 첫 스냅숏이 permission-denied 로 끝나고, onSnapshot 은 그때 리스너를 떼어 버린다.
+ * 다시 붙이지 않으면 로그인해도 목록이 영영 비어 있다.
+ *
+ * 실제로 학생이 로그인 직후 「등록할 수 있는 클래스 0개」를 봤다.
+ * 강사는 이미 로그인된 채로 새로고침해서 못 봤다 — 첫 수업 날 아무도 등록하지 못할 자리였다.
+ */
+{
+  const auth = await readFile('src/lib/auth.tsx', 'utf8')
+  const m = auth.match(/useEffect\(\(\) => \{[^}]*watchClasses[^}]*\}, \[([^\]]*)\]\)/)
+  if (!m) {
+    fail('클래스 구독', 'auth.tsx 에서 watchClasses 구독을 찾지 못했다')
+  } else if (!/user/.test(m[1])) {
+    fail(
+      '클래스 구독',
+      `watchClasses 구독의 의존성이 [${m[1].trim()}] 뿐이다 — 로그인해도 다시 붙지 않아 목록이 비어 있게 된다`,
+    )
+  } else {
+    pass('클래스 구독', '로그인한 uid 가 바뀌면 클래스 목록을 다시 구독한다')
+  }
+}
+
 report('verify:classes')

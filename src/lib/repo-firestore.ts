@@ -76,7 +76,15 @@ export function createFirestoreRepo(db: Firestore): Repo {
       return onSnapshot(
         collection(db, 'classes'),
         (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as ClassDoc), id: s.id }))),
-        () => cb([]),
+        (err) => {
+          /*
+           * 오류를 빈 목록으로만 바꾸면 「클래스가 없다」와 「읽지 못했다」가 같아 보인다.
+           * 화면은 어느 쪽인지 말할 수 없고, 강사는 만든 클래스가 왜 안 보이는지 알 수 없다.
+           * 목록은 비우되(그려야 하므로) 이유는 콘솔에 남긴다.
+           */
+          console.warn('[classes] 목록을 읽지 못했습니다:', err.code, err.message)
+          cb([])
+        },
       )
     },
     async createClass(c) {
