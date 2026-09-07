@@ -44,6 +44,16 @@ export interface Repo {
   watchClasses(cb: (list: ClassDoc[]) => void): () => void
   createClass(c: ClassDoc): Promise<void>
   updateClass(classId: string, patch: Partial<ClassDoc>): Promise<void>
+  /**
+   * 클래스를 지운다.
+   *
+   * 잘못 만든 빈 클래스를 치우기 위한 것이다. 학기를 마친 클래스는 「보관」을 쓴다 —
+   * 기록은 남기고 쓰기만 막는 것이 맞다.
+   *
+   * 호출부가 등록 인원 0을 확인한 뒤에만 부른다.
+   * 하위 lessonState 도 함께 지운다 — Firestore 는 문서를 지워도 하위 컬렉션이 남는다.
+   */
+  deleteClass(classId: string): Promise<void>
 
   /* ── 차시 공개 (클래스마다 따로) ── */
   watchLessonState(classId: string, cb: (published: LessonId[]) => void): () => void

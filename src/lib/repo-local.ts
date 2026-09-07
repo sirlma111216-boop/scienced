@@ -115,6 +115,14 @@ export function createLocalRepo(): Repo {
       // 새 클래스는 01강만 공개 상태로 시작한다.
       write(kPublished(c.id), seedPublished())
     },
+    async deleteClass(classId) {
+      const list = read<ClassDoc[]>('classes', [])
+      write(
+        'classes',
+        list.filter((c) => c.id !== classId),
+      )
+      write(kPublished(classId), [])
+    },
     async updateClass(classId, patch) {
       const list = read<ClassDoc[]>('classes', [])
       write(

@@ -11,6 +11,7 @@
     "firebase:login": "npx --yes --package=firebase-tools firebase login",
     "deploy:rules": "npx --yes --package=firebase-tools firebase deploy --only firestore:rules",
     "emulators": "node scripts/emulators.mjs",
+    "test:flow": "node scripts/test-flow.mjs",
     "test:rules": "node scripts/test-rules.mjs",
     "migrate:classes": "node scripts/migrate-to-classes.mjs",
     "lint": "eslint . --ext .ts,.tsx",

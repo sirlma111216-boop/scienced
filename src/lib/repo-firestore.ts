@@ -5,6 +5,7 @@ import {
   doc,
   type Firestore,
   getDoc,
+  getDocs,
   onSnapshot,
   runTransaction,
   serverTimestamp,
@@ -92,6 +93,12 @@ export function createFirestoreRepo(db: Firestore): Repo {
     },
     async updateClass(classId, patch) {
       await setDoc(doc(db, 'classes', classId), patch, { merge: true })
+    },
+    async deleteClass(classId) {
+      // Firestore 는 문서를 지워도 하위 컬렉션이 남는다. lessonState 를 먼저 치운다.
+      const states = await getDocs(cc(db, classId, 'lessonState'))
+      await Promise.all(states.docs.map((d) => deleteDoc(d.ref)))
+      await deleteDoc(doc(db, 'classes', classId))
     },
 
     /* ── 차시 공개 (클래스마다 따로) ── */

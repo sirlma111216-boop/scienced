@@ -530,6 +530,26 @@ export function InstructorClasses() {
                           >
                             {c.enrollmentOpen ? '수강 등록 마감' : '등록 다시 열기'}
                           </Button>
+                          {/*
+                            빈 클래스만 지운다.
+                            시험 삼아 만든 것을 치울 길이 없으면 목록이 금방 못 쓰게 된다.
+                            등록 인원이 있으면 「보관」을 쓴다 — 학생 자료가 딸린 클래스를
+                            실수로 지우면 되돌릴 수 없다.
+                          */}
+                          {(counts[c.id] ?? 0) === 0 ? (
+                            <Button
+                              variant="tertiary"
+                              onClick={() => {
+                                const ok = confirm(
+                                  `이 클래스를 지웁니다.\n\n${c.displayName}\n\n` +
+                                    '등록한 수강생이 없어 지울 수 있습니다. 되돌릴 수 없습니다.',
+                                )
+                                if (ok) void repo?.deleteClass(c.id)
+                              }}
+                            >
+                              지우기
+                            </Button>
+                          ) : null}
                           <Button
                             variant="tertiary"
                             onClick={() => {
