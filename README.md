@@ -132,8 +132,15 @@ AI 분류 요청  →  addAiProposal (status: pending)  →  /instructor/ai-revi
 1. Authentication → 이메일/비밀번호 로그인 켜기
 2. `firestore.rules` 배포
    ```bash
-   npx firebase deploy --only firestore:rules
+   npm run firebase:login
    ```
+   ```bash
+   npm run deploy:rules
+   ```
+
+   > `npx firebase …` 는 쓰지 않는다. 이 저장소에는 클라이언트 SDK 인 `firebase` 패키지가
+   > 이미 설치돼 있어서 npx 가 그것을 찾고 `could not determine executable to run` 으로 멈춘다.
+   > CLI 패키지 이름은 `firebase-tools` 이고, 위 스크립트가 `--package=firebase-tools` 로 못박아 둔다.
 3. **강사 계정을 만든 뒤 콘솔에서 `instructors/{uid}` 문서를 손으로 만든다.**
    이 문서의 존재가 강사 권한의 유일한 근거다. 어떤 클라이언트도 이 컬렉션에 쓸 수 없다.
 4. 강사로 로그인 → `수강생 관리` → CSV(`학번,이름`) 업로드. 초기 비밀번호는 학번이다.
