@@ -93,6 +93,23 @@ export interface KeyConcept {
   notToConfuseWith: string[]
   /** ⑥ 직접 써 보기 */
   applyQuestion: string
+  /**
+   * ★ 꼭 알아야 할 것.
+   *
+   * 강사가 강조하는 대목이자 학생이 시험 공부에 쓸 알맹이다.
+   * 카드의 어느 층을 보고 있든 늘 보인다 — 층을 넘겨야 나오면 아무도 못 본다.
+   * 한 줄에 한 가지. 외울 문장이 아니라 판단에 쓰는 기준으로 쓴다.
+   */
+  mustKnow?: string[]
+
+  /**
+   * 더 읽기.
+   *
+   * 강의에서 말로 하는 것을 글로 남긴다. 학생이 수업 뒤 혼자 읽어도 이어지도록.
+   * 여섯 층은 강의 중에 넘기는 화면이고, 이것은 그 뒤에 읽는 본문이다.
+   */
+  deepDive?: { title: string; body: string }[]
+
   /** 잠깐 확인 1문항. 선택 + 이유 한 줄. 이유 없이는 제출되지 않는다. */
   check: { prompt: string; options: string[] }
   /**

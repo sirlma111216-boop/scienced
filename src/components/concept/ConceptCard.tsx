@@ -19,9 +19,29 @@ const LAYERS = [
   { key: 'formalDefinition', label: '정확한 정의' },
   { key: 'notToConfuseWith', label: '헷갈리지 말자' },
   { key: 'applyQuestion', label: '직접 써 보기' },
+  { key: 'deepDive', label: '더 읽기' },
 ] as const
 
 const TONES: BlockTone[] = ['lime', 'lilac', 'cream', 'mint']
+
+/**
+ * **별표 두 개**로 감싼 곳을 굵게 그린다.
+ *
+ * 강조는 이 카드의 목적이다 — 강사가 짚는 대목과 학생이 시험 공부에 쓸 알맹이를 가른다.
+ * 마크다운 라이브러리를 붙이지 않는다. 필요한 것은 굵게 하나뿐이고,
+ * 라이브러리를 넣으면 교재 문장에 든 다른 기호까지 해석해 버린다.
+ */
+function withEmphasis(text: string): React.ReactNode[] {
+  return text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} style={{ fontWeight: 700 }}>
+        {part}
+      </strong>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  )
+}
 
 export function ConceptCard({
   concept,
@@ -90,9 +110,51 @@ export function ConceptCard({
           </ol>
         </nav>
 
+        {/*
+          ★ 꼭 알아야 할 것은 층을 넘기지 않아도 늘 보인다.
+            층 안에 숨겨 두면 강조한 것이 아니라 숨긴 것이 된다.
+        */}
+        {(concept.mustKnow?.length ?? 0) > 0 ? (
+          <div
+            className="bg-canvas rounded-md"
+            style={{ padding: '14px 18px', marginBottom: 16, boxShadow: 'inset 0 0 0 2px #000' }}
+          >
+            <Caption>꼭 알아야 할 것</Caption>
+            <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+              {(concept.mustKnow ?? []).map((m, i) => (
+                <li key={i} className="text-body" style={{ marginBottom: 6, fontWeight: 480 }}>
+                  {withEmphasis(m)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <div style={{ minHeight: 120 }}>
           <Caption>{cur.label}</Caption>
-          {cur.key === 'notToConfuseWith' ? (
+          {cur.key === 'deepDive' ? (
+            (concept.deepDive?.length ?? 0) === 0 ? (
+              <p className="text-body" style={{ margin: '8px 0 0', opacity: 0.7 }}>
+                아직 더 읽을 내용이 없습니다.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-md" style={{ marginTop: 8 }}>
+                {(concept.deepDive ?? []).map((d, i) => (
+                  <section key={i}>
+                    <h4 className="text-body-lg" style={{ margin: 0, fontWeight: 480 }}>
+                      {d.title}
+                    </h4>
+                    <p
+                      className="text-body"
+                      style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}
+                    >
+                      {withEmphasis(d.body)}
+                    </p>
+                  </section>
+                ))}
+              </div>
+            )
+          ) : cur.key === 'notToConfuseWith' ? (
             <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
               {concept.notToConfuseWith.map((n, i) => (
                 <li key={i} className="text-body" style={{ marginBottom: 6 }}>
@@ -101,8 +163,8 @@ export function ConceptCard({
               ))}
             </ul>
           ) : (
-            <p className="text-body-lg" style={{ margin: '8px 0 0' }}>
-              {concept[cur.key]}
+            <p className="text-body-lg" style={{ margin: '8px 0 0', whiteSpace: 'pre-line' }}>
+              {concept[cur.key as 'plainOneLiner']}
             </p>
           )}
         </div>

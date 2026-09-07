@@ -190,4 +190,44 @@ for (const l of LESSONS) {
 }
 pass('확신도와 이유', '확신도는 일하는 두 자리에만 있고, 모든 차시가 이유를 받는다')
 
+/*
+ * 개념 카드의 밀도.
+ *
+ * 여섯 층은 강의 중에 넘기는 화면이다. 그것만으로는 학생이 시험 공부를 할 수 없고
+ * 강사가 문제를 낼 수도 없다. 그래서 두 가지를 더 요구한다 —
+ *   mustKnow  강사가 강조하는 대목. 카드 어느 층에서도 늘 보인다.
+ *   deepDive  강의에서 말로 하는 것을 글로 남긴 본문.
+ *
+ * 공개된 차시는 반드시 채워야 한다. 학생이 지금 읽는 화면이기 때문이다.
+ * 아직 열지 않은 차시는 남은 개수만 알린다 — 진도에 맞춰 채운다.
+ */
+{
+  let thin = 0
+  let pending = 0
+  for (const l of LESSONS) {
+    for (const c of l.keyConcepts) {
+      const hasMust = (c.mustKnow?.length ?? 0) >= 3
+      const hasDeep = (c.deepDive?.length ?? 0) >= 1
+      if (hasMust && hasDeep) continue
+      if (l.published) {
+        fail(
+          '개념 밀도',
+          `${l.id}강 「${c.term}」에 ${!hasMust ? '꼭 알아야 할 것(3줄 이상)' : '더 읽기'}이 없다 — 공개된 차시다`,
+        )
+        thin++
+      } else {
+        pending++
+      }
+    }
+  }
+  if (thin === 0) {
+    pass(
+      '개념 밀도',
+      pending === 0
+        ? '모든 개념 카드에 꼭 알아야 할 것과 더 읽기가 있다'
+        : `공개된 차시의 개념 카드는 모두 채워져 있다 (아직 열지 않은 차시 ${pending}장은 진도에 맞춰 채운다)`,
+    )
+  }
+}
+
 report('verify:lessons')
