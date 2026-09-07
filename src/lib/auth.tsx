@@ -201,7 +201,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: instructor ? 'instructor' : profile.role,
         lastLoginAt: Date.now(),
       }
-      await repo.upsertUser(next)
+      /*
+       * ★ 규칙이 학생에게 허용하는 필드만 보낸다.
+       *
+       *   users 규칙은 학생의 수정을 changedKeys().hasOnly([...]) 로 좁혀 놓았다.
+       *   화면용으로 채운 값을 전부 보내면 role·studentId·createdAt 이 바뀐 것으로 잡혀
+       *   규칙이 거절하고, 그 예외가 로그인 로딩을 영영 끝나지 않게 만든다.
+       *   실제로 「불러오는 중…」이 끝나지 않았다.
+       *
+       *   화면에서 쓰는 값(next)은 다 채우되, 저장은 허용된 것만 한다.
+       *   강사는 규칙에서 전부 쓸 수 있으므로 그대로 보낸다.
+       */
+      const savable: AppUser = instructor
+        ? next
+        : ({
+            uid: next.uid,
+            nickname: next.nickname,
+            mustResetPassword: next.mustResetPassword,
+            groupId: next.groupId,
+            lastClassId: next.lastClassId,
+            lastLoginAt: next.lastLoginAt,
+          } as AppUser)
+
+      try {
+        await repo.upsertUser(savable)
+      } catch (err) {
+        /*
+         * 저장이 막혀도 로그인은 진행한다.
+         * 여기서 던지면 아래 setLoading(false) 가 실행되지 않아 화면이 멈춘다.
+         */
+        console.warn('[auth] 프로필 저장 실패:', err)
+      }
+
       setIsInstructor(instructor)
       setUser(next)
       if (next.lastClassId) setClassId(next.lastClassId)
@@ -228,8 +259,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false)
         return
       }
-      await loadProfile(fb)
-      setLoading(false)
+      /*
+       * ★ 어떤 이유로든 로딩은 끝나야 한다.
+       *   loadProfile 이 던지면 setLoading(false) 를 못 만나고 「불러오는 중…」에서 멈춘다.
+       *   화면이 멈추는 것보다 덜 채워진 채로 들어가는 편이 낫다.
+       */
+      try {
+        await loadProfile(fb)
+      } catch (err) {
+        console.warn('[auth] 프로필을 불러오지 못했습니다:', err)
+      } finally {
+        setLoading(false)
+      }
     })
   }, [loadProfile])
 

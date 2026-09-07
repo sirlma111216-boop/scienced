@@ -224,6 +224,31 @@ const asAnon = env.unauthenticatedContext().firestore()
   pass('판 덮어쓰기', '강사만 tierOverrides 를 쓰고, 학생은 읽기만 한다')
 }
 
+/* ── 로그인할 때 프로필을 저장할 수 있는가 (학생) ── */
+{
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`users/${S1}`).set({
+      uid: S1, role: 'student', studentId: '2024123456',
+      displayName: '홍길동', nickname: '', mustResetPassword: true,
+      groupId: null, lastClassId: null, createdAt: 1, lastLoginAt: 0,
+    })
+  })
+
+  // 앱이 로그인할 때마다 보내는 것. 막히면 「불러오는 중…」에서 멈춘다.
+  await assertSucceeds(
+    asS1.doc(`users/${S1}`).set(
+      { uid: S1, nickname: '', mustResetPassword: true, groupId: null, lastClassId: null, lastLoginAt: Date.now() },
+      { merge: true },
+    ),
+  )
+
+  // 화면용 값을 통째로 보내면 막힌다 — 그래서 허용된 것만 보내야 한다
+  await assertFails(
+    asS1.doc(`users/${S1}`).set({ uid: S1, role: 'instructor', studentId: 'x', lastLoginAt: Date.now() }, { merge: true }),
+  )
+  pass('로그인 프로필 저장', '학생이 로그인할 때 보내는 값은 통과하고, 역할·학번을 바꾸는 것은 막힌다')
+}
+
 /* ── 보관된 클래스는 읽기 전용 ── */
 {
   await assertSucceeds(asS1.doc(`classes/archived-C/lessonState/01`).get())
