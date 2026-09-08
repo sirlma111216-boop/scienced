@@ -32,6 +32,7 @@
     "verify:a11y": "node --import ./scripts/_loader.mjs scripts/verify-a11y.mjs",
     "verify:publish": "node --import ./scripts/_loader.mjs scripts/verify-publish.mjs",
     "check:ai": "node --import ./scripts/_loader.mjs scripts/check-ai.mjs",
+    "audit:lesson": "node --import ./scripts/_loader.mjs scripts/audit-lesson.mjs",
     "verify:stimulus": "node --import ./scripts/_loader.mjs scripts/verify-stimulus.mjs",
     "verify:figures": "node --import ./scripts/_loader.mjs scripts/verify-figures.mjs",
     "verify": "node scripts/verify-all.mjs"
