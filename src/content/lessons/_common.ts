@@ -1,5 +1,5 @@
 import { WRAPUP_LABEL } from '../types'
-import type { FieldDef, GameId, ModuleComponent, Step } from '../types'
+import type { FieldDef, GameId, ModuleComponent, Step, Stimulus } from '../types'
 
 /**
  * 2~18강 공통 단계 골격.
@@ -16,12 +16,25 @@ import type { FieldDef, GameId, ModuleComponent, Step } from '../types'
  */
 
 export interface StandardSpec {
-  /** 시작 현상 · 학생 발화 등 읽을거리 */
-  phenomenon: { title: string; body: string }
+  /**
+   * 시작 현상 · 학생 발화 등 읽을거리 (4차 이전 형식).
+   * openStimuli 를 주면 쓰이지 않는다.
+   */
+  phenomenon?: { title: string; body: string }
+  /**
+   * 4차 지시서로 고친 차시가 쓰는 자료 블록 (H.3).
+   * 주면 phenomenon 대신 이것이 그려진다. 아직 안 고친 차시는 phenomenon 그대로 간다.
+   */
+  openStimuli?: Stimulus[]
+  moduleStimuli?: Stimulus[]
+  formativeStimuli?: Stimulus[]
+  wrapupStimuli?: Stimulus[]
+  /** 단계별 「지금 할 일」 (H.1 ①). 명령형 한 문장. */
+  doNow?: Partial<Record<'open' | 'concepts' | 'module' | 'formative' | 'wrapup', string>>
   /** 관찰/해석 분리 입력을 쓸 것인가 (현상이 관찰 가능한 장면일 때) */
   splitObservation?: boolean
   /** 개인 예측 문항 */
-  predict: { label: string; options: string[]; help?: string }
+  predict: { label: string; options: string[]; help?: string; requiresStimulus?: string[] }
   /** step-open 안내 */
   openLead: string
   /** 개념 카드 id 4개 */
@@ -43,6 +56,8 @@ export interface StandardSpec {
   formative: {
     question: string
     options: string[]
+    /** 이 문항이 가리키는 자료 블록 id */
+    requiresStimulus?: string[]
     /** 응답 유형별로 교사가 고를 수 있는 다음 행동 */
     branches: string[]
   }
@@ -92,6 +107,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
     {
       key: 'predict',
       kind: 'choice',
+      requiresStimulus: spec.predict.requiresStimulus,
       label: spec.predict.label,
       help: spec.predict.help,
       required: true,
@@ -119,7 +135,19 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       shortTitle: '내 생각',
       durationMinutes: spec.minutes[0],
       lead: spec.openLead,
-      material: [{ kind: 'note', title: spec.phenomenon.title, body: spec.phenomenon.body }],
+      doNow: spec.doNow?.open,
+      material:
+        spec.openStimuli ??
+        (spec.phenomenon
+          ? [
+              {
+                id: 'phenomenon',
+                format: 'note' as const,
+                title: spec.phenomenon.title,
+                body: spec.phenomenon.body,
+              },
+            ]
+          : []),
       fields: openFields,
       aiTasks: [],
       wall: {
@@ -143,6 +171,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       lead:
         '카드 네 장을 한 장씩 엽니다. 쉬운 한 문장에서 시작해 정확한 정의까지 내려갑니다.\n' +
         '카드마다 ‘잠깐 확인’이 있고, 이유를 적어야 제출됩니다.',
+      doNow: spec.doNow?.concepts,
       conceptIds: spec.conceptIds,
       fields: [],
       aiTasks: [],
@@ -160,6 +189,8 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       shortTitle: spec.module.shortTitle,
       durationMinutes: spec.minutes[2],
       lead: spec.module.lead,
+      doNow: spec.doNow?.module,
+      material: spec.moduleStimuli,
       fields: spec.module.fields,
       moduleComponent: spec.module.component,
       aiTasks: [],
@@ -179,13 +210,15 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       title: '형성평가 · 다음 수를 두어라',
       shortTitle: '형성평가',
       durationMinutes: spec.minutes[3],
-      lead:
-        '한 문항에 답하고 이유를 적습니다. 분포가 열리면 강사가 다음 행동을 고릅니다.\n' +
-        '그 뒤 답을 고쳐도 되고 유지해도 됩니다. 처음 답은 지워지지 않습니다.',
+      /* 강사가 할 일은 학생 안내에 넣지 않는다 (4차 H.2). */
+      lead: '제출하면 전체 분포가 열립니다. 처음 답은 지워지지 않습니다.',
+      doNow: spec.doNow?.formative,
+      material: spec.formativeStimuli,
       fields: [
         {
           key: 'answer',
           kind: 'choice',
+          requiresStimulus: spec.formative.requiresStimulus,
           label: spec.formative.question,
           required: true,
           options: spec.formative.options,
@@ -198,17 +231,33 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
           help: '같은 답이라도 이유가 다르면 다음 수업이 달라집니다.',
         },
         CONFIDENCE,
+        /*
+         * ★ 여는 조건 (4차 H.4).
+         *   이 두 칸은 짝 토론이 끝난 뒤에 쓰는 것이다. 조건 없이 열어 두었더니
+         *   학생 화면에 같은 질문이 두 번 있는 것으로 보였다. 18차시가 모두 그랬다.
+         *   강사가 「짝 토론 시작」을 눌러야 열린다. 그전에는 입력 요소를 그리지 않는다.
+         */
         {
           key: 'revisedAnswer',
           kind: 'choice',
           label: '토론 뒤 다시 고른 답',
           options: spec.formative.options,
+          gate: {
+            type: 'afterInstructorOpen',
+            of: 'pairTalk',
+            lockedMessage: '강사가 짝 토론을 시작하면 열립니다.',
+          },
         },
         {
           key: 'revisedReason',
           kind: 'longtext',
           label: '무엇을 왜 바꿨는가 / 왜 유지했는가',
           sentenceStarters: CHANGE_STARTERS,
+          gate: {
+            type: 'afterInstructorOpen',
+            of: 'pairTalk',
+            lockedMessage: '강사가 짝 토론을 시작하면 열립니다.',
+          },
         },
       ],
       aiTasks: ['cluster-responses'],
@@ -232,6 +281,8 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       shortTitle: '수업 정리',
       durationMinutes: spec.minutes[4],
       lead: '세 칸만 채우고 마칩니다. 바뀐 생각이 없어도 괜찮습니다.',
+      doNow: spec.doNow?.wrapup,
+      material: spec.wrapupStimuli,
       fields: [
         { key: 'artifact', kind: 'longtext', label: spec.wrapupPrompt, required: true },
         {

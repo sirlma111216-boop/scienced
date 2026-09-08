@@ -53,6 +53,27 @@ export function InstructorLive() {
   )
   const step = view?.steps[stepIndex]?.step
 
+  /*
+   * 이 차시에서 강사가 열 수 있는 것 전부를 한 줄로 모은다.
+   * 자료 블록의 gate 와 입력 칸의 gate 를 따로 두면 콘솔에 버튼이 두 벌 생긴다.
+   * 여는 사람도 시점도 같으므로 id 로 합친다.
+   */
+  const gates = (() => {
+    const found = new Map<string, string>()
+    for (const s of lesson?.steps ?? []) {
+      for (const m of s.material ?? []) {
+        if (m.gate && m.gate.type !== 'afterSubmit') found.set(m.gate.of, m.title)
+      }
+      for (const f of s.fields) {
+        if (f.gate && f.gate.type !== 'afterSubmit' && !found.has(f.gate.of)) {
+          found.set(f.gate.of, f.gate.of === 'pairTalk' ? '짝 토론 시작' : f.label)
+        }
+      }
+    }
+    return [...found].map(([id, label]) => ({ id, label }))
+  })()
+  const revealed = session?.revealed ?? []
+
   useEffect(() => {
     if (!repo || !lesson || !classId) return
     return repo.watchSession(classId, lesson.id, setSession)
@@ -184,6 +205,47 @@ export function InstructorLive() {
           학생 화면은 강제로 이동하지 않습니다. 안내만 뜹니다.
         </Caption>
       </div>
+
+      {/*
+        자료 공개 (4차 H.4).
+
+        「새 증거 카드」처럼 순서가 중요한 자료는 강사가 눌러야 학생 화면에 열린다.
+        되돌릴 수 있다 — 다시 누르면 잠긴다. 잘못 눌렀을 때 되돌릴 길이 없으면
+        수업 중에 아무도 누르지 못한다.
+
+        짝 토론 재응답도 같은 목록을 쓴다. 여는 사람도 시점도 강사 한 곳이라
+        따로 만들 이유가 없다.
+      */}
+      {gates.length > 0 ? (
+        <div style={{ marginTop: 24 }}>
+          <Caption>자료 공개</Caption>
+          <div className="flex flex-wrap gap-xs" style={{ marginTop: 8 }}>
+            {gates.map((g) => {
+              const on = revealed.includes(g.id)
+              return (
+                <Button
+                  key={g.id}
+                  variant={on ? 'primary' : 'secondary'}
+                  aria-pressed={on}
+                  onClick={() => {
+                    if (!classId) return
+                    const next = on
+                      ? revealed.filter((x) => x !== g.id)
+                      : [...revealed, g.id]
+                    void repo?.setSession(classId, lesson.id, { revealed: next })
+                  }}
+                >
+                  {on ? '↩ ' : '▸ '}
+                  {g.label}
+                </Button>
+              )
+            })}
+          </div>
+          <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.7 }}>
+            누르면 학생 화면의 잠긴 카드가 열립니다. 다시 누르면 잠깁니다.
+          </p>
+        </div>
+      ) : null}
 
       {step ? (
         <>

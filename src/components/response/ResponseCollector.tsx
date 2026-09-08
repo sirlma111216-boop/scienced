@@ -3,6 +3,7 @@ import type { LessonId, Step } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import type { ResponseDoc } from '@/lib/types'
 import { Button, Notice } from '@/components/ui'
+import { LockedCard } from '@/components/stimulus/StimulusView'
 import { FieldRenderer } from './fields'
 
 /**
@@ -27,6 +28,7 @@ export function ResponseCollector({
   onSubmitted,
   renderModule,
   autosave = true,
+  isGateOpen,
   children,
 }: {
   classId: string
@@ -41,6 +43,14 @@ export function ResponseCollector({
    * 제출은 마지막 제출본을 불러와 통째로 다시 쓰므로 안전하다 — 초안만 끄면 된다.
    */
   autosave?: boolean
+  /**
+   * 칸을 여는 조건을 판정한다 (4차 H.4).
+   *
+   * 잠긴 칸은 입력 요소를 아예 그리지 않는다 — 회색 카드와 여는 조건만 남는다.
+   * 화면에 두고 disabled 로만 막으면 학생에게는 같은 질문이 두 번 있는 것으로 보이고,
+   * 실제로 그렇게 보였다. 필수 검사에서도 빠진다 — 열리지 않은 칸을 비웠다고 막으면 안 된다.
+   */
+  isGateOpen?: (gate: { type: string; of: string }) => boolean
   /**
    * 전용 모듈 화면. 모형 캔버스·데이터 스튜디오 같은 것.
    * 여기서 만든 값은 일반 입력 칸과 함께 같은 응답 버전에 저장되므로
@@ -106,10 +116,17 @@ export function ResponseCollector({
     scheduleSave(next)
   }
 
+  /** 지금 열려 있는 칸만. 잠긴 칸은 그리지도, 검사하지도 않는다. */
+  function open(f: { gate?: { type: string; of: string } }): boolean {
+    if (!f.gate) return true
+    if (f.gate.type === 'afterSubmit') return submitted
+    return isGateOpen ? isGateOpen(f.gate) : false
+  }
+
   function validate(): boolean {
     const next: Record<string, string> = {}
     for (const f of step.fields) {
-      if (!f.required) continue
+      if (!f.required || !open(f)) continue
       const v = values[f.key]
       if (f.kind === 'allocation') {
         const alloc = (v ?? {}) as Record<string, number>
@@ -222,16 +239,20 @@ export function ResponseCollector({
       {moduleSlot ? <div>{moduleSlot}</div> : null}
 
       <div className="flex flex-col gap-xl" aria-disabled={locked}>
-        {step.fields.map((f) => (
-          <FieldRenderer
-            key={f.key}
-            def={f}
-            value={values[f.key]}
-            error={errors[f.key] || null}
-            disabled={locked}
-            onChange={(v) => set(f.key, v)}
-          />
-        ))}
+        {step.fields.map((f) =>
+          open(f) ? (
+            <FieldRenderer
+              key={f.key}
+              def={f}
+              value={values[f.key]}
+              error={errors[f.key] || null}
+              disabled={locked}
+              onChange={(v) => set(f.key, v)}
+            />
+          ) : (
+            <LockedCard key={f.key} title={f.label} message={f.gate!.lockedMessage} />
+          ),
+        )}
       </div>
 
       {submitted && revising ? (

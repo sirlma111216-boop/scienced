@@ -26,7 +26,7 @@ export const lesson01: Lesson = {
   objectives: [
     '과학교육의 결과를 지식·실행·가치와 태도·과학 정체성의 관점에서 설명한다.',
     '‘재미있는 활동’과 ‘의미 있는 학습’을 학생의 변화와 증거로 구분한다.',
-    '한 학기 동안 사용할 수업 분석 렌즈를 자기 문장으로 진술한다.',
+    '한 학기 동안 수업을 볼 때 쓸 네 가지 질문을 자기 문장으로 진술한다.',
   ],
   fieldCase:
     '드라이아이스 시범이 성공적으로 끝났지만 학생에게 “무엇을 알게 되었니?”라고 묻자 “연기가 신기했다”만 남은 수업. ' +
@@ -325,7 +325,7 @@ export const lesson01: Lesson = {
       stepId: 'step-concepts',
       cue: '개념 카드 네 장을 띄우고 첫 카드를 열기 전에',
       sayThis:
-        '이 네 개는 외울 용어가 아니라 한 학기 동안 수업을 볼 때 쓸 렌즈 네 개입니다. 오늘은 뜻만 잡고 갑니다.',
+        '이 네 개는 외울 용어가 아니라 한 학기 동안 수업을 볼 때마다 던질 질문 네 개입니다. 오늘은 뜻만 잡고 갑니다.',
       whyNotSkip:
         '첫 시간에 정의 암기로 몰면 남은 17강 내내 학생이 용어를 "시험 범위"로 다룬다.',
       watchFor: '‘잠깐 확인’에서 이유 칸을 비우고 선택만 하는 사람 — 이유 없이는 제출되지 않는다.',
@@ -392,6 +392,7 @@ export const lesson01: Lesson = {
   steps: [
     {
       id: 'step-recall',
+      doNow: '가장 또렷하게 남아 있는 과학 수업 한 장면을 떠올려 아래 세 칸에 적으세요.',
       order: 1,
       type: 'recall',
       title: '내가 기억하는 과학 수업',
@@ -451,6 +452,7 @@ export const lesson01: Lesson = {
 
     {
       id: 'step-concepts',
+      doNow: '카드 네 장을 순서대로 열고, 카드마다 「잠깐 확인」에 답하세요.',
       order: 2,
       type: 'concepts',
       title: '과학 수업이 남겨야 하는 것',
@@ -471,6 +473,7 @@ export const lesson01: Lesson = {
 
     {
       id: 'step-compare',
+      doNow: '아래 두 수업 대본을 읽고, 네 칸 표를 각각 채우세요.',
       order: 3,
       type: 'compare',
       title: '두 수업 비교',
@@ -481,7 +484,9 @@ export const lesson01: Lesson = {
         '수업 B가 정답이고 A가 오답인 것이 아닙니다. A에서 무엇이 빠졌는지를 찾습니다.',
       material: [
         {
-          kind: 'transcript',
+          id: 'lessonA',
+          format: 'dialogue',
+          label: '수업용으로 만든 가상 자료',
           title: '수업 A · 드라이아이스 시범 (중2, 물질의 상태 변화)',
           body: [
             '교사  자, 다들 앞으로 보세요. 여기 드라이아이스를 따뜻한 물에 넣겠습니다.',
@@ -501,7 +506,9 @@ export const lesson01: Lesson = {
           ].join('\n'),
         },
         {
-          kind: 'transcript',
+          id: 'lessonB',
+          format: 'dialogue',
+          label: '수업용으로 만든 가상 자료',
           title: '수업 B · 같은 소재, 다른 설계 (중2, 물질의 상태 변화)',
           body: [
             '교사  드라이아이스를 따뜻한 물에 넣으면 하얀 게 올라옵니다. 넣기 전에 먼저 물어볼게요. 그 하얀 것은 무엇일까요? 공책에 답과 이유를 적으세요. 옆 사람 것 보지 말고.',
@@ -531,6 +538,7 @@ export const lesson01: Lesson = {
         {
           key: 'quadrantA',
           kind: 'quadrant',
+          requiresStimulus: ['lessonA'],
           label: '수업 A를 네 칸으로',
           help: '각 칸에 대본에서 근거가 되는 대목을 짧게 적으세요. 없으면 “없음”이라고 적습니다.',
           required: true,
@@ -544,6 +552,7 @@ export const lesson01: Lesson = {
         {
           key: 'quadrantB',
           kind: 'quadrant',
+          requiresStimulus: ['lessonB'],
           label: '수업 B를 네 칸으로',
           required: true,
           quadrants: [
@@ -556,6 +565,7 @@ export const lesson01: Lesson = {
         {
           key: 'missing',
           kind: 'choice',
+          requiresStimulus: ['lessonA', 'lessonB'],
           label: '수업 A에 가장 결정적으로 빠진 것',
           required: true,
           options: ['현상', '목표', '학생 사고', '학습의 증거'],
@@ -563,6 +573,7 @@ export const lesson01: Lesson = {
         {
           key: 'missingReason',
           kind: 'longtext',
+          requiresStimulus: ['lessonA'],
           label: '그렇게 고른 이유',
           help: '대본의 어느 대목을 근거로 삼았는지 함께 적어 주세요.',
           required: true,
@@ -588,6 +599,7 @@ export const lesson01: Lesson = {
 
     {
       id: 'step-auction',
+      doNow: '요소 카드 8장에 100점을 나누고, 왜 그렇게 나눴는지 한 줄 적으세요.',
       order: 4,
       type: 'auction',
       title: '좋은 수업이란?',
@@ -666,6 +678,7 @@ export const lesson01: Lesson = {
 
     {
       id: 'step-wrapup',
+      doNow: '아래 세 칸을 채우고 오늘 수업을 마치세요.',
       order: 5,
       type: 'wrapup',
       title: WRAPUP_LABEL,

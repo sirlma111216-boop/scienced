@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AFTER_CLASS_LABEL, type LessonId, type Lesson } from '@/content/types'
 import type { LessonView, StepView } from '@/lib/tiers'
 import { ConceptCard } from '@/components/concept/ConceptCard'
+import { StimulusView } from '@/components/stimulus/StimulusView'
 import { ResponseCollector } from './ResponseCollector'
 import { Caption, Notice } from '@/components/ui'
 
@@ -97,13 +98,8 @@ function AfterClassGroup({
         {group.step.title}
       </h3>
 
-      {material.map((m, i) => (
-        <div key={i} style={{ marginTop: 16 }}>
-          <Caption>{m.kind === 'transcript' ? '수업 기록' : '자료'}</Caption>
-          <p className="text-body" style={{ whiteSpace: 'pre-line', marginTop: 6 }}>
-            {m.body}
-          </p>
-        </div>
+      {material.map((m) => (
+        <StimulusView key={m.id} stimulus={m} />
       ))}
 
       {concepts.length > 0 ? (

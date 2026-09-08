@@ -218,4 +218,89 @@ if (minuteHits === 0) {
   )
 }
 
+/*
+ * ── H.6 설명 없는 비유 (4차 지시서) ──
+ *
+ * 이론을 설명하는 문장에는 비유를 넣지 않는다. 사실대로 쓴다.
+ * 「학생은 빈 그릇이 아니다」가 아니라 「학생은 수업 전에 이미 자기 설명을 가지고 있다」.
+ *
+ * 활동 이름의 비유(모형 결투·증거 법정)는 허용한다. 다만 그 단계에 「지금 할 일」이 있어야 한다.
+ *
+ * ★ 오검출을 조심한다. 전수 점검에서 걸린 두 건이 모두 오검출이었다.
+ *     「화살표 키로 조절」 — 그림이 아니라 자판
+ *     「수업을 마치기 전에」 — 비유의 「마치」가 아니라 동사 마치다
+ *   그래서 낱말이 아니라 쓰임으로 가른다.
+ */
+const METAPHORS = [
+  { re: /빈 그릇/, name: '빈 그릇' },
+  { re: /나침반/, name: '나침반' },
+  { re: /렌즈/, name: '렌즈' },
+  { re: /다리를 놓/, name: '다리를 놓다' },
+  { re: /작은 과학자/, name: '작은 과학자' },
+  { re: /씨앗/, name: '씨앗' },
+  { re: /근육/, name: '근육' },
+  { re: /뼈대/, name: '뼈대' },
+  { re: /항해/, name: '항해' },
+  { re: /지도처럼/, name: '지도처럼' },
+  // 「마치기·마치고·마친다」는 동사다. 비유의 「마치」는 뒤에 조사 없이 명사구가 온다.
+  { re: /마치 [가-힣]+(처럼|같이|인 듯)/, name: '마치 ~처럼' },
+  { re: /[가-힣]+처럼 생각하면/, name: '~처럼 생각하면' },
+]
+
+/** 이론을 설명하는 글만 본다. 자료 본문(대본·기사·학생 글)은 그 사람의 말이다. */
+function theoryStrings(lesson) {
+  const out = []
+  const push = (where, text) => { if (text) out.push([where, text]) }
+  push('firstSentence', lesson.firstSentence)
+  push('guide', lesson.guide)
+  push('fieldCase', lesson.fieldCase)
+  lesson.objectives.forEach((o, i) => push(`objectives[${i}]`, o))
+  for (const c of lesson.keyConcepts) {
+    push(`${c.id}.plainOneLiner`, c.plainOneLiner)
+    push(`${c.id}.whyItMatters`, c.whyItMatters)
+    push(`${c.id}.formalDefinition`, c.formalDefinition)
+    ;(c.mustKnow ?? []).forEach((m, i) => push(`${c.id}.mustKnow[${i}]`, m))
+    ;(c.deepDive ?? []).forEach((d, i) => push(`${c.id}.deepDive[${i}]`, d.body))
+  }
+  for (const s of lesson.steps) {
+    push(`${s.id}.doNow`, s.doNow)
+    push(`${s.id}.lead`, s.lead)
+    for (const f of s.fields) {
+      push(`${s.id}.${f.key}.label`, f.label)
+      push(`${s.id}.${f.key}.help`, f.help)
+    }
+  }
+  return out
+}
+
+{
+  const { LESSONS } = await import('../src/content/lessons/index.ts')
+  let hits = 0
+  let checked = 0
+  for (const lesson of LESSONS) {
+    /* 아직 4차로 고치지 않은 차시는 세기만 한다. 고칠 때 함께 본다. */
+    if (!lesson.published) continue
+    checked += 1
+    for (const [where, text] of theoryStrings(lesson)) {
+      for (const m of METAPHORS) {
+        if (!m.re.test(text)) continue
+        hits += 1
+        fail('설명 없는 비유',
+          `${lesson.id}강 ${where} 에 「${m.name}」 — 사실대로 바꾸거나 세 칸(견주는 대상·맞는 곳·틀리는 곳)을 함께 적는다`)
+      }
+    }
+    /* 활동 이름이 비유여도, 바로 아래에 무엇을 하라는 한 문장이 있어야 한다 */
+    for (const s of lesson.steps) {
+      const named = /경매|결투|법정|의회|탈출|드래프트|유통기한|다음 수|경찰/.test(s.title)
+      if (named && !s.doNow) {
+        hits += 1
+        fail('활동 이름', `${lesson.id}강 ${s.id} 「${s.title}」 은 이름이 비유인데 「지금 할 일」이 없다`)
+      }
+    }
+  }
+  if (hits === 0) {
+    pass('설명 없는 비유', `공개된 ${checked}개 차시의 이론 설명에 설명 없는 비유가 없다 (H.6)`)
+  }
+}
+
 report('verify:wording')

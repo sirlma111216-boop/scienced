@@ -27,6 +27,7 @@ import { AiAssistPanel } from '@/components/ai/AiAssistPanel'
 import { ConceptCard } from '@/components/concept/ConceptCard'
 import { LadderGame } from '@/components/activity/LadderGame'
 import { GroupPanel } from '@/components/activity/GroupPanel'
+import { LockedCard, StimulusView } from '@/components/stimulus/StimulusView'
 import { ModuleHost } from '@/components/activity/ModuleHost'
 import { DistributionView } from '@/components/response/DistributionView'
 import { ResponseCollector } from '@/components/response/ResponseCollector'
@@ -164,6 +165,19 @@ export function Lesson() {
   const showMoved =
     instructorStep && instructorStep.id !== step?.id && dismissedAt !== instructorStep.id
 
+  /*
+   * 블록을 여는 조건 (4차 H.4).
+   *
+   * afterReveal / afterInstructorOpen 은 둘 다 강사가 진행 콘솔에서 여는 것이라
+   * 같은 목록(sessions.revealed)에 id 로 들어간다. 되돌릴 수 있다 — 빼면 다시 잠긴다.
+   * afterSubmit 은 본인이 제출했는가로 판정하므로 수집기 안에서 따로 본다.
+   */
+  const revealed = session?.revealed ?? []
+  function isOpen(gate: { type: string; of: string }): boolean {
+    if (gate.type === 'afterSubmit') return true
+    return revealed.includes(gate.of)
+  }
+
   const game = GAMES_BY_LESSON[lesson.id]
   const ladder: LadderState | null = game ? (session?.ladders?.[game.id] ?? null) : null
 
@@ -291,22 +305,43 @@ export function Lesson() {
                 }
               />
             ) : null}
+            {/*
+              ① 지금 할 일 (4차 H.1).
+              학생이 지금 손으로 할 행동 한 문장. 안내 문구보다 먼저, 눈에 띄게 둔다.
+              강사 설명 없이 화면만 읽고도 무엇을 할지 알아야 한다.
+            */}
+            {step.doNow ? (
+              <div
+                className="rounded-md"
+                style={{
+                  padding: '14px 18px',
+                  margin: '0 0 16px',
+                  boxShadow: 'inset 0 0 0 2px #000',
+                }}
+              >
+                <Caption>지금 할 일</Caption>
+                <p className="text-body-lg" style={{ margin: '6px 0 0', fontWeight: 480 }}>
+                  {step.doNow}
+                </p>
+              </div>
+            ) : null}
+
             <p className="text-body-lg" style={{ whiteSpace: 'pre-line', marginTop: 0 }}>
               {step.lead}
             </p>
 
-            {/* ② 시작 현상 / 읽을 자료 — 이 판에 나오는 것만 */}
-            {stepView.material.map((m, i) => (
-              <div key={i} className="card" style={{ marginTop: 24 }}>
-                <Caption>{m.kind === 'transcript' ? '수업 기록' : '자료'}</Caption>
-                <h3 className="text-card-title" style={{ margin: '8px 0 12px' }}>
-                  {m.title}
-                </h3>
-                <p className="text-body" style={{ whiteSpace: 'pre-line', margin: 0 }}>
-                  {m.body}
-                </p>
-              </div>
-            ))}
+            {/*
+              ② 읽을 것·볼 것 — 이 판에 나오는 것만.
+              강사가 공개해야 열리는 자료는 잠긴 카드로 자리를 지킨다.
+              자리를 아예 비우면 학생이 다음에 무엇이 오는지 모른다.
+            */}
+            {stepView.material.map((m) =>
+              m.gate && !isOpen(m.gate) ? (
+                <LockedCard key={m.id} title={m.title} message={m.gate.lockedMessage} />
+              ) : (
+                <StimulusView key={m.id} stimulus={m} />
+              ),
+            )}
 
             {/* ⑤ 개념 카드 — 이 판에 나오는 것만 */}
             {step.type === 'concepts' ? (
@@ -340,6 +375,7 @@ export function Lesson() {
                   classId={classId!}
                   lessonId={lesson.id}
                   step={{ ...step, fields: stepView.fields, material: stepView.material }}
+                  isGateOpen={isOpen}
                   renderModule={
                     step.moduleComponent
                       ? (value, onChange, locked) => (

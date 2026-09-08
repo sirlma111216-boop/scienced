@@ -180,6 +180,92 @@ export type Tier = 'core' | 'extended'
 /** 「수업 후 이어서」 영역의 이름. 화면 문구는 여기 한 곳에서만 정한다. */
 export const AFTER_CLASS_LABEL = '수업 후 이어서'
 
+/**
+ * 자료 블록의 형식 (4차 H.3).
+ *
+ * 활동에는 학생이 붙들고 판단할 실물이 있어야 한다.
+ * 「받습니다」라고 적어 놓고 받을 것이 없으면 그것은 활동이 아니다.
+ *
+ * 「note」는 4차 지시서 이전의 상황 소개 글이다. 아직 고치지 않은 차시가 쓰고 있고,
+ * verify:stimulus 가 공개된 차시에 몇 개 남았는지 센다.
+ */
+export type StimulusFormat =
+  | 'article'     // 기사
+  | 'dialogue'    // 교사·학생 발화가 섞인 대본
+  | 'studentWork' // 학생 답안·보고서·산출물
+  | 'image'       // 그림 — imageSpec 없이 저장할 수 없다 (J.1)
+  | 'dataTable'   // 측정값 표
+  | 'card'        // 증거 카드·상황 카드
+  | 'video'
+  | 'standard'    // 성취기준
+  | 'note'
+
+/**
+ * 그림 제작 명세 (4차 J.1).
+ *
+ * 그림이 있어야 성립하는 활동인데 「그림을 보자」라고만 적으면 만들 수 없고,
+ * 만들어도 무엇을 그려야 맞는지 알 수 없다. 그래서 그림마다 이것을 붙인다.
+ *
+ * ★ 그림 안에 한국어 글자를 넣지 않는다 (J.2). 라벨은 앱이 겹쳐 그린다 —
+ *   확대·화면 낭독·번역이 함께 풀린다.
+ */
+export interface ImageSpec {
+  /** 이 그림이 없으면 학생이 무엇을 못 하는가 — 한 문장 */
+  purpose: string
+  mustShow: string[]
+  /** 보이면 안 되는 것. 주로 정답 노출 */
+  mustNotShow: string[]
+  /** 앱이 그림 위에 겹쳐 그리는 한국어 라벨 */
+  labels: Array<{ text: string; position: string }>
+  legend?: string
+  /** 이미지 생성 도구에 그대로 넣을 영문 문장 */
+  genPrompt: string
+  /** 그림을 보지 않고도 같은 판단을 할 수 있을 만큼의 설명 */
+  altText: string
+  /** 모형 그림일 때 — 실제와 다른 점 */
+  differsFromReality?: string
+  /** 그림 없이 진행하는 대안 */
+  fallback: string
+  license: '직접 제작' | '공개 라이선스' | '촬영 필요'
+  /** 앱이 SVG 로 직접 그리는 그림의 id. 없으면 아직 그림이 없다는 뜻이다. */
+  figureId?: string
+}
+
+/**
+ * 블록을 여는 조건 (4차 H.4).
+ *
+ * 「토론 뒤」 「새 증거 뒤」로 시작하는 칸이 그 일이 일어나기 전부터 열려 있으면
+ * 학생에게는 같은 질문이 두 번 있는 것으로 보인다.
+ *
+ * 잠긴 블록은 입력 요소를 화면에 아예 그리지 않는다. 회색 카드와 여는 조건만 남는다.
+ */
+export interface Gate {
+  type: 'afterSubmit' | 'afterReveal' | 'afterInstructorOpen'
+  /** afterReveal 이면 공개할 자료 블록 id */
+  of: string
+  /** 잠긴 카드에 적는 여는 조건 */
+  lockedMessage: string
+}
+
+/** 읽을 것·볼 것의 실물. 없으면 활동을 만들지 않는다 (4차 H.1 ②). */
+export interface Stimulus {
+  id: string
+  format: StimulusFormat
+  title: string
+  /** 「수업용으로 만든 가상 자료」 같은 꼬리표 (H.5) */
+  label?: string
+  source?: string
+  body: string
+  /** dataTable 전용 */
+  table?: { head: string[]; rows: string[][] }
+  /** image 전용. format 이 image 면 반드시 있어야 한다 (verify:figures) */
+  imageSpec?: ImageSpec
+  /** 강사가 공개해야 열리는 자료 */
+  gate?: Gate
+  /** 자료는 언제나 core 다 (H.3). 50분 판에서도 빠지지 않는다. */
+  tier?: Tier
+}
+
 export interface WallConfig {
   enabled: boolean
   prompt: string
@@ -207,6 +293,13 @@ export interface FieldDef {
   options?: string[]
   /** allocation 전용: 총합을 강제한다 */
   total?: number
+  /**
+   * 이 입력이 가리키는 자료 블록 id (4차 H.3).
+   * 여기 적힌 자료가 같은 단계에 없으면 학생 화면에 그리지 않고 강사에게만 경고한다.
+   */
+  requiresStimulus?: string[]
+  /** 이 칸을 여는 조건. 잠겨 있으면 입력 요소를 그리지 않는다. */
+  gate?: Gate
   /** allocation / rank 전용: 카드 목록 */
   items?: Array<{ id: string; label: string; note?: string }>
   /** quadrant 전용 */
@@ -282,8 +375,13 @@ export interface Step {
   groupBuild?: GroupBuildConfig
   /** 이 단계에서 쓰는 개념 카드 id (type === 'concepts') */
   conceptIds?: string[]
-  /** 이 단계에서 쓰는 읽기 자료 */
-  material?: { kind: 'transcript' | 'note'; title: string; body: string; tier?: Tier }[]
+  /**
+   * 지금 할 일 — 명령형 한 문장 (4차 H.1 ①).
+   * 학생이 지금 손으로 할 행동만 적는다. 미래형·수동형을 쓰지 않는다.
+   */
+  doNow?: string
+  /** 이 단계에서 쓰는 자료. 읽을 것·볼 것의 실물이다. */
+  material?: Stimulus[]
   aiTasks: AiTaskId[]
   wall: WallConfig | null
   picker: PickerConfig | null

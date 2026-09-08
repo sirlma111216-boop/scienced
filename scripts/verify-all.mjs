@@ -18,6 +18,8 @@ const CHECKS = [
   ['verify:wall', '의견 광장 배치 · 인기순 정렬 없음'],
   ['verify:a11y', '드래그 전용 없음 · 포커스 · 대체 텍스트 · reduced-motion'],
   ['verify:publish', '시드에서 1강만 공개 · 보안 규칙'],
+  ['verify:stimulus', '자료 연결 · 여는 조건 · 지금 할 일 (4차 G·H)'],
+  ['verify:figures', '그림 제작 명세 · 그림 속 글자 금지 (4차 J)'],
 ]
 
 let failed = 0

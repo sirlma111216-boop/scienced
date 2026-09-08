@@ -207,6 +207,12 @@ export interface SessionState {
    */
   pollResults: Record<string, number>
   ladders: Partial<Record<GameId, LadderState>>
+  /**
+   * 강사가 공개한 자료 블록 id (4차 H.4 afterReveal).
+   * 새 증거 카드처럼 순서가 중요한 자료는 여기에 id 가 들어와야 학생 화면에 열린다.
+   * 되돌릴 수 있다 — 목록에서 빼면 다시 잠긴다.
+   */
+  revealed?: string[]
   pinnedPostRef: { stepId: string; postId: string } | null
   /** 강사가 어느 단계로 옮겼는지. 학생 화면을 강제로 옮기지 않고 안내만 띄운다. */
   instructorAt: string | null

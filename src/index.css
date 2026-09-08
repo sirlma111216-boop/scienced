@@ -258,10 +258,21 @@
     box-shadow: none;
   }
 
+  /*
+   * 그림 설명은 화면에서는 접어 두고, 인쇄본에서는 펼쳐 둔다.
+   * 종이에는 그림이 흐리게 나오는 일이 잦아 글 설명이 더 필요하다.
+   */
+  .print-only {
+    display: none;
+  }
+
   /* 인쇄: 차시별 동일 목표 활동지 (지시서 15절) */
   @media print {
     .no-print {
       display: none !important;
+    }
+    .print-only {
+      display: block;
     }
     .color-block {
       background: #fff !important;
