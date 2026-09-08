@@ -381,16 +381,15 @@ export const lesson02: Lesson = {
         title: '발자국 두 줄',
         label: '수업용으로 만든 가상 자료',
         body:
-          '젖은 흙 위에 발자국 두 줄이 남아 있다. 크기와 간격을 재려면 아래 축척 막대를 쓴다.\n' +
+          '마른 진흙 바닥에 발자국 두 줄이 남아 있다. 크기와 간격을 재려면 아래 축척 막대를 쓴다.\n' +
           '촬영 날짜와 장소는 기록되지 않았다.',
         imageSpec: {
           purpose:
             '학생이 「사실」과 「추론」을 갈라 적으려면 해석이 갈리는 장면이 눈앞에 있어야 한다.',
           mustShow: [
-            '젖은 흙 위 서로 다른 크기의 발자국 두 줄',
-            '한 줄은 보폭이 일정, 다른 줄은 중간부터 보폭이 넓어짐',
-            '두 줄이 만나는 지점',
-            '그 지점 이후 한 줄만 이어짐',
+            '마른 진흙 바닥에 남은, 크기가 뚜렷이 다른 발자국 두 줄',
+            '작은 줄이 큰 줄에 가까워지다가 만나는 지점',
+            '그 지점 이후 큰 발자국 한 줄만 이어짐',
             '길이를 잴 수 있는 축척 막대',
           ],
           mustNotShow: [
@@ -403,23 +402,32 @@ export const lesson02: Lesson = {
             { text: 'B 발자국', position: '오른쪽 줄 시작점 옆' },
             { text: '두 줄이 만나는 지점', position: '두 줄이 겹치는 곳 위' },
           ],
-          legend: '아래 막대 한 칸은 10cm다.',
+          legend: '그림 아래 축척 막대의 전체 길이가 50cm다.',
+          /* 강의자가 실제로 쓴 프롬프트에 맞춘다. 다시 만들 때 같은 그림이 나와야 한다. */
           genPrompt:
-            'Simple black line drawing on white background, top-down view of two trails of ' +
-            'footprints in wet mud. One trail has evenly spaced prints; the other trail’s prints ' +
-            'become more widely spaced partway along. The two trails converge at a point, after ' +
-            'which only one trail continues. Include a plain scale bar at the bottom. ' +
-            'No people, no animals, no arrows, no text, no labels. Clean minimal illustration style.',
+            'Photorealistic top-down photograph of a flat, dry, cracked mud surface. ' +
+            'Two trails of animal paw prints run across it. One trail has clearly larger prints ' +
+            'than the other. The smaller trail approaches the larger one from the lower left and ' +
+            'the two meet near the right side, after which only the larger trail continues. ' +
+            'Include a plain black-and-white photographic scale bar at the bottom. ' +
+            'No people, no animals visible, no arrows, no text, no labels, ' +
+            'except plain numerals on the scale bar.',
+          /* ★ 실제로 넣은 그림을 그대로 옮긴다. 대체 설명이 그림과 다르면 낭독하는 사람을 속인다. */
           altText:
-            '젖은 흙 위에 발자국 두 줄이 있다. 왼쪽 줄은 발자국이 작고 간격이 처음부터 끝까지 일정하다. ' +
-            '오른쪽 줄은 발자국이 크고, 처음에는 간격이 좁다가 중간부터 눈에 띄게 넓어진다. ' +
-            '두 줄은 오른쪽에서 한 지점에 모이고, 그 뒤로는 큰 발자국 한 줄만 이어진다. ' +
-            '아래에 한 칸이 10cm인 축척 막대가 있다. 사람이나 동물의 모습, 방향 표시는 없다.',
+            '갈라진 마른 진흙 바닥을 위에서 내려다본 사진이다. 발자국 두 줄이 있다. ' +
+            '위쪽 줄은 발자국이 크고, 아래쪽 줄은 눈에 띄게 작다. ' +
+            '아래쪽 작은 줄은 왼쪽 아래에서 시작해 오른쪽으로 가면서 위쪽 줄에 가까워지고, ' +
+            '오른쪽 끝에서 두 줄이 만난다. 그 뒤로는 큰 발자국만 이어진다. ' +
+            '아래에 0에서 50cm까지 눈금이 적힌 축척 막대가 있다. ' +
+            '동물이나 사람의 모습, 진행 방향을 알려 주는 표시는 없다.',
           fallback:
             '같은 내용을 표로 준다 — 줄 / 발자국 길이 / 발자국 사이 간격(앞·뒤) / 만난 뒤 이어짐 여부.',
           license: '직접 제작',
-          /* 앱이 SVG 로 직접 그린다. 확대·대체 설명·다크 모드가 함께 풀리고, 라벨이 그림 밖에 남는다. */
-          figureId: 'footprints',
+          /*
+           * 강의자가 genPrompt 로 만든 파일. 앱이 도형으로 그리지 않는다.
+           * 파일이 없으면 화면은 fallback 과 altText 를 대신 그린다.
+           */
+          src: '/figures/02-footprints.png',
         },
       },
     ],

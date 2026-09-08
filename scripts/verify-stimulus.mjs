@@ -14,6 +14,7 @@
 import { fail, pass, report } from './_report.mjs'
 
 const { LESSONS } = await import('../src/content/lessons/index.ts')
+const { parseBody } = await import('../src/lib/body-text.ts')
 
 /* G.2 기준 1 — 안내 문구가 화면에 없는 것을 가리킨다 */
 const K1 = ['받습니다', '공개됩니다', '제시됩니다', '주어집니다', '나눠 줍니다', '배부합니다']
@@ -45,6 +46,28 @@ for (const lesson of LESSONS) {
       if (m.tier === 'extended') {
         fail('자료 판', `${where} 「${m.title}」 이 extended 다 — 자료는 언제나 core 여야 한다`)
       }
+      /*
+       * ★ 줄머리 꼬리표가 본문과 구분되는가.
+       *
+       * 「제목 식물의 잎 개수와…」처럼 붙여 쓰면 「제목」이 꼬리표인지
+       * 「제목 식물」이라는 말인지 알 수 없다. 화면은 꼬리표를 따로 그리는데,
+       * 그러려면 본문이 「꼬리표␣␣내용」 모양이어야 한다.
+       * 대본과 학생 산출물은 반드시 그 모양이다 — 화자나 절 이름이 있기 때문이다.
+       */
+      if (strict && (m.format === 'dialogue' || m.format === 'studentWork')) {
+        const lines = parseBody(m.body)
+        if (!lines.some((l) => l.kind === 'labelled')) {
+          fail('꼬리표 구분',
+            `${where} 「${m.title}」 에 줄머리 꼬리표가 없다 — 「교사␣␣…」처럼 공백 두 칸으로 가른다`)
+        }
+        /* 꼬리표가 붙지 않은 본문 줄이 섞여 있으면 화면에서 들쭉날쭉해진다 */
+        const stray = lines.filter((l) => l.kind === 'plain')
+        if (stray.length > 0) {
+          fail('꼬리표 구분',
+            `${where} 「${m.title}」 에 꼬리표도 들여쓰기도 없는 줄이 ${stray.length}개 있다 — 「${stray[0].text.slice(0, 24)}…」`)
+        }
+      }
+
       /* H.5 — 가상 자료에는 라벨이 붙는다 */
       if (strict && m.format !== 'note' && m.format !== 'standard' && !m.label && !m.source) {
         fail('가상 자료 라벨', `${where} 「${m.title}」 에 출처도 라벨도 없다`)
@@ -130,6 +153,7 @@ for (const lesson of LESSONS) {
 
 pass('자료 연결', 'requiresStimulus 가 가리키는 자료가 모두 같은 단계에 있다')
 pass('여는 조건', '순차 표현이 붙은 칸에 모두 gate 와 사유가 있다')
+pass('꼬리표 구분', '대본과 학생 산출물의 줄머리가 모두 본문과 갈라져 있다')
 pass('공개된 차시', `${published.map((l) => l.id).join('·')}강이 4차 구조를 갖췄다`)
 
 if (noteLeft > 0) {

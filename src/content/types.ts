@@ -227,8 +227,14 @@ export interface ImageSpec {
   /** 그림 없이 진행하는 대안 */
   fallback: string
   license: '직접 제작' | '공개 라이선스' | '촬영 필요'
-  /** 앱이 SVG 로 직접 그리는 그림의 id. 없으면 아직 그림이 없다는 뜻이다. */
-  figureId?: string
+  /**
+   * 그림 파일 경로 (public/ 아래).
+   *
+   * ★ 앱이 그림을 그리지 않는다. genPrompt 로 강의자가 만든 파일을 여기에 둔다.
+   *   도형으로 흉내 낸 그림은 생성 도구의 결과보다 못하다.
+   * 아직 파일이 없으면 비워 둔다 — 화면은 fallback 과 altText 를 대신 그린다.
+   */
+  src?: string
 }
 
 /**

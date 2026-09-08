@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { KeyConcept } from '@/content/types'
 import { Badge, Button, Caption, ColorBlock, type BlockTone } from '@/components/ui'
+import { withEmphasis } from '@/components/emphasis'
 
 /**
  * 개념 카드.
@@ -23,25 +24,6 @@ const LAYERS = [
 ] as const
 
 const TONES: BlockTone[] = ['lime', 'lilac', 'cream', 'mint']
-
-/**
- * **별표 두 개**로 감싼 곳을 굵게 그린다.
- *
- * 강조는 이 카드의 목적이다 — 강사가 짚는 대목과 학생이 시험 공부에 쓸 알맹이를 가른다.
- * 마크다운 라이브러리를 붙이지 않는다. 필요한 것은 굵게 하나뿐이고,
- * 라이브러리를 넣으면 교재 문장에 든 다른 기호까지 해석해 버린다.
- */
-function withEmphasis(text: string): React.ReactNode[] {
-  return text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
-    i % 2 === 1 ? (
-      <strong key={i} style={{ fontWeight: 700 }}>
-        {part}
-      </strong>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  )
-}
 
 export function ConceptCard({
   concept,

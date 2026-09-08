@@ -21,6 +21,7 @@ const REQUIRED_LISTS = ['mustShow', 'mustNotShow']
 
 let count = 0
 let drawn = 0
+const pending = []
 
 for (const lesson of LESSONS) {
   for (const step of lesson.steps) {
@@ -70,7 +71,10 @@ for (const lesson of LESSONS) {
         fail('모형 그림', `${where} 는 모형인데 differsFromReality 가 없다`)
       }
 
-      if (spec.figureId) drawn += 1
+      if (spec.src) drawn += 1
+      else if (lesson.published) {
+        pending.push(`${lesson.id}강 「${m.title}」`)
+      }
     }
   }
 }
@@ -80,7 +84,12 @@ if (count === 0) {
 } else {
   pass('그림 제작 명세', `그림 ${count}장 모두 명세·프롬프트·대체 설명·대안을 갖췄다`)
   pass('그림 속 글자', '라벨이 있는 그림은 모두 글자 없이 생성하도록 적혀 있다')
-  console.log(`  · 앱이 SVG 로 직접 그리는 그림 ${drawn}장 / ${count}장`)
+  console.log(`  · 파일이 들어온 그림 ${drawn}장 / ${count}장`)
+  /*
+   * 파일이 아직 없는 것은 실패가 아니다 — 그림은 강의자가 만든다.
+   * 다만 공개된 차시에서 기다리고 있는 것은 눈에 보이게 적는다.
+   */
+  for (const p of pending) console.log(`  · 파일 기다리는 중: ${p}`)
 }
 
 report('verify:figures')
