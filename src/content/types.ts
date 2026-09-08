@@ -400,6 +400,14 @@ export interface Step {
   moduleComponent?: ModuleComponent
   /** 즉석 모둠 만들기. 제출 뒤 의견 광장 앞에 그려진다. */
   groupBuild?: GroupBuildConfig
+  /**
+   * 응답 분포를 본 뒤 강사가 할 수 있는 일 (형성평가 단계).
+   *
+   * 강사 화면에만 보이는 안내다. 누르는 단추가 아니다 —
+   * 예전에는 고르는 단추였는데 고른 것이 아무 데도 남지 않았고 학생 화면도 바뀌지 않았다.
+   * 하는 일 없는 단추보다 읽을 목록이 낫다. 실제로 여는 것은 「자료 공개」다.
+   */
+  teacherNextMoves?: string[]
   /** 이 단계에서 쓰는 개념 카드 id (type === 'concepts') */
   conceptIds?: string[]
   /**

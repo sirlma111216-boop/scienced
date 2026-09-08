@@ -193,7 +193,11 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       id: 'step-formative',
       order: 4,
       type: 'formative',
-      title: '형성평가 · 다음 수를 두어라',
+      /*
+       * 「다음 수를 두어라」는 강사가 다음 행동을 고르는 단추에서 온 이름이었다.
+       * 그 단추가 아무 일도 하지 않아 없앴으므로, 이름도 학생이 하는 일로 되돌린다.
+       */
+      title: '형성평가 · 다시 고르기',
       shortTitle: '형성평가',
       durationMinutes: spec.minutes[3],
       /* 강사가 할 일은 학생 안내에 넣지 않는다 (4차 H.2). */
@@ -247,6 +251,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
           },
         },
       ],
+      teacherNextMoves: spec.formative.branches,
       aiTasks: ['cluster-responses'],
       /*
        * 형성평가의 흐름은 넷이다.

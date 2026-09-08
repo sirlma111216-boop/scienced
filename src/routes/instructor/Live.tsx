@@ -9,7 +9,6 @@ import { AppShell } from '@/components/layout/AppShell'
 import { DistributionView } from '@/components/response/DistributionView'
 import { LadderPanel } from '@/components/teach/LadderPanel'
 import { MustSay } from '@/components/teach/MustSay'
-import { TeacherBranchBar } from '@/components/teach/TeacherBranchBar'
 import { AiClusterPanel } from '@/components/teach/AiClusterPanel'
 import { WallCard } from '@/components/wall/Wall'
 import { Badge, Button, Caption, Card, ColorBlock, ScrollX } from '@/components/ui'
@@ -352,27 +351,31 @@ export function InstructorLive() {
           ) : null}
 
           {/* 분기 */}
-          {step.type === 'formative' ? (
+          {/*
+            분포를 보고 다음에 할 수 있는 일.
+
+            ★ 예전에는 고르는 단추였다. 그런데 고른 것도 적은 근거도 아무 데도 남지 않았고
+              학생 화면도 바뀌지 않았다. 「학생 화면에 안내를 밀어 넣는다」고 적어 두고
+              실제로는 pollResults 에 1 을 넣는 것이 전부였다.
+              하는 일 없는 단추보다 읽을 목록이 낫다 — 실제로 여는 것은 위의 「자료 공개」다.
+            차시마다 써 둔 목록을 그대로 읽는다. 예전에는 이 여섯 개가 화면에 박혀 있어
+            어느 차시에서나 같은 말이 나왔다.
+          */}
+          {step.teacherNextMoves && step.teacherNextMoves.length > 0 ? (
             <div style={{ marginTop: 32 }}>
-              <TeacherBranchBar
-                branches={[
-                  '설명 추가',
-                  '발문 하나 더',
-                  '서로 의견 달기',
-                  '재실험 / 자료 추가',
-                  '개별 비계',
-                  '지금은 넘어가고 다음 차시에 다룬다',
-                ]}
-                onPush={(branch, note) => {
-                  if (classId) void repo?.setSession(classId, lesson.id, {
-                    pollResults: {
-                      ...(session?.pollResults ?? {}),
-                      [`branch_${step.id}`]: 1,
-                    },
-                  })
-                  console.info('[분기]', branch, note)
-                }}
-              />
+              <Card>
+                <h3 className="text-card-title" style={{ margin: 0 }}>
+                  분포를 보고 할 수 있는 것
+                </h3>
+                <Caption>고르지 않는 것도 선택입니다. 다만 근거가 있어야 합니다.</Caption>
+                <ul className="text-body" style={{ margin: '12px 0 0', paddingLeft: 20 }}>
+                  {step.teacherNextMoves.map((m) => (
+                    <li key={m} style={{ marginBottom: 6 }}>
+                      {m}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
             </div>
           ) : null}
 
