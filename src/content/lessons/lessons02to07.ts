@@ -430,7 +430,15 @@ export const lesson02: Lesson = {
            * 강의자가 genPrompt 로 만든 파일. 앱이 도형으로 그리지 않는다.
            * 파일이 없으면 화면은 fallback 과 altText 를 대신 그린다.
            */
-          src: '/figures/02-footprints.webp',
+          /*
+           * ?v= 를 붙인 이유.
+           *
+           * 파일이 없던 동안 이 주소로 index.html 이 내려갔고(Cloudflare 는 없는 경로에
+           * SPA 를 돌려준다), 그것이 브라우저에 4시간짜리로 캐시됐다.
+           * 파일을 고쳐 놓아도 그 캐시를 가진 사람에게는 계속 「그림 준비 중」만 보인다.
+           * 주소를 바꾸면 캐시가 비껴간다. 그림을 갈아 끼울 때마다 숫자를 올린다.
+           */
+          src: '/figures/02-footprints.webp?v=2',
         },
       },
     ],

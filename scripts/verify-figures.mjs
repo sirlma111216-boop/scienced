@@ -82,7 +82,8 @@ for (const lesson of LESSONS) {
        */
       if (spec.src) {
         drawn += 1
-        const onDisk = `public${spec.src}`
+        /* ?v= 같은 캐시 우회 꼬리는 떼고 찾는다 */
+        const onDisk = `public${String(spec.src).split('?')[0]}`
         if (!existsSync(onDisk)) {
           fail('그림 파일', `${where} 가 ${spec.src} 를 가리키는데 ${onDisk} 가 없다`)
         }

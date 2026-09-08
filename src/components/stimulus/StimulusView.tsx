@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Stimulus, StimulusFormat } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { Badge, Caption, Notice, ScrollX } from '@/components/ui'
@@ -135,6 +135,8 @@ function ImageBlock({ s, isInstructor }: { s: Stimulus; isInstructor: boolean })
    */
   const [failed, setFailed] = useState(false)
   const spec = s.imageSpec
+  /* 주소가 바뀌면 다시 시도한다. 한 번 실패했다고 영영 대안만 보이면 안 된다. */
+  useEffect(() => setFailed(false), [spec?.src])
   if (!spec) return null
   const showImage = Boolean(spec.src) && !failed
 
