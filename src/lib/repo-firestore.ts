@@ -1,5 +1,6 @@
 import {
   collection,
+  FieldPath,
   deleteDoc,
   deleteField,
   doc,
@@ -442,18 +443,30 @@ export function createFirestoreRepo(db: Firestore): Repo {
           const seatKey = String(seat)
           const taken = l.seats?.[seatKey]
           if (taken && taken !== uid) return false
-          const seats = { ...(l.seats ?? {}) }
-          for (const k of Object.keys(seats)) if (seats[k] === uid) delete seats[k]
-          seats[seatKey] = uid
-          tx.set(
-            ref,
-            {
-              ladders: { ...(s?.ladders ?? {}), [gameId]: { ...l, seats } },
-              pollResults: { ...(s?.pollResults ?? {}), [`ladderSeatKey_${gameId}_${seat}`]: 1 },
-              updatedAt: Date.now(),
-            },
-            { merge: true },
-          )
+          /*
+           * ★ merge:true 로는 자리를 놓을 수 없다.
+           *
+           * 예전에는 seats 를 통째로 만들어 delete 로 옛 자리를 지운 뒤 merge 로 썼다.
+           * merge 는 지도(map)를 합칠 뿐이라 없어진 열쇠를 서버에서 지우지 않는다.
+           * 그래서 자리를 옮기면 옛 자리가 그대로 남아 한 사람이 두 자리를 차지했다.
+           * 로컬 저장 구현은 문서를 통째로 다시 써서 이 사고가 드러나지 않았다.
+           *
+           * 열쇠를 콕 집어 고친다. 지울 자리는 deleteField 로 실제로 지운다.
+           * 열쇠에 하이픈과 숫자가 들어가므로 점 경로 문자열 대신 FieldPath 를 쓴다 —
+           * '02-sealed-envelope' 같은 이름은 점 경로에서 따옴표를 씌워야 한다.
+           */
+          const updates: unknown[] = [
+            new FieldPath('ladders', gameId, 'seats', seatKey),
+            uid,
+          ]
+          for (const k of Object.keys(l.seats ?? {})) {
+            if (k !== seatKey && l.seats?.[k] === uid) {
+              updates.push(new FieldPath('ladders', gameId, 'seats', k), deleteField())
+            }
+          }
+          updates.push(new FieldPath('pollResults', `ladderSeatKey_${gameId}_${seat}`), 1)
+          updates.push(new FieldPath('updatedAt'), Date.now())
+          tx.update(ref, updates[0] as FieldPath, updates[1], ...updates.slice(2))
           return true
         })
       } catch {

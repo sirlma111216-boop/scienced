@@ -288,5 +288,67 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   await studentRepo.clearGroupShare(CID, '01', STEP, STUDENT)
 }
 
+/* ── ⑧ 사다리 자리: 한 사람이 하나만 ── */
+{
+  const GAME = '01-auction'
+  const repo2 = createFirestoreRepo(env.authenticatedContext(STUDENT2).firestore())
+
+  /* 강사가 판을 연 상태를 만든다 */
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`classes/${CID}/sessions/01`).set({
+      lessonId: '01',
+      currentStepId: 'step-auction',
+      stepOpen: true,
+      pollResults: {},
+      ladders: {
+        [GAME]: {
+          gameId: GAME, phase: 'seating', round: 1, seed: `${GAME}::r1::1`,
+          columns: 6, seats: {}, presentSlots: [], winnerUids: [], excludedUids: [],
+          emergency: false, runAt: null,
+        },
+      },
+      pinnedPostRef: null, instructorAt: null, updatedAt: Date.now(),
+    })
+  })
+
+  const seatsNow = async () =>
+    new Promise((resolve) => {
+      const stop = studentRepo.watchSession(CID, '01', (sess) => {
+        stop()
+        resolve(sess?.ladders?.[GAME]?.seats ?? {})
+      })
+      setTimeout(() => {
+        stop()
+        resolve({})
+      }, 5000)
+    })
+
+  /* 1번을 잡았다가 3번으로 옮긴다. 앱의 코드 그대로. */
+  const first = await studentRepo.claimLadderSeat(CID, '01', GAME, 0, STUDENT)
+  const moved = await studentRepo.claimLadderSeat(CID, '01', GAME, 2, STUDENT)
+  const seats = await seatsNow()
+  const mine = Object.entries(seats).filter(([, u]) => u === STUDENT).map(([k]) => k)
+
+  if (!first || !moved) {
+    fail('사다리 자리', '자리를 잡지 못했다')
+  } else if (mine.length !== 1) {
+    /*
+     * 여기서 실제로 걸렸다. merge:true 는 지도에서 없어진 열쇠를 지우지 않아
+     * 옛 자리가 서버에 남았고, 한 사람이 두 자리를 차지했다.
+     */
+    fail('사다리 자리', `한 사람이 ${mine.length}자리를 잡고 있다 (${mine.join(', ')}번) — 하나여야 한다`)
+  } else if (mine[0] !== '2') {
+    fail('사다리 자리', `옮긴 자리가 ${mine[0]}번이다 (2번이어야 한다)`)
+  } else {
+    /* 남의 자리는 못 뺏는다 */
+    const stolen = await repo2.claimLadderSeat(CID, '01', GAME, 2, STUDENT2)
+    if (stolen) {
+      fail('사다리 자리', '이미 잡힌 자리를 다른 사람이 가져갔다')
+    } else {
+      pass('사다리 자리', '자리를 옮기면 옛 자리가 실제로 비고, 남의 자리는 못 가져간다')
+    }
+  }
+}
+
 await env.cleanup()
 report('test:writes')

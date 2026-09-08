@@ -40,7 +40,7 @@ export type GameId = `${LessonId}-${string}`
 /** 18종이 서로 달라야 한다 (verify:games). */
 export type PickerMode =
   | 'ladder'          // 1강 · 사다리타기 (기존 구현 그대로)
-  | 'sealed-envelope' // 2강 · 봉인된 증거 봉투
+  | 'sealed-envelope' // 2강 · 발표자 선정 봉투
   | 'card-flip'       // 3강 · 학생 발화 카드 뒤집기
   | 'scaffold-stairs' // 4강 · 비계 계단
   | 'survival'        // 5강 · 설명 생존

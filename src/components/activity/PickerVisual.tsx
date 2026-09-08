@@ -133,7 +133,7 @@ export function PickerVisual(props: PickerVisualProps) {
         />
       )
 
-    /* 2강 — 봉인된 증거 봉투 */
+    /* 2강 — 발표자 선정 봉투 */
     case 'sealed-envelope':
       return (
         <div>

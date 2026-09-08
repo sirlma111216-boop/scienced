@@ -33,12 +33,17 @@ export const GAMES: GameDef[] = [
     id: '02-sealed-envelope',
     lessonId: '02',
     mode: 'sealed-envelope',
-    tab: '봉인된 증거 봉투',
+    /*
+     * 이름을 「봉인된 증거 봉투」에서 바꿨다.
+     * 봉투 안에 든 것은 증거가 아니라 발표 표시다. 이름이 활동을 잘못 설명하고 있었다.
+     */
+    tab: '발표자 선정 봉투',
     lead: '봉투 하나에 발표 표시가 들어 있습니다.\n열기 전에 "내가 걸릴 확률"을 먼저 적어 주세요.',
     hint: '연 뒤에는 예상과 결과의 차이를 한 줄로 적습니다.',
-    choiceField: 'observationVsInference',
+    /* 없는 칸(observationVsInference)을 가리키고 있었다. 2강 도입의 실제 칸은 predict 다. */
+    choiceField: 'predict',
     reasonField: 'reason',
-    askLine: '어떤 문장을 관찰로, 어떤 문장을 추론으로 갈랐는지 그 기준을 말해 주세요.',
+    askLine: '발자국 사진에서 본 것과 생각한 것을 어떻게 갈랐는지 그 기준을 말해 주세요.',
     presenterAsk: '확률 예상과 실제 결과의 차이를 과학의 본성과 연결한다.',
     candidateRule: 'all',
     weightByFewPresentations: true,
