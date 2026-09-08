@@ -12,6 +12,7 @@
  *   ② 정답이 그림에 미리 보이지 않는가 (J.2 ②)
  *      — mustNotShow 가 비면 발자국 도식에 「두 사람이 만났다」가 그려질 수 있다.
  */
+import { existsSync } from 'node:fs'
 import { fail, pass, report } from './_report.mjs'
 
 const { LESSONS } = await import('../src/content/lessons/index.ts')
@@ -71,7 +72,21 @@ for (const lesson of LESSONS) {
         fail('모형 그림', `${where} 는 모형인데 differsFromReality 가 없다`)
       }
 
-      if (spec.src) drawn += 1
+      /*
+       * ★ src 가 가리키는 파일이 실제로 있는가.
+       *
+       * 있다고 적어 놓고 파일이 없으면 화면에는 「그림 준비 중」만 뜬다.
+       * 실제로 그렇게 며칠 깨져 있었다 — 커밋 하나가 webp 를 지우고 png 를 대신 넣었는데
+       * 소스는 여전히 webp 를 가리키고 있었고, 검사 중 아무것도 그것을 보지 않았다.
+       * 파일 이름을 바꾸는 일은 사람이 하고, 사람은 한쪽만 바꾼다.
+       */
+      if (spec.src) {
+        drawn += 1
+        const onDisk = `public${spec.src}`
+        if (!existsSync(onDisk)) {
+          fail('그림 파일', `${where} 가 ${spec.src} 를 가리키는데 ${onDisk} 가 없다`)
+        }
+      }
       else if (lesson.published) {
         pending.push(`${lesson.id}강 「${m.title}」`)
       }
@@ -84,6 +99,7 @@ if (count === 0) {
 } else {
   pass('그림 제작 명세', `그림 ${count}장 모두 명세·프롬프트·대체 설명·대안을 갖췄다`)
   pass('그림 속 글자', '라벨이 있는 그림은 모두 글자 없이 생성하도록 적혀 있다')
+  pass('그림 파일', 'src 가 가리키는 파일이 모두 public 아래에 실제로 있다')
   console.log(`  · 파일이 들어온 그림 ${drawn}장 / ${count}장`)
   /*
    * 파일이 아직 없는 것은 실패가 아니다 — 그림은 강의자가 만든다.
