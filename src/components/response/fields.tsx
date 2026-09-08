@@ -366,12 +366,27 @@ function QuadrantField({ def, value, onChange, error, disabled }: FieldProps) {
             <label className="caption" htmlFor={`${def.key}-${q.id}`}>
               {q.label}
             </label>
+            {/*
+              무엇을 적는 칸인지 보기를 한 줄 둔다.
+              이름만 놓아 두면 처음 보는 사람은 손이 멈춘다.
+              placeholder 로 두지 않는다 — 한 글자만 쳐도 사라져서, 쓰는 도중에 다시 못 본다.
+            */}
+            {q.hint ? (
+              <p
+                id={`${def.key}-${q.id}-hint`}
+                className="text-body-sm"
+                style={{ margin: 0, opacity: 0.66 }}
+              >
+                {q.hint}
+              </p>
+            ) : null}
             <textarea
               id={`${def.key}-${q.id}`}
               className="field"
               rows={3}
               value={v[q.id] ?? ''}
               disabled={disabled}
+              aria-describedby={q.hint ? `${def.key}-${q.id}-hint` : undefined}
               onChange={(e) => onChange({ ...v, [q.id]: e.target.value })}
               style={{ resize: 'vertical' }}
             />

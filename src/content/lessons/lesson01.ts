@@ -535,11 +535,32 @@ export const lesson01: Lesson = {
           label: '수업 A를 네 칸으로',
           help: '각 칸에 대본에서 근거가 되는 대목을 짧게 적으세요. 없으면 “없음”이라고 적습니다.',
           required: true,
+          /*
+           * 보기는 일부러 다른 소재(촛불)로 쓴다.
+           * 드라이아이스로 쓰면 대본에서 그대로 베껴 적게 되고,
+           * 「A에 무엇이 빠졌는가」의 답도 새어 나간다.
+           */
           quadrants: [
-            { id: 'phenomenon', label: '현상' },
-            { id: 'goal', label: '목표' },
-            { id: 'thinking', label: '학생 사고' },
-            { id: 'evidence', label: '학습의 증거' },
+            {
+              id: 'phenomenon',
+              label: '현상',
+              hint: '학생이 눈으로 본 장면. 예: “촛불에 유리컵을 덮자 불이 꺼졌다”',
+            },
+            {
+              id: 'goal',
+              label: '목표',
+              hint: '이 수업이 알게 하려던 것. 예: “연소에 산소가 필요함을 설명한다”',
+            },
+            {
+              id: 'thinking',
+              label: '학생 사고',
+              hint: '학생이 스스로 생각한 흔적. 예: “왜 꺼졌는지 먼저 예상해 적었다”',
+            },
+            {
+              id: 'evidence',
+              label: '학습의 증거',
+              hint: '무엇을 알게 됐는지 남은 것. 예: “학생이 쓴 설명 문장, 다시 그린 그림”',
+            },
           ],
         },
         {
@@ -548,11 +569,32 @@ export const lesson01: Lesson = {
           requiresStimulus: ['lessonB'],
           label: '수업 B를 네 칸으로',
           required: true,
+          /*
+           * 보기는 일부러 다른 소재(촛불)로 쓴다.
+           * 드라이아이스로 쓰면 대본에서 그대로 베껴 적게 되고,
+           * 「A에 무엇이 빠졌는가」의 답도 새어 나간다.
+           */
           quadrants: [
-            { id: 'phenomenon', label: '현상' },
-            { id: 'goal', label: '목표' },
-            { id: 'thinking', label: '학생 사고' },
-            { id: 'evidence', label: '학습의 증거' },
+            {
+              id: 'phenomenon',
+              label: '현상',
+              hint: '학생이 눈으로 본 장면. 예: “촛불에 유리컵을 덮자 불이 꺼졌다”',
+            },
+            {
+              id: 'goal',
+              label: '목표',
+              hint: '이 수업이 알게 하려던 것. 예: “연소에 산소가 필요함을 설명한다”',
+            },
+            {
+              id: 'thinking',
+              label: '학생 사고',
+              hint: '학생이 스스로 생각한 흔적. 예: “왜 꺼졌는지 먼저 예상해 적었다”',
+            },
+            {
+              id: 'evidence',
+              label: '학습의 증거',
+              hint: '무엇을 알게 됐는지 남은 것. 예: “학생이 쓴 설명 문장, 다시 그린 그림”',
+            },
           ],
         },
         {

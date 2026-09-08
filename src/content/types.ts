@@ -323,8 +323,14 @@ export interface FieldDef {
   gate?: Gate
   /** allocation / rank 전용: 카드 목록 */
   items?: Array<{ id: string; label: string; note?: string }>
-  /** quadrant 전용 */
-  quadrants?: Array<{ id: string; label: string }>
+  /**
+   * quadrant 전용.
+   *
+   * hint 는 그 칸에 무엇을 적는지 보여 주는 한 줄 보기다.
+   * 「현상」 「목표」 같은 이름만 놓아 두면 처음 보는 사람은 무엇을 적을지 모른다.
+   * 정답이 아니라 어떤 종류의 문장을 적는지만 보여 준다.
+   */
+  quadrants?: Array<{ id: string; label: string; hint?: string }>
   /** 문장 틀 버튼 (컨텍스트 17.3). 강제하지 않는다. */
   sentenceStarters?: string[]
   /** 50분 판에서 흐름을 빼고 「수업 후 이어서」로 내릴 칸. 없으면 core (3차 F.3). */
