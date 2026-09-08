@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { LESSONS } from '@/content/lessons'
-import type { LessonId } from '@/content/types'
+import { LESSON_IDS, type LessonId } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import type { AppUser, PickRecord } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
@@ -70,14 +70,48 @@ export function InstructorDashboard() {
             {students.length}명
           </p>
         </Link>
-        <Link to="/instructor/lesson/01/live" className="tile" style={{ color: 'inherit' }}>
+        {/*
+          진행 콘솔은 1강으로 못박혀 있었다. 열어 둔 차시가 늘어도 대시보드에서는
+          1강만 갈 수 있었고, 2강 수업 날에는 「차시」를 거쳐 들어가야 했다.
+          공개한 차시를 전부 여기 늘어놓는다 — 수업 중에 한 번에 닿아야 한다.
+        */}
+        <div className="tile">
           <p className="text-card-title" style={{ margin: 0 }}>
-            1강 진행 콘솔
+            진행 콘솔
           </p>
           <p className="text-body-sm" style={{ marginTop: 8 }}>
-            분포 · 의견 조정 · 사다리
+            분포 · 의견 조정 · 자료 공개 · 사다리
           </p>
-        </Link>
+          {published.length === 0 ? (
+            <p className="text-body-sm" style={{ marginTop: 12, opacity: 0.7 }}>
+              아직 연 차시가 없습니다. 「차시」에서 열면 여기에 나타납니다.
+            </p>
+          ) : (
+            <ul
+              className="flex flex-wrap gap-xs"
+              style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}
+            >
+              {LESSON_IDS.filter((id) => published.includes(id)).map((id) => (
+                <li key={id}>
+                  <Link
+                    to={`/instructor/lesson/${id}/live`}
+                    className="tab"
+                    style={{
+                      minHeight: 40,
+                      padding: '4px 14px',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span className="font-mono">{id}</span>
+                    <span style={{ marginLeft: 4 }}>강</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <Link to="/instructor/analytics" className="tile" style={{ color: 'inherit' }}>
           <p className="text-card-title" style={{ margin: 0 }}>
             학습 분석
