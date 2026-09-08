@@ -142,28 +142,62 @@ function ImageBlock({ s, isInstructor }: { s: Stimulus; isInstructor: boolean })
     <div style={{ marginTop: 12 }}>
       {showImage ? (
         <figure style={{ margin: 0 }}>
-          <img
-            src={spec.src}
-            alt={spec.altText}
-            onError={() => setFailed(true)}
-            style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8 }}
-          />
-          {spec.labels.length > 0 || spec.legend ? (
+          {/*
+            라벨은 그림 위에 얹는다 (J.2 ①). 그림 아래에만 늘어놓으면
+            「A 발자국」이 어느 줄인지 알 수 없다 — 라벨이 아니라 목록이 된다.
+          */}
+          <div style={{ position: 'relative' }}>
+            <img
+              src={spec.src}
+              alt={spec.altText}
+              onError={() => setFailed(true)}
+              style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8 }}
+            />
+            {spec.labels
+              .filter((l) => l.x !== undefined && l.y !== undefined)
+              .map((l) => (
+                <span
+                  key={l.text}
+                  className="text-body-sm"
+                  style={{
+                    position: 'absolute',
+                    left: `${l.x}%`,
+                    top: `${l.y}%`,
+                    transform: 'translate(-50%, -50%)',
+                    /* 사진 위에서도 읽혀야 한다. 흰 알약에 검은 테두리. */
+                    background: '#fff',
+                    color: '#000',
+                    fontWeight: 540,
+                    padding: '3px 9px',
+                    borderRadius: 999,
+                    boxShadow: '0 0 0 2px #000',
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {l.text}
+                </span>
+              ))}
+          </div>
+          {spec.labels.some((l) => l.x === undefined) || spec.legend ? (
             <figcaption style={{ marginTop: 12 }}>
               {/*
                 라벨을 그림 안에 넣지 않는다 (J.2). 생성 도구가 한국어를 제대로 쓰지 못하고,
                 그림에 박힌 글자는 확대·화면 낭독·번역에서 모두 빠진다.
               */}
-              {spec.labels.length > 0 ? (
+              {/* 자리를 정하지 않은 라벨만 아래에 늘어놓는다 */}
+              {spec.labels.some((l) => l.x === undefined) ? (
                 <ul
                   className="flex flex-wrap gap-xs"
                   style={{ listStyle: 'none', padding: 0, margin: 0 }}
                 >
-                  {spec.labels.map((l) => (
-                    <li key={l.text}>
-                      <Badge>{l.text}</Badge>
-                    </li>
-                  ))}
+                  {spec.labels
+                    .filter((l) => l.x === undefined)
+                    .map((l) => (
+                      <li key={l.text}>
+                        <Badge>{l.text}</Badge>
+                      </li>
+                    ))}
                 </ul>
               ) : null}
               {spec.legend ? (

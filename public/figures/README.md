@@ -10,6 +10,16 @@
 
 | 파일 | 차시 | 무엇 |
 |---|---|---|
-| `02-footprints.png` | 2강 도입 | 발자국 두 줄 |
+| `02-footprints.webp` | 2강 도입 | 발자국 두 줄 · 들어옴 |
 
 파일이 없으면 화면이 비지 않는다 — 대체 설명과 표 대안이 대신 나온다.
+
+## 용량
+
+수업 중에 학생 손전화로 내려받는 그림이다. 원본 사진을 그대로 두지 않는다.
+
+```bash
+ffmpeg -i 원본.png -c:v libwebp -quality 84 -compression_level 6 public/figures/이름.webp
+```
+
+발자국 사진은 3.4MB → 510KB 가 되었다. 원본은 저장소에 올리지 않는 `reference/figures/` 에 둔다.

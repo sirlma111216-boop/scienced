@@ -215,8 +215,16 @@ export interface ImageSpec {
   mustShow: string[]
   /** 보이면 안 되는 것. 주로 정답 노출 */
   mustNotShow: string[]
-  /** 앱이 그림 위에 겹쳐 그리는 한국어 라벨 */
-  labels: Array<{ text: string; position: string }>
+  /**
+   * 앱이 그림 위에 겹쳐 그리는 한국어 라벨 (J.2 ①).
+   *
+   * 그림 안에 글자를 넣지 않는다 — 생성 도구가 한국어를 못 쓰고,
+   * 박힌 글자는 확대·낭독·번역에서 빠진다. 그래서 앱이 얹는다.
+   *
+   * x·y 는 그림 왼쪽 위를 0,0 으로 한 백분율이다. 주면 그 자리에 얹고,
+   * 없으면 그림 아래에 늘어놓는다 — 아래에만 두면 어느 줄이 A인지 알 수 없다.
+   */
+  labels: Array<{ text: string; position: string; x?: number; y?: number }>
   legend?: string
   /** 이미지 생성 도구에 그대로 넣을 영문 문장 */
   genPrompt: string
