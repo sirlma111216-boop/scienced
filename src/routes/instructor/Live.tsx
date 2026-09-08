@@ -54,24 +54,31 @@ export function InstructorLive() {
   const step = view?.steps[stepIndex]?.step
 
   /*
-   * 이 차시에서 강사가 열 수 있는 것 전부를 한 줄로 모은다.
-   * 자료 블록의 gate 와 입력 칸의 gate 를 따로 두면 콘솔에 버튼이 두 벌 생긴다.
-   * 여는 사람도 시점도 같으므로 id 로 합친다.
+   * 강사가 열 수 있는 것을 단계별로 모은다.
+   *
+   * ★ 예전에는 차시 전체를 한 줄에 쏟아 놓았다. 4단계를 보고 있는데 3단계 자료가
+   *   먼저 나와서, 눌러야 할 것 대신 위에 있는 것을 눌렀다. 그러고는
+   *   「풀었는데 학생 화면이 그대로다」가 됐다. 단계를 함께 적는다.
+   * 자료 블록의 gate 와 입력 칸의 gate 를 id 로 합친다 — 여는 사람도 시점도 같다.
    */
-  const gates = (() => {
-    const found = new Map<string, string>()
-    for (const s of lesson?.steps ?? []) {
-      for (const m of s.material ?? []) {
+  const gateGroups = (lesson?.steps ?? [])
+    .map((st) => {
+      const found = new Map<string, string>()
+      for (const m of st.material ?? []) {
         if (m.gate && m.gate.type !== 'afterSubmit') found.set(m.gate.of, m.title)
       }
-      for (const f of s.fields) {
+      for (const f of st.fields) {
         if (f.gate && f.gate.type !== 'afterSubmit' && !found.has(f.gate.of)) {
-          found.set(f.gate.of, f.gate.of === 'secondRound' ? '2차 응답 열기' : f.label)
+          found.set(f.gate.of, f.gate.of === 'secondRound' ? '2차 응답' : f.label)
         }
       }
-    }
-    return [...found].map(([id, label]) => ({ id, label }))
-  })()
+      return {
+        stepId: st.id,
+        stepTitle: st.title,
+        items: [...found].map(([id, label]) => ({ id, label })),
+      }
+    })
+    .filter((g) => g.items.length > 0)
   const revealed = session?.revealed ?? []
 
   useEffect(() => {
@@ -216,34 +223,57 @@ export function InstructorLive() {
         형성평가의 2차 응답도 같은 목록을 쓴다. 여는 사람도 시점도 강사 한 곳이라
         따로 만들 이유가 없다.
       */}
-      {gates.length > 0 ? (
+      {gateGroups.length > 0 ? (
         <div style={{ marginTop: 24 }}>
           <Caption>자료 공개</Caption>
-          <div className="flex flex-wrap gap-xs" style={{ marginTop: 8 }}>
-            {gates.map((g) => {
-              const on = revealed.includes(g.id)
+          <p className="text-body-sm" style={{ margin: '4px 0 10px', opacity: 0.7 }}>
+            누르면 학생 화면의 잠긴 카드가 열립니다. 다시 누르면 잠깁니다.
+          </p>
+          <div className="flex flex-col gap-xs">
+            {gateGroups.map((grp) => {
+              /* 지금 보고 있는 단계를 굵게 세워 둔다. 눌러야 할 줄이 어디인지 보이게. */
+              const here = step?.id === grp.stepId
               return (
-                <Button
-                  key={g.id}
-                  variant={on ? 'primary' : 'secondary'}
-                  aria-pressed={on}
-                  onClick={() => {
-                    if (!classId) return
-                    const next = on
-                      ? revealed.filter((x) => x !== g.id)
-                      : [...revealed, g.id]
-                    void repo?.setSession(classId, lesson.id, { revealed: next })
+                <div
+                  key={grp.stepId}
+                  className="rounded-md"
+                  style={{
+                    padding: '10px 12px',
+                    boxShadow: `inset 0 0 0 ${here ? 2 : 1}px ${here ? '#000' : '#e6e6e6'}`,
                   }}
                 >
-                  {on ? '↩ ' : '▸ '}
-                  {g.label}
-                </Button>
+                  <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
+                    <span className="text-body-sm" style={{ fontWeight: here ? 700 : 480 }}>
+                      {grp.stepTitle}
+                    </span>
+                    {here ? <Badge solid>지금 이 단계</Badge> : null}
+                  </div>
+                  <div className="flex flex-wrap gap-xs" style={{ marginTop: 8 }}>
+                    {grp.items.map((g) => {
+                      const on = revealed.includes(g.id)
+                      return (
+                        <Button
+                          key={g.id}
+                          variant={on ? 'primary' : 'secondary'}
+                          aria-pressed={on}
+                          onClick={() => {
+                            if (!classId) return
+                            const next = on
+                              ? revealed.filter((x) => x !== g.id)
+                              : [...revealed, g.id]
+                            void repo?.setSession(classId, lesson.id, { revealed: next })
+                          }}
+                        >
+                          {on ? '↩ 다시 잠그기 · ' : '▸ 열기 · '}
+                          {g.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
               )
             })}
           </div>
-          <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.7 }}>
-            누르면 학생 화면의 잠긴 카드가 열립니다. 다시 누르면 잠깁니다.
-          </p>
         </div>
       ) : null}
 
