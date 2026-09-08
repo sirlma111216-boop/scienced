@@ -62,12 +62,31 @@ export function InstructorDashboard() {
             공개 {published.length} / 18
           </p>
         </Link>
+        {/*
+          수강생 화면이 둘이었다 — 계정을 만드는 곳과, 클래스별 명단.
+          대시보드는 계정 만들기로만 갔고, 내보내기·모둠·비밀번호 초기화가 있는
+          클래스별 명단으로는 「클래스」를 거쳐야 했다. 여기서 바로 간다.
+        */}
+        {classId ? (
+          <Link
+            to={`/instructor/class/${classId}/students`}
+            className="tile"
+            style={{ color: 'inherit' }}
+          >
+            <p className="text-card-title" style={{ margin: 0 }}>
+              수강생 명단
+            </p>
+            <p className="text-body-sm" style={{ marginTop: 8 }}>
+              {students.length}명 · 모둠 · 비밀번호 초기화 · 내보내기
+            </p>
+          </Link>
+        ) : null}
         <Link to="/instructor/students" className="tile" style={{ color: 'inherit' }}>
           <p className="text-card-title" style={{ margin: 0 }}>
-            수강생
+            계정 만들기
           </p>
           <p className="text-body-sm" style={{ marginTop: 8 }}>
-            {students.length}명
+            학번·이름을 붙여넣어 한 번에
           </p>
         </Link>
         {/*

@@ -96,10 +96,14 @@ export function InstructorStudents() {
   }
 
   return (
-    <AppShell title="수강생 관리">
+    <AppShell title="계정 만들기">
       <p className="eyebrow">강사</p>
+      {/*
+        이 화면은 계정을 만드는 곳이다. 클래스별 명단은 따로 있다.
+        둘 다 「수강생」이라 어느 쪽에 무엇이 있는지 찾지 못하는 일이 있었다.
+      */}
       <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
-        수강생
+        수강생 계정 만들기
       </h1>
 
       <div style={{ marginTop: 32 }}>

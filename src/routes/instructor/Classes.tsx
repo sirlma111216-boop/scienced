@@ -520,7 +520,8 @@ export function InstructorClasses() {
                           navigate(`/instructor/class/${c.id}/students`)
                         }}
                       >
-                        열기
+                        {/* 「열기」로는 무엇이 열리는지 알 수 없었다. 가는 곳을 그대로 적는다. */}
+                        수강생 명단
                       </Button>
                       {c.status === 'active' ? (
                         <>
