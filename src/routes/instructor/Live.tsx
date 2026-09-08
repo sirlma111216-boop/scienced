@@ -9,6 +9,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { DistributionView } from '@/components/response/DistributionView'
 import { LadderPanel } from '@/components/teach/LadderPanel'
 import { MustSay } from '@/components/teach/MustSay'
+import { SubmissionList } from '@/components/teach/SubmissionList'
 import { AiClusterPanel } from '@/components/teach/AiClusterPanel'
 import { WallCard } from '@/components/wall/Wall'
 import { Badge, Button, Caption, Card, ColorBlock, ScrollX } from '@/components/ui'
@@ -322,6 +323,13 @@ export function InstructorLive() {
               제출률이 80% 아래면 분포를 열지 않는 편이 낫습니다.
             </p>
           </Card>
+
+          {/*
+            지금 들어온 답 — 모든 단계, 모든 칸 종류에서 보인다.
+            「우리 반의 답」은 선택형 칸이 있는 단계에서만, 그것도 개수와 익명 이유 몇 개만 보여 준다.
+            1강으로 치면 다섯 단계 중 3단계에만 나왔다 — 나머지 넷에서는 누가 냈는지만 알 수 있었다.
+          */}
+          <SubmissionList fields={step.fields} docs={docs} users={users} />
 
           {choiceField ? (
             <div style={{ marginTop: 32 }}>
