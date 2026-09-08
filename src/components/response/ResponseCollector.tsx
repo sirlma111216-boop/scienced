@@ -7,7 +7,7 @@ import { LockedCard } from '@/components/stimulus/StimulusView'
 import { FieldRenderer } from './fields'
 
 /**
- * 답 + 이유 + 확신도를 받는다.
+ * 답과 이유를 받는다.
  *
  * 지키는 것:
  *  - 입력 중 자동 저장. 새로고침해도 쓰던 것이 남는다.
