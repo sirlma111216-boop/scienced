@@ -78,6 +78,20 @@ export function ResponseCollector({
 
   useEffect(() => {
     if (!repo || !uid) return
+    /*
+     * ★ 단계가 바뀌면 다시 불러온다.
+     *
+     * 이 표시를 되돌리지 않아서, 단계 알약으로 옮기면 앞 단계의 값이 그대로 남고
+     * 지금 단계에 제출해 둔 답은 영영 채워지지 않았다. 화면은 「제출했습니다」라고
+     * 하는데 칸은 비어 있었고, 「고쳐 쓰기」를 누르면 빈 답이 v2 로 올라갈 판이었다.
+     * 수집기는 단계마다 새로 만들어지지 않는다 — 자리가 같아 React 가 다시 쓴다.
+     */
+    hydrated.current = false
+    setValues({})
+    setErrors({})
+    setRevising(false)
+    setChangedReason('')
+    setSavedAt(null)
     return repo.watchResponse(classId, lessonId, step.id, uid, (d) => {
       setDoc(d)
       if (hydrated.current) return
@@ -115,6 +129,13 @@ export function ResponseCollector({
     setErrors((e) => ({ ...e, [key]: '' }))
     scheduleSave(next)
   }
+
+  /*
+   * 여는 조건이 붙은 칸을 따로 뽑는다.
+   * 그 칸들은 공유 아래에 온다 — 남의 의견을 읽은 뒤에 쓰는 칸이기 때문이다.
+   */
+  const gatedFields = step.fields.filter((f) => f.gate)
+  const plainFields = step.fields.filter((f) => !f.gate)
 
   /** 지금 열려 있는 칸만. 잠긴 칸은 그리지도, 검사하지도 않는다. */
   function open(f: { gate?: { type: string; of: string } }): boolean {
@@ -238,21 +259,43 @@ export function ResponseCollector({
       {moduleSlot ? <div>{moduleSlot}</div> : null}
 
       <div className="flex flex-col gap-xl" aria-disabled={locked}>
-        {step.fields.map((f) =>
-          open(f) ? (
-            <FieldRenderer
-              key={f.key}
-              def={f}
-              value={values[f.key]}
-              error={errors[f.key] || null}
-              disabled={locked}
-              onChange={(v) => set(f.key, v)}
-            />
-          ) : (
-            <LockedCard key={f.key} title={f.label} message={f.gate!.lockedMessage} />
-          ),
-        )}
+        {plainFields.map((f) => (
+          <FieldRenderer
+            key={f.key}
+            def={f}
+            value={values[f.key]}
+            error={errors[f.key] || null}
+            disabled={locked}
+            onChange={(v) => set(f.key, v)}
+          />
+        ))}
       </div>
+
+      {/*
+        여는 조건이 붙은 칸이 있으면 그 앞에 공유를 둔다 (형성평가의 흐름).
+        ① 고르고 제출 → ② 공유하고 서로 의견 → ③ 다시 고르기.
+        2차 칸을 공유보다 위에 두면 읽기 전에 답부터 고치게 된다.
+      */}
+      {gatedFields.length > 0 ? children?.(submitted, doc) : null}
+
+      {gatedFields.length > 0 ? (
+        <div className="flex flex-col gap-xl" aria-disabled={locked}>
+          {gatedFields.map((f) =>
+            open(f) ? (
+              <FieldRenderer
+                key={f.key}
+                def={f}
+                value={values[f.key]}
+                error={errors[f.key] || null}
+                disabled={locked}
+                onChange={(v) => set(f.key, v)}
+              />
+            ) : (
+              <LockedCard key={f.key} title={f.label} message={f.gate!.lockedMessage} />
+            ),
+          )}
+        </div>
+      ) : null}
 
       {submitted && revising ? (
         <div className="flex flex-col gap-xs">
@@ -308,8 +351,8 @@ export function ResponseCollector({
           강사의 학습 분석이 「확신은 올랐는데 이유는 그대로」를 여기서 읽는다.
       */}
 
-      {/* 제출한 사람에게만 열린다 */}
-      {children?.(submitted, doc)}
+      {/* 제출한 사람에게만 열린다. 잠긴 칸이 있는 단계에서는 위에서 이미 그렸다. */}
+      {gatedFields.length === 0 ? children?.(submitted, doc) : null}
     </div>
   )
 }

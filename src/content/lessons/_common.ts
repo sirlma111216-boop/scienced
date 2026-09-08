@@ -182,7 +182,12 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
         anonymous: false,
         opensAfterSubmit: true,
       },
-      picker: { enabled: true, gameId: spec.module.gameId, candidateRule: 'all' },
+      /*
+       * 발표자 뽑기는 형성평가로 내려갔다.
+       * 발표는 「1차 답 → 서로 의견 → 2차 답」을 다 거친 뒤에 듣는 것이 맞다.
+       * 핵심 모듈에서 뽑으면 아직 생각이 갈리기 전에 발표를 시키게 된다.
+       */
+      picker: null,
     },
     {
       id: 'step-formative',
@@ -192,7 +197,9 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       shortTitle: '형성평가',
       durationMinutes: spec.minutes[3],
       /* 강사가 할 일은 학생 안내에 넣지 않는다 (4차 H.2). */
-      lead: '제출하면 전체 분포가 열립니다. 처음 답은 지워지지 않습니다.',
+      lead:
+        '제출하면 공유가 열립니다. 다른 사람 답에 의견을 달고, 남의 의견도 읽습니다.' +
+        ' 그다음 다시 고르면 내 글 아래에 이어 붙습니다.',
       doNow: spec.doNow?.formative,
       material: spec.formativeStimuli,
       fields: [
@@ -220,12 +227,12 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
         {
           key: 'revisedAnswer',
           kind: 'choice',
-          label: '토론 뒤 다시 고른 답',
+          label: '의견을 읽고 다시 고른 답',
           options: spec.formative.options,
           gate: {
             type: 'afterInstructorOpen',
-            of: 'pairTalk',
-            lockedMessage: '강사가 짝 토론을 시작하면 열립니다.',
+            of: 'secondRound',
+            lockedMessage: '공유된 의견을 읽고 나면 열립니다.',
           },
         },
         {
@@ -235,14 +242,27 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
           sentenceStarters: CHANGE_STARTERS,
           gate: {
             type: 'afterInstructorOpen',
-            of: 'pairTalk',
-            lockedMessage: '강사가 짝 토론을 시작하면 열립니다.',
+            of: 'secondRound',
+            lockedMessage: '공유된 의견을 읽고 나면 열립니다.',
           },
         },
       ],
       aiTasks: ['cluster-responses'],
-      wall: null,
-      picker: null,
+      /*
+       * 형성평가의 흐름은 넷이다.
+       *   ① 고르고 이유를 적어 제출하고 공유한다
+       *   ② 공유된 글에 의견을 달고 남의 의견을 읽는다 — 이것이 상호 토론이다
+       *   ③ 다시 고르고 이유를 적어 제출하면, 내 글 아래에 이어 붙는다
+       *   ④ 발표자 봉투로 두 사람을 뽑아 듣는다
+       * 별도의 토론 시간을 두지 않는다. 읽고 다는 것이 토론이다.
+       */
+      wall: {
+        enabled: true,
+        prompt: '내가 고른 답과 그 이유, 그리고 다른 사람 답에 대한 의견',
+        anonymous: false,
+        opensAfterSubmit: true,
+      },
+      picker: { enabled: true, gameId: spec.module.gameId, candidateRule: 'all' },
     },
     {
       id: 'step-wrapup',

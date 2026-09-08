@@ -57,7 +57,7 @@ export function ShareBar({
    */
   fields?: FieldDef[]
 }) {
-  const { repo } = useAuth()
+  const { repo, user } = useAuth()
   const [posts, setPosts] = useState<Post[]>([])
   const [open, setOpen] = useState(false)
   const [composing, setComposing] = useState(false)
@@ -79,11 +79,15 @@ export function ShareBar({
   }
 
   const visible = posts.filter((p) => !p.isHidden)
+  /* 내가 이미 올린 글. 있으면 새 글을 만들지 않고 그 아래에 이어 붙인다. */
+  const myPost = posts.find((p) => p.uid === user?.uid) ?? null
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-md no-print">
-        <Button onClick={() => setComposing(true)}>공유하기</Button>
+        <Button onClick={() => setComposing(true)}>
+          {myPost ? '내 글에 이어서 쓰기' : '공유하기'}
+        </Button>
         <Button variant="secondary" onClick={() => setOpen(true)}>
           다른 사람 생각 보기 ({visible.length})
         </Button>
@@ -99,6 +103,7 @@ export function ShareBar({
           stepId={stepId}
           prompt={prompt}
           fields={fields}
+          myPost={myPost}
           onClose={() => setComposing(false)}
           onDone={() => {
             setComposing(false)
@@ -200,6 +205,7 @@ function ComposeDialog({
   stepId,
   prompt,
   fields,
+  myPost,
   onClose,
   onDone,
 }: {
@@ -208,6 +214,8 @@ function ComposeDialog({
   stepId: string
   prompt: string
   fields?: FieldDef[]
+  /** 내가 이미 올린 글. 있으면 새 글이 아니라 그 아래에 이어 붙인다. */
+  myPost?: Post | null
   onClose: () => void
   onDone: () => void
 }) {
@@ -230,19 +238,25 @@ function ComposeDialog({
       const latest = doc?.versions?.[doc.versions.length - 1]
       if (!latest) return
       const payload = latest.payload ?? {}
+      /*
+       * 이미 올린 글에 든 대목은 빼고 새로 쓴 것만 채운다.
+       * 2차 응답을 낼 때 1차 문장까지 다시 붙어 같은 말이 두 번 적히지 않게 한다.
+       */
+      const already = myPost?.versions?.[myPost.versions.length - 1]?.content ?? ''
       const lines: string[] = []
       for (const f of fields ?? []) {
         const v = payload[f.key]
         const text =
           typeof v === 'string' ? v : Array.isArray(v) ? v.filter(Boolean).join(', ') : ''
-        if (text.trim()) lines.push(text.trim())
+        const t = text.trim()
+        if (t && !already.includes(t)) lines.push(t)
       }
       if (lines.length > 0) setText(lines.join('\n\n'))
     })
     return () => {
       cancelled = true
     }
-  }, [repo, user, classId, lessonId, stepId, fields])
+  }, [repo, user, classId, lessonId, stepId, fields, myPost])
 
   async function submit() {
     if (!repo || !user) return
@@ -250,18 +264,24 @@ function ComposeDialog({
       setError('내용을 적어 주세요.')
       return
     }
+    /*
+     * 이미 올린 글이 있으면 그 아래에 이어 붙인다.
+     * 별도의 카드를 만들지 않는다 — 한 사람의 생각이 흩어지면 읽는 쪽이 이어 볼 수 없다.
+     */
+    const before = myPost?.versions?.[myPost.versions.length - 1]?.content ?? ''
+    const content = before ? [before, text.trim()].join('\n\n') : text.trim()
     await repo.upsertPost(classId, lessonId, stepId, {
       uid: user.uid,
       nickname: user.nickname || '이름 없음',
       groupId: user.groupId,
-      content: text.trim(),
+      content,
     })
     await repo.bumpParticipation(classId, user.uid, {})
     onDone()
   }
 
   return (
-    <Dialog title="내 생각 공유하기" onClose={onClose}>
+    <Dialog title={myPost ? '내 글에 이어서 쓰기' : '내 생각 공유하기'} onClose={onClose}>
       <p className="text-body-sm" style={{ opacity: 0.72, marginBottom: 12 }}>
         {prompt}
       </p>
@@ -270,8 +290,26 @@ function ComposeDialog({
           내가 낸 답을 불러왔습니다. 고쳐서 내도 됩니다.
         </p>
       ) : null}
+      {myPost ? (
+        <div
+          className="rounded-md"
+          style={{
+            padding: '12px 14px',
+            marginBottom: 12,
+            background: '#f7f7f5',
+            boxShadow: 'inset 0 0 0 1px #e6e6e6',
+          }}
+        >
+          <Caption>이미 올린 내 글</Caption>
+          <p className="text-body-sm" style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}>
+            {myPost.versions[myPost.versions.length - 1]?.content}
+          </p>
+        </div>
+      ) : null}
       <p className="caption" style={{ marginBottom: 8, opacity: 0.7 }}>
-        한 사람이 한 글만 올립니다. 다시 올리면 올려 둔 글이 이 내용으로 바뀝니다.
+        {myPost
+          ? '아래에 적은 것이 위 글 뒤에 이어 붙습니다. 새 카드가 생기지 않습니다.'
+          : '한 사람이 한 글만 올립니다.'}
       </p>
       <textarea
         className="field"
@@ -292,7 +330,7 @@ function ComposeDialog({
         </p>
       ) : null}
       <div className="flex items-center gap-md" style={{ marginTop: 16 }}>
-        <Button onClick={() => void submit()}>올리기</Button>
+        <Button onClick={() => void submit()}>{myPost ? '이어 붙이기' : '올리기'}</Button>
         <Caption>화면에는 닉네임만 보입니다.</Caption>
       </div>
     </Dialog>

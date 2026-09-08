@@ -66,7 +66,7 @@ export function InstructorLive() {
       }
       for (const f of s.fields) {
         if (f.gate && f.gate.type !== 'afterSubmit' && !found.has(f.gate.of)) {
-          found.set(f.gate.of, f.gate.of === 'pairTalk' ? '짝 토론 시작' : f.label)
+          found.set(f.gate.of, f.gate.of === 'secondRound' ? '2차 응답 열기' : f.label)
         }
       }
     }
@@ -213,7 +213,7 @@ export function InstructorLive() {
         되돌릴 수 있다 — 다시 누르면 잠긴다. 잘못 눌렀을 때 되돌릴 길이 없으면
         수업 중에 아무도 누르지 못한다.
 
-        짝 토론 재응답도 같은 목록을 쓴다. 여는 사람도 시점도 강사 한 곳이라
+        형성평가의 2차 응답도 같은 목록을 쓴다. 여는 사람도 시점도 강사 한 곳이라
         따로 만들 이유가 없다.
       */}
       {gates.length > 0 ? (
@@ -328,7 +328,7 @@ export function InstructorLive() {
                 branches={[
                   '설명 추가',
                   '발문 하나 더',
-                  '짝 토론',
+                  '서로 의견 달기',
                   '재실험 / 자료 추가',
                   '개별 비계',
                   '지금은 넘어가고 다음 차시에 다룬다',
