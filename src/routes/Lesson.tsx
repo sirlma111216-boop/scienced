@@ -43,7 +43,7 @@ import { Badge, Button, Caption, ColorBlock, Notice, ScrollX } from '@/component
  */
 export function Lesson() {
   const { id } = useParams()
-  const { repo, isInstructor, classId, currentClass } = useAuth()
+  const { repo, user, isInstructor, classId, currentClass } = useAuth()
   const lesson = getLesson(id ?? '')
   const [stepIndex, setStepIndex] = useState(0)
   const [tierOverrides, setTierOverrides] = useState<TierOverrides>({})
@@ -58,6 +58,8 @@ export function Lesson() {
   const [users, setUsers] = useState<AppUser[]>([])
   const [dismissedAt, setDismissedAt] = useState<string | null>(null)
   const [allDocs, setAllDocs] = useState<ResponseDoc[]>([])
+  /** 개념 카드 단계의 내 응답. 「잠깐 확인」을 담는다. */
+  const [conceptDoc, setConceptDoc] = useState<ResponseDoc | null>(null)
   const [participation, setParticipation] = useState<Participation[]>([])
 
   /* 이 클래스가 도는 판. 강사가 미리보기를 켜면 그쪽을 따른다. */
@@ -111,12 +113,44 @@ export function Lesson() {
     return repo.watchAllResponses(classId, lesson.id, step.id, setAllDocs)
   }, [repo, lesson, step, classId])
 
+  useEffect(() => {
+    if (!repo || !lesson || !step || !classId || !user) return
+    if (step.type !== 'concepts') {
+      setConceptDoc(null)
+      return
+    }
+    return repo.watchResponse(classId, lesson.id, step.id, user.uid, setConceptDoc)
+  }, [repo, lesson, step, classId, user])
+
   /*
    * ★ 훅은 조기 반환보다 위에 있어야 한다.
    *   아래의 `if (!open) return` 은 차시가 수업 중에 공개되는 순간 false→true 로 바뀐다.
    *   그때 훅이 반환문 아래 있으면 렌더마다 훅 개수가 달라져 화면이 깨진다.
    *   실제로 그렇게 있었고, eslint(react-hooks/rules-of-hooks)가 잡았다.
    */
+  /*
+   * ★ 개념 카드의 「잠깐 확인」이 아무 데도 저장되지 않고 있었다.
+   *
+   * ConceptCard 는 answer·onAnswer 를 받도록 만들어 두었는데 넘겨 주지 않아서,
+   * 고르고 이유를 적고 확인을 눌러도 화면 안 상태로만 남았다.
+   * 페이지를 나갔다 오면 사라졌다 — 수업 중에 실제로 그 일이 났다.
+   *
+   * 개념 카드 단계의 응답 문서에 카드별로 모아 담는다.
+   * 한 장 확인할 때마다 새 버전이 쌓인다 — 이 앱의 규칙 그대로, 앞 것을 지우지 않는다.
+   */
+  const conceptChecks = useMemo(() => {
+    const latest = conceptDoc?.versions?.[conceptDoc.versions.length - 1]
+    const raw = (latest?.payload ?? {}) as Record<string, unknown>
+    const out: Record<string, { choice: string; reason: string }> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      const val = v as { choice?: string; reason?: string }
+      if (val && typeof val === 'object' && val.choice) {
+        out[k] = { choice: String(val.choice), reason: String(val.reason ?? '') }
+      }
+    }
+    return out
+  }, [conceptDoc])
+
   const nicknames = useMemo(
     () => Object.fromEntries(users.map((u) => [u.uid, u.nickname || '이름 없음'])),
     [users],
@@ -184,6 +218,21 @@ export function Lesson() {
    * 위아래로 두면 칸마다 스크롤을 오르내려야 한다.
    */
   const splitWork = (stepView?.material.length ?? 0) > 0 && (stepView?.fields.length ?? 0) > 0
+
+
+  async function saveConceptCheck(conceptId: string, choice: string, reason: string) {
+    if (!repo || !user || !classId || !lesson || !step) return
+    const next = { ...conceptChecks, [conceptId]: { choice, reason } }
+    try {
+      await repo.submitResponse(classId, lesson.id, step.id, user.uid, next, {
+        confidence: null,
+        changedReason: null,
+      })
+    } catch (err) {
+      // 삼키지 않는다. 화면에는 카드가 저장됨으로 보이므로 콘솔에라도 이유를 남긴다.
+      console.error('[개념 확인] 저장하지 못했다:', err)
+    }
+  }
 
   const game = GAMES_BY_LESSON[lesson.id]
   const ladder: LadderState | null = game ? (session?.ladders?.[game.id] ?? null) : null
@@ -356,7 +405,12 @@ export function Lesson() {
                         }
                       />
                     ) : null}
-                    <ConceptCard concept={concept} index={i} />
+                    <ConceptCard
+                      concept={concept}
+                      index={i}
+                      answer={conceptChecks[concept.id]}
+                      onAnswer={(choice, reason) => saveConceptCheck(concept.id, choice, reason)}
+                    />
                   </div>
                 ))}
               </div>

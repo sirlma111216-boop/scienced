@@ -186,9 +186,8 @@ export function AppShell({
               <button
                 type="button"
                 className="tab"
-                aria-haspopup={switchable.length > 1 ? 'listbox' : undefined}
+                aria-haspopup="listbox"
                 aria-expanded={switching}
-                disabled={switchable.length <= 1}
                 onClick={() => setSwitching((s) => !s)}
                 style={{ fontSize: 13, minHeight: 36, padding: '4px 12px', whiteSpace: 'nowrap' }}
               >
@@ -197,9 +196,9 @@ export function AppShell({
                 {' · '}
                 {sessionLengthShort(classSessionLength(currentClass))}
                 {currentClass.status === 'archived' ? ' · 보관' : ''}
-                {switchable.length > 1 ? <span aria-hidden> ▾</span> : null}
+                <span aria-hidden> ▾</span>
               </button>
-              {switching && switchable.length > 1 ? (
+              {switching ? (
                 <ul
                   role="listbox"
                   aria-label="클래스 전환"
@@ -234,6 +233,27 @@ export function AppShell({
                       </button>
                     </li>
                   ))}
+                  {/*
+                    ★ 수업 등록으로 가는 길.
+                      예전에는 처음 들어온 사람에게만 등록 화면이 열렸다.
+                      클래스에서 내보내진 사람이 다시 들어와도 등록할 방법이 없었고,
+                      다른 학기를 추가로 듣는 길도 없었다. 늘 여기서 갈 수 있게 둔다.
+                  */}
+                  <li style={{ marginTop: 4, paddingTop: 4, boxShadow: 'inset 0 1px 0 #e6e6e6' }}>
+                    <Link
+                      to="/class"
+                      className="btn-tertiary"
+                      style={{
+                        width: '100%',
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        textDecoration: 'none',
+                      }}
+                      onClick={() => setSwitching(false)}
+                    >
+                      + 수업 고르기 · 등록하기
+                    </Link>
+                  </li>
                 </ul>
               ) : null}
             </div>

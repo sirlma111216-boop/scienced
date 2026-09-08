@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { KeyConcept } from '@/content/types'
 import { Badge, Button, Caption, ColorBlock, type BlockTone } from '@/components/ui'
 import { withEmphasis } from '@/components/emphasis'
@@ -41,6 +41,23 @@ export function ConceptCard({
   const [reason, setReason] = useState(answer?.reason ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(Boolean(answer))
+
+  /*
+   * ★ 저장된 답을 화면에 되살린다.
+   *
+   * 응답 문서는 화면이 그려진 뒤에 도착한다. 처음 값으로만 상태를 만들어 두면
+   * 그때 도착한 답이 화면에 반영되지 않는다 — 저장은 됐는데 빈칸으로 보였고,
+   * 학생은 사라진 줄 알고 다시 적었다.
+   * 한 번만 채운다. 그 뒤에 쓰고 있는 것을 덮어쓰지 않기 위해서다.
+   */
+  const hydrated = useRef(Boolean(answer))
+  useEffect(() => {
+    if (hydrated.current || !answer) return
+    hydrated.current = true
+    setChoice(answer.choice)
+    setReason(answer.reason)
+    setSaved(true)
+  }, [answer])
 
   const cur = LAYERS[layer]
   const tone = TONES[index % TONES.length]

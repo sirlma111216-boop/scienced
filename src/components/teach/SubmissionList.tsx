@@ -54,10 +54,17 @@ export function SubmissionList({
   fields,
   docs,
   users,
+  title = '지금 들어온 답',
+  only = 'all',
+  emptyText = '아직 제출한 사람이 없습니다.',
 }: {
   fields: FieldDef[]
   docs: ResponseDoc[]
   users: AppUser[]
+  title?: string
+  /** 'revised' 면 고쳐 쓴 답(v2 이상)만 모은다. 무엇이 움직였는지 따로 보려는 자리다. */
+  only?: 'all' | 'revised'
+  emptyText?: string
 }) {
   const [open, setOpen] = useState(true)
 
@@ -68,7 +75,7 @@ export function SubmissionList({
 
   const rows = useMemo(() => {
     return docs
-      .filter((d) => (d.versions?.length ?? 0) > 0)
+      .filter((d) => (d.versions?.length ?? 0) > (only === 'revised' ? 1 : 0))
       .map((d) => {
         const latest = d.versions[d.versions.length - 1]
         return {
@@ -81,7 +88,7 @@ export function SubmissionList({
       })
       /* 순위가 아니다. 최근에 낸 것이 위에 온다. */
       .sort((a, b) => b.at - a.at)
-  }, [docs])
+  }, [docs, only])
 
   if (fields.length === 0) return null
 
@@ -90,7 +97,7 @@ export function SubmissionList({
       <Card>
         <div className="flex items-center gap-md" style={{ flexWrap: 'wrap' }}>
           <h2 className="text-card-title" style={{ margin: 0 }}>
-            지금 들어온 답
+            {title}
           </h2>
           <Badge>{rows.length}명</Badge>
           <button
@@ -107,7 +114,7 @@ export function SubmissionList({
 
         {rows.length === 0 ? (
           <p className="text-body-sm" style={{ marginTop: 12, opacity: 0.66 }}>
-            아직 제출한 사람이 없습니다.
+            {emptyText}
           </p>
         ) : open ? (
           <ul

@@ -4,7 +4,15 @@ import { getLesson } from '@/content/lessons'
 import { GAMES_BY_LESSON } from '@/content/games'
 import { useAuth } from '@/lib/auth'
 import { buildLessonView, classSessionLength, type TierOverrides } from '@/lib/tiers'
-import type { AiProposal, AppUser, Participation, Post, ResponseDoc, SessionState } from '@/lib/types'
+import type {
+  AiProposal,
+  AppUser,
+  Enrollment,
+  Participation,
+  Post,
+  ResponseDoc,
+  SessionState,
+} from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { DistributionView } from '@/components/response/DistributionView'
 import { LadderPanel } from '@/components/teach/LadderPanel'
@@ -32,6 +40,7 @@ export function InstructorLive() {
   const [users, setUsers] = useState<AppUser[]>([])
   const [participation, setParticipation] = useState<Participation[]>([])
   const [docs, setDocs] = useState<ResponseDoc[]>([])
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [posts, setPosts] = useState<Post[]>([])
   const [proposals, setProposals] = useState<AiProposal[]>([])
   /*
@@ -61,24 +70,23 @@ export function InstructorLive() {
    *   「풀었는데 학생 화면이 그대로다」가 됐다. 단계를 함께 적는다.
    * 자료 블록의 gate 와 입력 칸의 gate 를 id 로 합친다 — 여는 사람도 시점도 같다.
    */
-  const gateGroups = (lesson?.steps ?? [])
-    .map((st) => {
-      const found = new Map<string, string>()
-      for (const m of st.material ?? []) {
-        if (m.gate && m.gate.type !== 'afterSubmit') found.set(m.gate.of, m.title)
+  /*
+   * 지금 보고 있는 단계에서 강사가 열 수 있는 것.
+   * 자료 블록의 gate 와 입력 칸의 gate 를 id 로 합친다 — 여는 사람도 시점도 같다.
+   */
+  const stepGates = (() => {
+    const found = new Map<string, string>()
+    for (const m of step?.material ?? []) {
+      if (m.gate && m.gate.type !== 'afterSubmit') found.set(m.gate.of, m.title)
+    }
+    for (const f of step?.fields ?? []) {
+      if (f.gate && f.gate.type !== 'afterSubmit' && !found.has(f.gate.of)) {
+        found.set(f.gate.of, f.gate.of === 'secondRound' ? '2차 응답' : f.label)
       }
-      for (const f of st.fields) {
-        if (f.gate && f.gate.type !== 'afterSubmit' && !found.has(f.gate.of)) {
-          found.set(f.gate.of, f.gate.of === 'secondRound' ? '2차 응답' : f.label)
-        }
-      }
-      return {
-        stepId: st.id,
-        stepTitle: st.title,
-        items: [...found].map(([id, label]) => ({ id, label })),
-      }
-    })
-    .filter((g) => g.items.length > 0)
+    }
+    return [...found].map(([id, label]) => ({ id, label }))
+  })()
+
   const revealed = session?.revealed ?? []
 
   useEffect(() => {
@@ -101,10 +109,12 @@ export function InstructorLive() {
     const a = repo.watchUsers(setUsers)
     const b = repo.watchParticipation(classId, setParticipation)
     const c = repo.watchAiProposals(classId, setProposals)
+    const d = repo.watchEnrollments(classId, setEnrollments)
     return () => {
       a()
       b()
       c()
+      d()
     }
   }, [repo, classId])
 
@@ -118,7 +128,21 @@ export function InstructorLive() {
     }
   }, [repo, lesson, step, classId])
 
-  const students = useMemo(() => users.filter((u) => u.role === 'student'), [users])
+  /*
+   * ★ 이 클래스에 등록한 사람만 센다.
+   *
+   * 예전에는 전역 사용자 목록에서 role 이 student 인 사람을 전부 데려왔다.
+   * 그래서 클래스에서 내보낸 계정이 콘솔 제출 현황에 그대로 남았다 —
+   * 수업 내내 시험 계정 두 개가 미제출로 떠 있었다.
+   * 내보내기는 등록 문서를 지우는 일이므로, 등록을 기준으로 세면 곧바로 사라진다.
+   * 이름은 여전히 사용자 문서에서 가져온다(닉네임이 거기 있다).
+   */
+  const students = useMemo(() => {
+    const byUid = new Map(users.map((u) => [u.uid, u]))
+    return enrollments
+      .filter((e) => e.status === 'active')
+      .map((e) => byUid.get(e.uid) ?? ({ uid: e.uid, nickname: e.nickname } as AppUser))
+  }, [enrollments, users])
   const submittedUids = useMemo(
     () => new Set(docs.filter((d) => (d.latestV ?? 0) > 0).map((d) => d.uid)),
     [docs],
@@ -213,75 +237,47 @@ export function InstructorLive() {
         </Caption>
       </div>
 
-      {/*
-        자료 공개 (4차 H.4).
-
-        「새 증거 카드」처럼 순서가 중요한 자료는 강사가 눌러야 학생 화면에 열린다.
-        되돌릴 수 있다 — 다시 누르면 잠긴다. 잘못 눌렀을 때 되돌릴 길이 없으면
-        수업 중에 아무도 누르지 못한다.
-
-        형성평가의 2차 응답도 같은 목록을 쓴다. 여는 사람도 시점도 강사 한 곳이라
-        따로 만들 이유가 없다.
-      */}
-      {gateGroups.length > 0 ? (
-        <div style={{ marginTop: 24 }}>
-          <Caption>자료 공개</Caption>
-          <p className="text-body-sm" style={{ margin: '4px 0 10px', opacity: 0.7 }}>
-            누르면 학생 화면의 잠긴 카드가 열립니다. 다시 누르면 잠깁니다.
-          </p>
-          <div className="flex flex-col gap-xs">
-            {gateGroups.map((grp) => {
-              /* 지금 보고 있는 단계를 굵게 세워 둔다. 눌러야 할 줄이 어디인지 보이게. */
-              const here = step?.id === grp.stepId
-              return (
-                <div
-                  key={grp.stepId}
-                  className="rounded-md"
-                  style={{
-                    padding: '10px 12px',
-                    boxShadow: `inset 0 0 0 ${here ? 2 : 1}px ${here ? '#000' : '#e6e6e6'}`,
-                  }}
-                >
-                  <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-                    <span className="text-body-sm" style={{ fontWeight: here ? 700 : 480 }}>
-                      {grp.stepTitle}
-                    </span>
-                    {here ? <Badge solid>지금 이 단계</Badge> : null}
-                  </div>
-                  <div className="flex flex-wrap gap-xs" style={{ marginTop: 8 }}>
-                    {grp.items.map((g) => {
-                      const on = revealed.includes(g.id)
-                      return (
-                        <Button
-                          key={g.id}
-                          variant={on ? 'primary' : 'secondary'}
-                          aria-pressed={on}
-                          onClick={() => {
-                            if (!classId) return
-                            const next = on
-                              ? revealed.filter((x) => x !== g.id)
-                              : [...revealed, g.id]
-                            void repo?.setSession(classId, lesson.id, { revealed: next })
-                          }}
-                        >
-                          {on ? '↩ 다시 잠그기 · ' : '▸ 열기 · '}
-                          {g.label}
-                        </Button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      ) : null}
-
       {step ? (
         <>
-          <div style={{ marginTop: 32 }}>
-            <MustSay lines={lesson.instructorScript} stepId={step.id} isInstructor />
-          </div>
+          {/*
+            이 단계에서 열 것.
+
+            ★ 예전에는 차시 전체의 잠금을 화면 맨 위에 한꺼번에 늘어놓았다.
+              탭을 바꿔도 그 자리는 그대로여서, 지금 단계와 상관없는 단추를 먼저 누르게 됐다.
+              콘솔은 지금 하는 단계만 보여 준다. 다른 단계 것은 그 탭으로 가면 나온다.
+          */}
+          {stepGates.length > 0 ? (
+            <div style={{ marginTop: 24 }}>
+              <Card>
+                <h2 className="text-card-title" style={{ margin: 0 }}>
+                  이 단계에서 열 것
+                </h2>
+                <Caption>누르면 학생 화면의 잠긴 카드가 열립니다. 다시 누르면 잠깁니다.</Caption>
+                <div className="flex flex-wrap gap-xs" style={{ marginTop: 12 }}>
+                  {stepGates.map((g) => {
+                    const on = revealed.includes(g.id)
+                    return (
+                      <Button
+                        key={g.id}
+                        variant={on ? 'primary' : 'secondary'}
+                        aria-pressed={on}
+                        onClick={() => {
+                          if (!classId) return
+                          const next = on
+                            ? revealed.filter((x) => x !== g.id)
+                            : [...revealed, g.id]
+                          void repo?.setSession(classId, lesson.id, { revealed: next })
+                        }}
+                      >
+                        {on ? '↩ 다시 잠그기 · ' : '▸ 열기 · '}
+                        {g.label}
+                      </Button>
+                    )
+                  })}
+                </div>
+              </Card>
+            </div>
+          ) : null}
 
           {/* 제출 / 미제출 명단 — 순위가 아니라 명단이다 */}
           <Card>
@@ -330,6 +326,20 @@ export function InstructorLive() {
             1강으로 치면 다섯 단계 중 3단계에만 나왔다 — 나머지 넷에서는 누가 냈는지만 알 수 있었다.
           */}
           <SubmissionList fields={step.fields} docs={docs} users={users} />
+
+          {/*
+            고쳐 쓴 답만 따로 모은다.
+            수업의 목적이 「생각이 움직였는가」이므로, 움직인 것만 보는 자리가 따로 있어야 한다.
+            들어온 답에 섞여 있으면 스무 장 중에서 v2 배지를 눈으로 찾아야 한다.
+          */}
+          <SubmissionList
+            fields={step.fields}
+            docs={docs}
+            users={users}
+            title="고쳐 쓴 답"
+            only="revised"
+            emptyText="아직 고쳐 쓴 사람이 없습니다."
+          />
 
           {choiceField ? (
             <div style={{ marginTop: 32 }}>
@@ -412,6 +422,20 @@ export function InstructorLive() {
               </Card>
             </div>
           ) : null}
+
+          {/*
+            강사 대본은 접어서 아래에 둔다.
+            수업 중에 콘솔에서 급히 찾는 것은 제출 현황과 학생이 쓴 글이다.
+            대본은 준비할 때 읽는 것이라, 늘 펴 두면 정작 볼 것을 아래로 밀어낸다.
+          */}
+          <details className="no-print" style={{ marginTop: 32 }}>
+            <summary className="caption" style={{ cursor: 'pointer' }}>
+              강사 대본 — 이 단계에서 할 말 (학생 화면에는 보이지 않습니다)
+            </summary>
+            <div style={{ marginTop: 12 }}>
+              <MustSay lines={lesson.instructorScript} stepId={step.id} isInstructor />
+            </div>
+          </details>
 
           {/* 추첨 */}
           {step.picker?.enabled && game ? (

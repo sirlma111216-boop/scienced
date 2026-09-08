@@ -184,10 +184,25 @@ export function ResponseCollector({
     return Object.keys(next).length === 0
   }
 
+  /*
+   * ★ 2차 응답이 저장되지 않던 자리.
+   *
+   * 1차를 제출하면 locked 가 되어 모든 칸이 잠긴다. 강사가 잠금을 풀어 2차 칸이
+   * 나타나도 그 칸까지 disabled 였고, 「고쳐 쓰기」를 눌러야 열렸다.
+   * 게다가 그렇게 열고 제출하면 「무엇을 왜 바꿨는가」를 또 물었다 —
+   * 폼 안에 같은 이름의 칸이 이미 있는데도.
+   *
+   * 2차 칸은 고쳐 쓰는 것이 아니라 새로 쓰는 것이다. 열리면 바로 쓸 수 있어야 하고,
+   * 그것만 채워 내는 제출에는 별도의 변경 사유를 요구하지 않는다.
+   */
+  const openGated = gatedFields.filter(open)
+  const hasOpenGated = openGated.length > 0
+
   async function submit() {
     if (!repo || !uid) return
     if (!validate()) return
-    if (submitted && !changedReason.trim()) {
+    /* 2차 칸이 열려 있으면 그 칸들이 곧 「무엇을 왜 바꿨는가」다. 두 번 묻지 않는다. */
+    if (submitted && !hasOpenGated && !changedReason.trim()) {
       setErrors((e) => ({ ...e, __changed: '무엇을 왜 바꿨는지(또는 왜 유지했는지) 적어 주세요.' }))
       return
     }
@@ -240,7 +255,7 @@ export function ResponseCollector({
         「수정이 안 된다」로 읽힌다 — 실제로 그렇게 막혔다.
         푸는 버튼을 아래쪽에만 두지 않고 여기에도 둔다.
       */}
-      {locked ? (
+      {locked && !hasOpenGated ? (
         <Notice tone="mint">
           <p className="text-body-sm" style={{ margin: 0 }}>
             제출했습니다. 지금까지 <span className="font-mono">v{versionCount}</span>개 버전이
@@ -287,7 +302,8 @@ export function ResponseCollector({
                 def={f}
                 value={values[f.key]}
                 error={errors[f.key] || null}
-                disabled={locked}
+                /* 열린 2차 칸은 1차 제출 여부와 상관없이 쓸 수 있다 */
+                disabled={false}
                 onChange={(v) => set(f.key, v)}
               />
             ) : (
@@ -297,7 +313,7 @@ export function ResponseCollector({
         </div>
       ) : null}
 
-      {submitted && revising ? (
+      {submitted && revising && !hasOpenGated ? (
         <div className="flex flex-col gap-xs">
           <label htmlFor="changed-reason" className="text-body-sm" style={{ fontWeight: 480 }}>
             무엇을 왜 바꿨는가 / 왜 유지했는가
@@ -323,7 +339,7 @@ export function ResponseCollector({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-md no-print">
-        {locked ? (
+        {locked && !hasOpenGated ? (
           <Button variant="secondary" onClick={startRevising}>
             고쳐 쓰기 — 새 버전으로 남습니다
           </Button>
