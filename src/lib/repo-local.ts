@@ -502,6 +502,11 @@ export function createLocalRepo(): Repo {
     },
 
     /* ── AI 제안 ── */
+    watchAiLogs(cb) {
+      /* 로컬 저장 모드에는 서버가 없어 기록이 쌓이지 않는다. */
+      return subscribe(() => cb([]))
+    },
+
     async addAiProposal(classId, p) {
       const list = read<AiProposal[]>(kProposals(classId), [])
       // 언제나 pending 으로 들어간다. 호출자가 status 를 바꿔 보내도 무시한다.

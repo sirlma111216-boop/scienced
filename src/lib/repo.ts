@@ -1,6 +1,7 @@
 import type { GameId, LessonId, Tier } from '@/content/types'
 import type { TierOverrides } from './tiers'
 import type {
+  AiLog,
   AiProposal,
   AppUser,
   ClassDoc,
@@ -268,6 +269,15 @@ export interface Repo {
    * AI 결과를 제안으로 넣는다. 언제나 pending 으로 들어간다.
    * 이 함수 말고는 AI 결과가 저장되는 경로가 없다.
    */
+  /**
+   * AI 사용 기록을 읽는다. 강사만.
+   *
+   * 쓰기는 서버가 한다 (규칙에서 클라이언트 쓰기를 막아 두었다).
+   * 담기는 것은 누가·어떤 작업·언제·성공했는지·채택했는지뿐이다 —
+   * 프롬프트도 모델 응답도 저장하지 않는다.
+   */
+  watchAiLogs(cb: (list: AiLog[]) => void): () => void
+
   addAiProposal(classId: string, p: AiProposal): Promise<void>
   watchAiProposals(classId: string, cb: (list: AiProposal[]) => void): () => void
   /** 교사가 고치거나 채택하거나 거부한다. original 은 바뀌지 않는다. */

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
-import type { AiProposal } from '@/lib/types'
+import type { AiLog, AiProposal } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
 
@@ -29,6 +29,7 @@ const TASK_LABEL: Record<string, string> = {
 export function InstructorAiReview() {
   const { user, repo, isInstructor, classId } = useAuth()
   const [list, setList] = useState<AiProposal[]>([])
+  const [logs, setLogs] = useState<AiLog[]>([])
   const [filter, setFilter] = useState<'pending' | 'accepted' | 'rejected' | 'all'>('pending')
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [reasons, setReasons] = useState<Record<string, string>>({})
@@ -37,6 +38,12 @@ export function InstructorAiReview() {
     if (!repo || !classId) return
     return repo.watchAiProposals(classId, setList)
   }, [repo, classId])
+
+  /* 사용 기록은 클래스 밖(루트)에 쌓인다. 서버가 서비스 계정으로 쓴다. */
+  useEffect(() => {
+    if (!repo) return
+    return repo.watchAiLogs((l) => setLogs([...l].sort((a, b) => b.createdAt - a.createdAt)))
+  }, [repo])
 
   const shown = useMemo(() => {
     const sorted = [...list].sort((a, b) => b.createdAt - a.createdAt)
@@ -89,6 +96,72 @@ export function InstructorAiReview() {
             나중에 확인할 수 있습니다.
           </p>
         </Notice>
+      </div>
+
+      {/*
+        학생이 부른 AI 사용 기록.
+        「채택 여부가 함께 기록됩니다」라고 화면이 말해 왔는데 실제로는 아무 데도
+        남지 않고 있었다. 이제 서버가 남기고, 여기서 읽는다.
+        담기는 것은 누가·무엇을·언제·됐는지·채택했는지뿐이다 —
+        학생이 쓴 글도 모델의 답도 저장하지 않는다.
+      */}
+      <div style={{ marginTop: 32 }}>
+        <Card>
+          <div className="flex items-baseline gap-md" style={{ flexWrap: 'wrap' }}>
+            <h2 className="text-card-title" style={{ margin: 0 }}>
+              AI 사용 기록
+            </h2>
+            <Caption>
+              {logs.length}회 · 채택 {logs.filter((l) => l.adopted).length}회
+            </Caption>
+          </div>
+          <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.72 }}>
+            학생이 쓴 글과 모델의 답은 저장하지 않습니다. 누가 어떤 도움을 언제 불렀고,
+            그것을 받아들였는지만 남습니다.
+          </p>
+          {logs.length === 0 ? (
+            <p className="text-body-sm" style={{ marginTop: 12, opacity: 0.66 }}>
+              아직 기록이 없습니다. 학생이 「AI 도움」을 누르면 여기에 쌓입니다.
+            </p>
+          ) : (
+            <ScrollX>
+              <table style={{ borderCollapse: 'collapse', marginTop: 12, minWidth: 520 }}>
+                <thead>
+                  <tr>
+                    {['시각', '작업', '결과', '채택'].map((h) => (
+                      <th
+                        key={h}
+                        scope="col"
+                        className="caption"
+                        style={{ textAlign: 'left', padding: '8px 16px 8px 0' }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.slice(0, 40).map((l) => (
+                    <tr key={l.id} style={{ boxShadow: 'inset 0 -1px 0 #f1f1f1' }}>
+                      <td className="text-body-sm font-mono" style={{ padding: '10px 16px 10px 0' }}>
+                        {new Date(l.createdAt).toLocaleString('ko-KR')}
+                      </td>
+                      <td className="text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
+                        {l.taskId}
+                      </td>
+                      <td className="text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
+                        {l.ok ? '성공' : `실패 · ${l.message}`}
+                      </td>
+                      <td className="text-body-sm" style={{ padding: '10px 0' }}>
+                        {l.adopted ? '채택함' : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollX>
+          )}
+        </Card>
       </div>
 
       <div className="flex flex-wrap gap-xs" style={{ marginTop: 32 }}>

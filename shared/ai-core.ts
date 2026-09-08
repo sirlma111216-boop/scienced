@@ -204,12 +204,85 @@ export interface AiResponse {
   message?: string
   text?: string
   model?: string
+  /** 사용 기록 문서의 id. 채택 표시를 남길 때 이것을 되돌려 보낸다. */
+  logId?: string
+}
+
+/**
+ * AI 사용 기록.
+ *
+ * 규칙에서 aiLogs 는 클라이언트가 쓰지 못한다(allow write: if false).
+ * 서버가 서비스 계정으로 쓴다 — 학생 브라우저가 기록을 지어내지 못하게 하기 위해서다.
+ *
+ * 프롬프트 원문도 모델 응답도 넣지 않는다. 누가 어떤 작업을 언제 불렀고,
+ * 성공했는지, 그리고 채택했는지만 남긴다. 그것이 17절이 요구한 감독의 내용이다.
+ */
+export async function writeAiLog(
+  sa: ServiceAccount,
+  token: string,
+  log: {
+    id: string
+    uid: string
+    taskId: string
+    model: string
+    ok: boolean
+    message: string
+  },
+): Promise<void> {
+  const project = sa.project_id
+  const url =
+    `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)` +
+    `/documents/aiLogs?documentId=${encodeURIComponent(log.id)}`
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          uid: { stringValue: log.uid },
+          taskId: { stringValue: log.taskId },
+          model: { stringValue: log.model },
+          ok: { booleanValue: log.ok },
+          message: { stringValue: log.message.slice(0, 300) },
+          adopted: { booleanValue: false },
+          createdAt: { integerValue: String(Date.now()) },
+        },
+      }),
+    })
+  } catch (err) {
+    // 기록을 남기지 못해도 학생의 활동은 계속된다. 이유는 로그에 남긴다.
+    console.warn('[aiLogs] 기록하지 못했다:', (err as Error).message)
+  }
+}
+
+/** 채택 표시. 같은 문서의 adopted 만 고친다. */
+export async function markAiAdopted(
+  sa: ServiceAccount,
+  token: string,
+  logId: string,
+): Promise<boolean> {
+  const project = sa.project_id
+  const url =
+    `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)` +
+    `/documents/aiLogs/${encodeURIComponent(logId)}?updateMask.fieldPaths=adopted`
+  try {
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ fields: { adopted: { booleanValue: true } } }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 export async function generate(
   env: Env,
   taskId: string,
   inputs: Record<string, string>,
+  /** 사용 기록에 남길 사람. 없으면 기록하지 않는다 (검사 스크립트 등). */
+  uid?: string,
 ): Promise<AiResponse> {
   // 화이트리스트. 목록에 없으면 거부한다.
   if (!(taskId in TASKS)) {
@@ -261,14 +334,27 @@ export async function generate(
       error?: { message?: string }
     }
 
+    /*
+     * 성공이든 실패든 기록을 남긴다.
+     * 실패까지 남겨야 「AI 가 안 됐다」는 학생 말과 화면이 맞는지 확인할 수 있다.
+     */
+    const logId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+    const note = async (ok: boolean, message: string) => {
+      if (uid) await writeAiLog(sa, token, { id: logId, uid, taskId, model, ok, message })
+    }
+
     if (data.error) {
-      return { ok: false, message: `모델 호출 실패: ${data.error.message ?? '알 수 없음'}` }
+      const message = `모델 호출 실패: ${data.error.message ?? '알 수 없음'}`
+      await note(false, message)
+      return { ok: false, message }
     }
     const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
     if (!text.trim()) {
+      await note(false, '빈 응답')
       return { ok: false, message: '모델이 빈 응답을 돌려주었습니다.' }
     }
-    return { ok: true, text, model }
+    await note(true, '')
+    return { ok: true, text, model, logId }
   } catch (err) {
     return { ok: false, message: `AI 호출 중 오류: ${(err as Error).message}` }
   }

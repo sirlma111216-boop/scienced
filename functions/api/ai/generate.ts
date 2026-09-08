@@ -30,7 +30,13 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
 
   if (!body.taskId) return fail('taskId 가 없습니다.')
 
-  const result = await generate(ctx.env, LEGACY_TASK_IDS[body.taskId] ?? body.taskId, body.inputs ?? {})
+  const result = await generate(
+    ctx.env,
+    LEGACY_TASK_IDS[body.taskId] ?? body.taskId,
+    body.inputs ?? {},
+    /* 사용 기록에 남길 사람. 프롬프트에는 들어가지 않는다. */
+    user.uid,
+  )
   return json(result)
 }
 

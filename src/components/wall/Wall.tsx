@@ -447,7 +447,14 @@ export function WallCard({
    * 줄 수로 재면 짧은 줄이 여럿인 글까지 걸리므로 글자 수도 함께 본다.
    */
   const body = latest?.content ?? ''
-  const long = body.length > 160 || body.split('\n').length > 5
+  /*
+   * 접는 기준을 넉넉히 둔다.
+   *
+   * 처음에는 넉 줄에서 접었더니, 1차 답에 2차 답을 이어 붙인 글이 곧바로 접혔다.
+   * 이어 쓴 것을 펼쳐야만 볼 수 있으면 이어 쓴 뜻이 없다.
+   * 정말 긴 글만 접는다 — 한 사람이 화면을 다 먹는 것만 막으면 된다.
+   */
+  const long = body.length > 600 || body.split('\n').length > 12
 
   async function react(key: string) {
     if (!repo || !user) return
@@ -639,13 +646,19 @@ export function WallCard({
             onKeyDown={(e) => {
               if (e.key === 'Enter') void send()
             }}
-            style={{ minHeight: 40 }}
+            style={{ minHeight: 36, fontSize: 14, padding: '6px 10px' }}
           />
           {/* 「남기기」가 두 줄로 접히지 않게 폭을 잡아 둔다 */}
           <Button
             variant="secondary"
             onClick={() => void send()}
-            style={{ minHeight: 40, padding: '4px 14px', whiteSpace: 'nowrap' }}
+            style={{
+              minHeight: 36,
+              fontSize: 14,
+              padding: '4px 12px',
+              whiteSpace: 'nowrap',
+              borderRadius: 6,
+            }}
           >
             남기기
           </Button>

@@ -412,14 +412,27 @@ export function Lesson() {
                       <>
                         {submitted ? (
                           <div className="flex flex-col gap-xl" style={{ marginTop: 32 }}>
+                            {/*
+                              ★ 반 전체 분포는 강사만 읽을 수 있다 (보안 규칙).
+                                학생 화면에서도 그리고 있었는데, 규칙에 막혀 언제나 0명 0개였다.
+                                채워질 수 없는 표를 두면 「내가 고른 것도 왜 안 세지?」가 된다.
+                                학생에게는 어디서 함께 보는지만 알린다.
+                            */}
                             {stepView.fields.find((f) => f.kind === 'choice') ? (
-                              <DistributionView
-                                docs={allDocs}
-                                field={stepView.fields.find((f) => f.kind === 'choice')!}
-                                reasonKey={
-                                  stepView.fields.find((f) => /reason/i.test(f.key))?.key
-                                }
-                              />
+                              isInstructor ? (
+                                <DistributionView
+                                  docs={allDocs}
+                                  field={stepView.fields.find((f) => f.kind === 'choice')!}
+                                  reasonKey={
+                                    stepView.fields.find((f) => /reason/i.test(f.key))?.key
+                                  }
+                                />
+                              ) : (
+                                <p className="text-body-sm" style={{ opacity: 0.7, margin: 0 }}>
+                                  반 전체 분포는 강사 화면에서 함께 봅니다. 내가 낸 답은 위에
+                                  그대로 있고, 다른 사람 생각은 아래 의견 광장에서 볼 수 있습니다.
+                                </p>
+                              )
                             ) : null}
 
                             {step.aiTasks.includes('recall-probe') ? (

@@ -20,6 +20,7 @@ import { LESSONS } from '@/content/lessons'
 import type { GameId, LessonId } from '@/content/types'
 import type { Repo } from './repo'
 import type {
+  AiLog,
   AiProposal,
   AppUser,
   ClassDoc,
@@ -331,7 +332,15 @@ export function createFirestoreRepo(db: Firestore): Repo {
       return onSnapshot(
         cc(db, classId, ...stepPath(lessonId, stepId), 'responses'),
         (snap) => cb(snap.docs.map((s) => s.data() as ResponseDoc)),
-        () => cb([]),
+        (err) => {
+          /*
+           * 「없음」과 「읽지 못함」이 화면에서 같아 보이면 안 된다.
+           * 학생이 부르면 막히는 것이 정상이므로 화면은 빈 목록으로 두되,
+           * 왜 비었는지는 콘솔에 남긴다.
+           */
+          console.warn('[분포] 응답을 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
       )
     },
 
@@ -587,6 +596,18 @@ export function createFirestoreRepo(db: Firestore): Repo {
     },
 
     /* ── AI 제안 ── */
+    watchAiLogs(cb) {
+      return onSnapshot(
+        collection(db, 'aiLogs'),
+        (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as AiLog), id: s.id }))),
+        (err) => {
+          // 강사만 읽는다. 막히면 왜인지 남긴다 — 빈 목록과 못 읽음은 다르다.
+          console.warn('[aiLogs] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
+      )
+    },
+
     async addAiProposal(classId, p) {
       // 언제나 pending 으로 들어간다. 규칙에서도 create 시 status 를 검사한다.
       await setDoc(cd(db, classId, 'aiProposals', p.id), {

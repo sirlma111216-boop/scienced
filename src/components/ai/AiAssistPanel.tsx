@@ -56,9 +56,11 @@ interface AiResult {
   ask?: string
   model: string
   at: number
+  /** 서버가 남긴 사용 기록의 id. 채택 표시를 되돌려 보낼 때 쓴다. */
+  logId?: string
 }
 
-function parseFourLines(text: string, model: string): AiResult {
+function parseFourLines(text: string, model: string, logId?: string): AiResult {
   const pick = (tag: string) => {
     const m = text.match(new RegExp(`^\\s*${tag}\\s*[:：]\\s*(.+)$`, 'im'))
     return m?.[1]?.trim()
@@ -70,6 +72,7 @@ function parseFourLines(text: string, model: string): AiResult {
     ask: pick('ASK'),
     model,
     at: Date.now(),
+    logId,
   }
 }
 
@@ -99,10 +102,13 @@ export function AiAssistPanel({
     try {
       // 프롬프트 원문이 아니라 taskId 와 입력값만 보낸다.
       // 오류여도 HTTP 200 + JSON 으로 온다. 5xx 를 던지면 엣지가 본문을 덮어쓴다.
-      const data = await apiPost<{ ok: boolean; message?: string; text?: string; model?: string }>(
-        '/api/ai/generate',
-        { taskId, inputs },
-      )
+      const data = await apiPost<{
+        ok: boolean
+        message?: string
+        text?: string
+        model?: string
+        logId?: string
+      }>('/api/ai/generate', { taskId, inputs })
       if (!data.ok) {
         const reason = data.message || 'AI 응답을 받지 못했습니다.'
         // 화면에는 다음에 할 일을, 콘솔에는 이유를 남긴다.
@@ -110,7 +116,7 @@ export function AiAssistPanel({
         setError(reason)
         return
       }
-      setResult(parseFourLines(data.text ?? '', data.model ?? '알 수 없음'))
+      setResult(parseFourLines(data.text ?? '', data.model ?? '알 수 없음', data.logId))
     } finally {
       setBusy(false)
     }
@@ -233,6 +239,15 @@ export function AiAssistPanel({
               onClick={() => {
                 setAdopted(true)
                 onAdopt?.(result)
+                /*
+                 * 채택했다는 사실만 서버에 남긴다.
+                 * 실패해도 화면은 그대로 「채택함」이다 — 기록 때문에 학생을 막지 않는다.
+                 */
+                if (result.logId) {
+                  void apiPost('/api/ai/adopt', { logId: result.logId }).catch((e) => {
+                    console.warn('[AI] 채택 기록 실패:', e)
+                  })
+                }
               }}
             >
               {adopted ? '채택함' : '이 제안을 받아들이기'}
@@ -241,7 +256,10 @@ export function AiAssistPanel({
               쓰지 않기
             </Button>
           </div>
-          <Caption>채택했을 때만 저장되고, 채택 여부가 함께 기록됩니다.</Caption>
+          <Caption>
+            채택하면 「누가 · 어떤 작업 · 언제 · 채택함」만 기록됩니다. 쓴 내용과 모델의 답은
+            저장되지 않습니다.
+          </Caption>
         </div>
       ) : null}
     </Card>
