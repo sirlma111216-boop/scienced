@@ -8,11 +8,19 @@
  * 기존 앱대로 하트 하나로 되돌리고 싶으면 이 배열만 고치면 된다.
  * 정렬 옵션에 인기순을 만들지 않는다 (verify:wall 이 감시한다).
  */
+/*
+ * 이름은 두 글자로 짧게 둔다.
+ *
+ * 「나도 그렇게 생각했다」처럼 문장으로 두었더니 단추 네 개가 두 줄을 먹었다.
+ * 스무 명이 올린 글을 훑어야 하는 화면에서 카드 하나가 화면을 다 차지했다.
+ * 긴 뜻은 meaning 에 남겨 두고, 화면은 마크 + 두 글자만 쓴다 —
+ * 마우스를 올리거나 화면 낭독으로 들으면 긴 뜻이 그대로 나온다.
+ */
 export const REACTIONS = [
-  { key: 'agreed', label: '나도 그렇게 생각했다', meaning: '같은 결론', mark: '=' },
-  { key: 'wantEvidence', label: '근거가 궁금하다', meaning: '더 듣고 싶다', mark: '?' },
-  { key: 'disagree', label: '나는 다르게 본다', meaning: '다른 결론', mark: '≠' },
-  { key: 'learned', label: '새로 알았다', meaning: '내 생각이 움직였다', mark: '+' },
+  { key: 'agreed', label: '동의', meaning: '나도 그렇게 생각했다', mark: '=' },
+  { key: 'wantEvidence', label: '의문', meaning: '근거가 궁금하다', mark: '?' },
+  { key: 'disagree', label: '이견', meaning: '나는 다르게 본다', mark: '≠' },
+  { key: 'learned', label: '발견', meaning: '새로 알았다', mark: '+' },
 ] as const
 
 export type ReactionKey = (typeof REACTIONS)[number]['key']

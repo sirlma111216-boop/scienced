@@ -433,13 +433,21 @@ export function WallCard({
   const { user, isInstructor, repo } = useAuth()
   const [comment, setComment] = useState('')
   const [showAllComments, setShowAllComments] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [revising, setRevising] = useState(false)
   const [reviseText, setReviseText] = useState('')
 
   const latest = post.versions[post.versions.length - 1]
   const mine = user?.uid === post.uid
   const myReaction = REACTIONS.find((r) => (post.reactions?.[r.key] ?? []).includes(user?.uid ?? ''))
-  const comments = showAllComments ? post.comments : post.comments.slice(-4)
+  const comments = showAllComments ? post.comments : post.comments.slice(-3)
+
+  /*
+   * 긴 글은 접는다. 넉 줄쯤이면 무슨 말인지 알 수 있고, 더 궁금하면 펼치면 된다.
+   * 줄 수로 재면 짧은 줄이 여럿인 글까지 걸리므로 글자 수도 함께 본다.
+   */
+  const body = latest?.content ?? ''
+  const long = body.length > 160 || body.split('\n').length > 5
 
   async function react(key: string) {
     if (!repo || !user) return
@@ -479,9 +487,12 @@ export function WallCard({
       className="bg-canvas rounded-lg"
       style={{
         boxShadow: `inset 0 0 0 ${post.isPinned ? 2 : 1}px ${post.isPinned ? '#000' : '#e6e6e6'}`,
-        padding: 16,
-        marginBottom: 16,
+        padding: 14,
+        marginBottom: 12,
+        /* 여러 칸으로 나눠 그릴 때 카드가 칸 경계에서 잘리지 않게 한다 */
         breakInside: 'avoid',
+        display: 'inline-block',
+        width: '100%',
       }}
     >
       <div className="flex items-center gap-xs" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
@@ -503,23 +514,59 @@ export function WallCard({
         </Notice>
       ) : null}
 
-      <dl style={{ margin: 0 }}>
-        <dt className="caption">내용</dt>
-        <dd className="text-body" style={{ margin: '4px 0 12px', whiteSpace: 'pre-wrap' }}>
-          {latest?.content}
-        </dd>
-        {post.latestV > 1 && latest?.changedReason ? (
-          <>
-            <dt className="caption">무엇을 왜 바꿨는가</dt>
-            <dd className="text-body-sm" style={{ margin: '4px 0 12px', opacity: 0.78 }}>
-              {latest.changedReason}
-            </dd>
-          </>
-        ) : null}
-      </dl>
+      {/*
+        본문. 「내용」이라는 꼬리표는 없앴다 — 카드 안에서 그것이 본문인 것은 자명하고,
+        스무 장을 훑을 때 한 줄이 아깝다.
+        긴 글은 네 줄에서 접는다. 한 사람이 길게 쓰면 나머지가 화면 밖으로 밀려난다.
+      */}
+      <div
+        className="text-body"
+        style={{
+          margin: '0 0 10px',
+          whiteSpace: 'pre-wrap',
+          ...(long && !expanded
+            ? {
+                display: '-webkit-box',
+                WebkitLineClamp: 4,
+                WebkitBoxOrient: 'vertical' as const,
+                overflow: 'hidden',
+              }
+            : null),
+        }}
+      >
+        {latest?.content}
+      </div>
+      {long ? (
+        <button
+          type="button"
+          className="btn-tertiary no-print"
+          style={{ fontSize: 13, minHeight: 32, padding: 0, marginBottom: 10 }}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((x) => !x)}
+        >
+          {expanded ? '접기' : '더 보기'}
+        </button>
+      ) : null}
+      {post.latestV > 1 && latest?.changedReason ? (
+        <p className="text-body-sm" style={{ margin: '0 0 10px', opacity: 0.78 }}>
+          <span className="caption">바꾼 이유</span> {latest.changedReason}
+        </p>
+      ) : null}
 
       {/* 반응 4종. 좋아요 없음, 인기순 없음. */}
-      <div className="flex flex-wrap gap-xs no-print" style={{ marginBottom: 12 }}>
+      {/*
+        네 칸 격자로 둔다. 줄바꿈에 맡기면 375px 에서 3+1 로 접혀 한 줄을 더 먹는다.
+        칸을 나눠 두면 어느 폭에서도 한 줄이고, 넷의 너비도 같아 눈이 편하다.
+      */}
+      <div
+        className="no-print"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: 4,
+          marginBottom: 10,
+        }}
+      >
         {REACTIONS.map((r) => {
           const users = post.reactions?.[r.key] ?? []
           const on = myReaction?.key === r.key
@@ -531,10 +578,18 @@ export function WallCard({
               aria-pressed={on}
               data-selected={on}
               title={r.meaning}
+              /* 화면에는 두 글자만. 뜻은 마우스를 올리거나 낭독으로 들으면 나온다. */
+              aria-label={`${r.label} — ${r.meaning}`}
               onClick={() => void react(r.key)}
-              style={{ fontSize: 14, minHeight: 40, padding: '6px 12px' }}
+              style={{
+                fontSize: 14,
+                minHeight: 40,
+                padding: '6px 4px',
+                width: '100%',
+                whiteSpace: 'nowrap',
+              }}
             >
-              <span className="font-mono" aria-hidden style={{ marginRight: 4 }}>
+              <span className="font-mono" aria-hidden style={{ marginRight: 3 }}>
                 {r.mark}
               </span>
               {r.label}
@@ -556,7 +611,7 @@ export function WallCard({
               <span style={{ opacity: 0.86 }}>{c.text}</span>
             </li>
           ))}
-          {post.comments.length > 4 && !showAllComments ? (
+          {post.comments.length > 3 && !showAllComments ? (
             <li>
               <button
                 type="button"
@@ -572,7 +627,7 @@ export function WallCard({
       ) : null}
 
       <div className="no-print">
-        <div className="flex gap-xs" style={{ marginBottom: 8 }}>
+        <div className="flex gap-xxs" style={{ marginBottom: 6 }}>
           <input
             className="field"
             type="text"
@@ -584,25 +639,40 @@ export function WallCard({
             onKeyDown={(e) => {
               if (e.key === 'Enter') void send()
             }}
-            style={{ minHeight: 44 }}
+            style={{ minHeight: 40 }}
           />
-          <Button variant="secondary" onClick={() => void send()}>
+          {/* 「남기기」가 두 줄로 접히지 않게 폭을 잡아 둔다 */}
+          <Button
+            variant="secondary"
+            onClick={() => void send()}
+            style={{ minHeight: 40, padding: '4px 14px', whiteSpace: 'nowrap' }}
+          >
             남기기
           </Button>
         </div>
-        <div className="flex flex-wrap gap-xxs">
-          {COMMENT_STARTERS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className="btn-tertiary"
-              style={{ fontSize: 13, minHeight: 32, padding: '4px 8px', opacity: 0.8 }}
-              onClick={() => setComment(s)}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        {/*
+          문장 틀은 접어 둔다.
+          늘 펼쳐 두면 카드마다 세 줄을 먹는다 — 스무 장이면 예순 줄이다.
+          필요한 사람만 펼치면 되고, 접혀 있어도 무엇이 있는지는 이름으로 안다.
+        */}
+        <details>
+          <summary className="caption" style={{ cursor: 'pointer' }}>
+            문장 틀
+          </summary>
+          <div className="flex flex-wrap gap-xxs" style={{ marginTop: 6 }}>
+            {COMMENT_STARTERS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className="btn-tertiary"
+                style={{ fontSize: 13, minHeight: 32, padding: '4px 8px', opacity: 0.8 }}
+                onClick={() => setComment(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </details>
       </div>
 
       {(mine || isInstructor) && !revising ? (
