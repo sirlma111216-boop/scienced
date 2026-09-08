@@ -130,6 +130,22 @@ AI 분류 요청  →  addAiProposal (status: pending)  →  /instructor/ai-revi
 | `FIREBASE_PROJECT_ID` | `scienced-e721d` |
 | `STUDENT_EMAIL_DOMAIN` | `students.slstudio.local` |
 
+#### ① 구글 클라우드에서 API 를 켠다
+
+역할만 주면 되는 줄 알았다가 막혔다. **역할과 별개로 API 자체를 켜야 한다.**
+켜지 않으면 403 `... API has not been used in project ... or it is disabled` 가 돌아온다.
+
+| API | 무엇이 막히는가 | 어디서 켜는가 |
+|---|---|---|
+| `aiplatform.googleapis.com` (Vertex AI) | AI 도움 전부 | [사용 설정](https://console.developers.google.com/apis/api/aiplatform.googleapis.com/overview?project=scienced-e721d) |
+| `identitytoolkit.googleapis.com` | 학생 계정 만들기·비밀번호 초기화 | Firebase 프로젝트면 기본으로 켜져 있다 |
+| `firestore.googleapis.com` | 명단 문서 저장 | Firestore 를 만들면 함께 켜진다 |
+
+**Vertex AI 는 무료 등급이 없다.** 프로젝트에 결제 계정이 연결되어 있어야 하고,
+없으면 API 를 켜도 호출이 실패한다. 켠 뒤 반영까지 몇 분 걸린다 — 바로 눌러 보고 안 되면 잠시 뒤 다시 한다.
+
+#### ② IAM 역할
+
 서비스 계정 하나로 세 가지를 한다. IAM 역할도 셋 다 있어야 한다.
 
 | 하는 일 | 필요한 역할 |

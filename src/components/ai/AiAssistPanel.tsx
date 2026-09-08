@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiPost } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import type { AiTaskId } from '@/content/types'
 import { Badge, Button, Caption, Card } from '@/components/ui'
 
@@ -88,6 +89,7 @@ export function AiAssistPanel({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [adopted, setAdopted] = useState(false)
+  const { isInstructor } = useAuth()
 
   const meta = TASK_LABELS[taskId]
 
@@ -102,7 +104,10 @@ export function AiAssistPanel({
         { taskId, inputs },
       )
       if (!data.ok) {
-        setError(data.message || 'AI 응답을 받지 못했습니다. 이 활동은 AI 없이도 진행됩니다.')
+        const reason = data.message || 'AI 응답을 받지 못했습니다.'
+        // 화면에는 다음에 할 일을, 콘솔에는 이유를 남긴다.
+        console.warn('[AI]', taskId, reason)
+        setError(reason)
         return
       }
       setResult(parseFourLines(data.text ?? '', data.model ?? '알 수 없음'))
@@ -132,10 +137,40 @@ export function AiAssistPanel({
         </div>
       ) : null}
 
+      {/*
+        실패했을 때.
+
+        학생에게는 한국어 한 줄과 다시 시도 버튼만 보인다.
+        구글이 돌려주는 원문은 영어 여러 줄에 콘솔 주소까지 들어 있어,
+        수업 중에 그것을 학생 화면에 그대로 띄우면 읽는 사람이 당황한다.
+        ★ 원문을 버리지는 않는다 — 강사 화면에서 펼쳐 볼 수 있고, 콘솔에도 남긴다.
+          「실패했습니다」만 남기면 원인이 사라진다. 그 사고를 이미 겪었다.
+      */}
       {error ? (
-        <p role="alert" className="text-body-sm" style={{ marginTop: 12, fontWeight: 480 }}>
-          ⚠ {error}
-        </p>
+        <div style={{ marginTop: 12 }}>
+          <p role="alert" className="text-body-sm" style={{ fontWeight: 480, margin: 0 }}>
+            ⚠ AI 도움을 받지 못했습니다. 이 활동은 AI 없이도 그대로 진행됩니다.
+          </p>
+          <div className="flex items-center gap-md" style={{ marginTop: 8 }}>
+            <Button variant="secondary" disabled={busy} onClick={() => void run()}>
+              다시 시도
+            </Button>
+            <Caption>작성한 내용은 그대로 있습니다</Caption>
+          </div>
+          {isInstructor ? (
+            <details className="no-print" style={{ marginTop: 12 }}>
+              <summary className="caption" style={{ cursor: 'pointer' }}>
+                실패 원문 (강사에게만 보입니다)
+              </summary>
+              <p
+                className="text-body-sm"
+                style={{ marginTop: 8, opacity: 0.8, wordBreak: 'break-word' }}
+              >
+                {error}
+              </p>
+            </details>
+          ) : null}
+        </div>
       ) : null}
 
       {result ? (
