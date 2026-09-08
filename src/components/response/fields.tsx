@@ -230,8 +230,19 @@ function AllocationField({ def, value, onChange, error, disabled }: FieldProps) 
   const sum = items.reduce((s, it) => s + (Number(alloc[it.id]) || 0), 0)
   const left = total - sum
 
+  /**
+   * 이 칸이 가질 수 있는 가장 큰 값.
+   *
+   * 남은 점수 + 지금 이 칸의 값이다. 합계가 총점을 넘을 수 없다.
+   * 예전에는 칸마다 0~100 으로만 막아서, 여덟 칸에 100 씩 넣으면 800 이 됐다.
+   * 넘긴 뒤에 「넘었습니다」라고 알리는 것보다 애초에 넘지 못하게 하는 편이 낫다.
+   */
+  function maxFor(id: string): number {
+    return Math.max(0, total - sum + (Number(alloc[id]) || 0))
+  }
+
   function set(id: string, n: number) {
-    const clean = Math.max(0, Math.min(total, Math.round(Number.isFinite(n) ? n : 0)))
+    const clean = Math.max(0, Math.min(maxFor(id), Math.round(Number.isFinite(n) ? n : 0)))
     onChange({ ...alloc, [id]: clean })
   }
 
@@ -287,7 +298,11 @@ function AllocationField({ def, value, onChange, error, disabled }: FieldProps) 
                       type="number"
                       className="field"
                       min={0}
-                      max={total}
+                      /*
+                       * 남은 점수가 0 이 되면 여기서 멈춘다.
+                       * 화살표 키·스피너·마우스 휠이 모두 이 값을 넘지 못한다.
+                       */
+                      max={maxFor(it.id)}
                       step={1}
                       inputMode="numeric"
                       value={n}
@@ -327,7 +342,11 @@ function AllocationField({ def, value, onChange, error, disabled }: FieldProps) 
         aria-live="polite"
       >
         합계 <span className="font-mono">{sum}</span> / {total} ·{' '}
-        {left === 0 ? '맞습니다' : left > 0 ? `${left}점 남았습니다` : `${-left}점 넘었습니다`}
+        {left === 0
+          ? '점수가 남지 않았습니다'
+          : left > 0
+            ? `${left}점 남았습니다`
+            : `${-left}점 넘었습니다`}
       </p>
       {error ? (
         <p role="alert" className="text-body-sm" style={{ fontWeight: 480 }}>
