@@ -178,6 +178,13 @@ export function Lesson() {
     return revealed.includes(gate.of)
   }
 
+  /*
+   * 자료와 입력 칸이 함께 있으면 넓은 화면에서 좌우로 나눈다.
+   * 읽을 것과 적을 칸이 한 화면에 같이 있어야 한다 —
+   * 위아래로 두면 칸마다 스크롤을 오르내려야 한다.
+   */
+  const splitWork = (stepView?.material.length ?? 0) > 0 && (stepView?.fields.length ?? 0) > 0
+
   const game = GAMES_BY_LESSON[lesson.id]
   const ladder: LadderState | null = game ? (session?.ladders?.[game.id] ?? null) : null
 
@@ -330,19 +337,6 @@ export function Lesson() {
               {step.lead}
             </p>
 
-            {/*
-              ② 읽을 것·볼 것 — 이 판에 나오는 것만.
-              강사가 공개해야 열리는 자료는 잠긴 카드로 자리를 지킨다.
-              자리를 아예 비우면 학생이 다음에 무엇이 오는지 모른다.
-            */}
-            {stepView.material.map((m) =>
-              m.gate && !isOpen(m.gate) ? (
-                <LockedCard key={m.id} title={m.title} message={m.gate.lockedMessage} />
-              ) : (
-                <StimulusView key={m.id} stimulus={m} />
-              ),
-            )}
-
             {/* ⑤ 개념 카드 — 이 판에 나오는 것만 */}
             {step.type === 'concepts' ? (
               <div className="flex flex-col" style={{ gap: 96, marginTop: 48 }}>
@@ -368,93 +362,120 @@ export function Lesson() {
               </div>
             ) : null}
 
-            {/* ③ 내 생각 먼저 → ⑥ 핵심 모듈 → ④ 의견 광장 → 분포 */}
-            {stepView.fields.length > 0 || step.moduleComponent ? (
-              <div style={{ marginTop: 32 }}>
-                <ResponseCollector
-                  classId={classId!}
-                  lessonId={lesson.id}
-                  step={{ ...step, fields: stepView.fields, material: stepView.material }}
-                  isGateOpen={isOpen}
-                  renderModule={
-                    step.moduleComponent
-                      ? (value, onChange, locked) => (
-                          <ModuleHost
-                            kind={step.moduleComponent!}
-                            lessonId={lesson.id}
-                            value={value}
-                            onChange={onChange}
-                            locked={locked}
-                          />
-                        )
-                      : undefined
-                  }
-                >
-                  {(submitted, doc) => (
-                    <>
-                      {submitted ? (
-                        <div className="flex flex-col gap-xl" style={{ marginTop: 32 }}>
-                          {stepView.fields.find((f) => f.kind === 'choice') ? (
-                            <DistributionView
-                              docs={allDocs}
-                              field={stepView.fields.find((f) => f.kind === 'choice')!}
-                              reasonKey={
-                                stepView.fields.find((f) => /reason/i.test(f.key))?.key
+
+            {/*
+              ② 읽을 것·볼 것 — 이 판에 나오는 것만.
+              강사가 공개해야 열리는 자료는 잠긴 카드로 자리를 지킨다.
+              자리를 아예 비우면 학생이 다음에 무엇이 오는지 모른다.
+            */}
+            {/*
+              자료와 입력 칸이 함께 있는 단계는 넓은 화면에서 좌우로 나눈다.
+              위아래로 두면 대본을 보고 → 아래로 내려 적고 → 다시 올려 확인하고를
+              칸마다 되풀이해야 한다. 두 수업 비교에서 그것이 특히 심했다.
+              좁은 화면에서는 나눌 폭이 없으므로 지금처럼 위아래로 둔다.
+            */}
+            <div className={splitWork ? 'split-work' : undefined}>
+              <div className={splitWork ? 'split-source' : undefined}>
+                {stepView.material.map((m) =>
+                  m.gate && !isOpen(m.gate) ? (
+                    <LockedCard key={m.id} title={m.title} message={m.gate.lockedMessage} />
+                  ) : (
+                    <StimulusView key={m.id} stimulus={m} />
+                  ),
+                )}
+              </div>
+
+              <div className={splitWork ? 'split-input' : undefined}>
+              {/* ③ 내 생각 먼저 → ⑥ 핵심 모듈 → ④ 의견 광장 → 분포 */}
+              {stepView.fields.length > 0 || step.moduleComponent ? (
+                <div style={{ marginTop: 32 }}>
+                  <ResponseCollector
+                    classId={classId!}
+                    lessonId={lesson.id}
+                    step={{ ...step, fields: stepView.fields, material: stepView.material }}
+                    isGateOpen={isOpen}
+                    renderModule={
+                      step.moduleComponent
+                        ? (value, onChange, locked) => (
+                            <ModuleHost
+                              kind={step.moduleComponent!}
+                              lessonId={lesson.id}
+                              value={value}
+                              onChange={onChange}
+                              locked={locked}
+                            />
+                          )
+                        : undefined
+                    }
+                  >
+                    {(submitted, doc) => (
+                      <>
+                        {submitted ? (
+                          <div className="flex flex-col gap-xl" style={{ marginTop: 32 }}>
+                            {stepView.fields.find((f) => f.kind === 'choice') ? (
+                              <DistributionView
+                                docs={allDocs}
+                                field={stepView.fields.find((f) => f.kind === 'choice')!}
+                                reasonKey={
+                                  stepView.fields.find((f) => /reason/i.test(f.key))?.key
+                                }
+                              />
+                            ) : null}
+
+                            {step.aiTasks.includes('recall-probe') ? (
+                              <AiAssistPanel
+                                taskId="recall-probe"
+                                inputs={{ context: step.title }}
+                              />
+                            ) : null}
+                            {step.aiTasks.includes('wrapup-self-check') ? (
+                              <AiAssistPanel
+                                taskId="wrapup-self-check"
+                                inputs={{ context: step.title }}
+                              />
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        {/*
+                          즉석 모둠 — 제출한 뒤에만. 의견 광장보다 먼저 온다.
+                          모둠에서 합의한 문장이 의견 광장의 글이 되기 때문에 순서가 뒤집히면 안 된다.
+                        */}
+                        {step.groupBuild && submitted ? (
+                          <div style={{ marginTop: 32 }}>
+                            <GroupPanel
+                              classId={classId!}
+                              lessonId={lesson.id}
+                              step={step}
+                              config={step.groupBuild}
+                              myValues={
+                                doc?.versions?.[doc.versions.length - 1]?.payload ?? null
                               }
                             />
-                          ) : null}
+                          </div>
+                        ) : null}
 
-                          {step.aiTasks.includes('recall-probe') ? (
-                            <AiAssistPanel
-                              taskId="recall-probe"
-                              inputs={{ context: step.title }}
+                        {step.wall?.enabled ? (
+                          <div style={{ marginTop: 32 }}>
+                            <ShareBar
+                              classId={classId!}
+                              lessonId={lesson.id}
+                              stepId={step.id}
+                              prompt={step.wall.prompt}
+                              unlocked={submitted || !step.wall.opensAfterSubmit}
+                              /* 공유 상자를 열 때 내가 낸 답을 불러오는 데 쓴다 */
+                              fields={stepView.fields}
                             />
-                          ) : null}
-                          {step.aiTasks.includes('wrapup-self-check') ? (
-                            <AiAssistPanel
-                              taskId="wrapup-self-check"
-                              inputs={{ context: step.title }}
-                            />
-                          ) : null}
-                        </div>
-                      ) : null}
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </ResponseCollector>
+                </div>
+              ) : null}
 
-                      {/*
-                        즉석 모둠 — 제출한 뒤에만. 의견 광장보다 먼저 온다.
-                        모둠에서 합의한 문장이 의견 광장의 글이 되기 때문에 순서가 뒤집히면 안 된다.
-                      */}
-                      {step.groupBuild && submitted ? (
-                        <div style={{ marginTop: 32 }}>
-                          <GroupPanel
-                            classId={classId!}
-                            lessonId={lesson.id}
-                            step={step}
-                            config={step.groupBuild}
-                            myValues={
-                              doc?.versions?.[doc.versions.length - 1]?.payload ?? null
-                            }
-                          />
-                        </div>
-                      ) : null}
-
-                      {step.wall?.enabled ? (
-                        <div style={{ marginTop: 32 }}>
-                          <ShareBar
-                            classId={classId!}
-                            lessonId={lesson.id}
-                            stepId={step.id}
-                            prompt={step.wall.prompt}
-                            unlocked={submitted || !step.wall.opensAfterSubmit}
-                            /* 공유 상자를 열 때 내가 낸 답을 불러오는 데 쓴다 */
-                            fields={stepView.fields}
-                          />
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                </ResponseCollector>
               </div>
-            ) : null}
+            </div>
 
             {/* ⑦ 발표자 뽑기 */}
             {step.picker?.enabled && game ? (
@@ -470,18 +491,6 @@ export function Lesson() {
               </div>
             ) : null}
 
-            {/* 인쇄 활동지 — 같은 목표의 오프라인 대안 */}
-            <details className="no-print" style={{ marginTop: 48 }}>
-              <summary className="caption" style={{ cursor: 'pointer' }}>
-                인쇄 활동지 안내 (기기 없이 같은 활동을 하는 법)
-              </summary>
-              <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.78 }}>
-                {step.printableAlternative}
-              </p>
-              <Button variant="secondary" onClick={() => window.print()} className="mt-md">
-                이 화면 인쇄
-              </Button>
-            </details>
           </section>
 
           <nav

@@ -22,12 +22,16 @@ export const REACTION_KEYS = REACTIONS.map((r) => r.key) as ReactionKey[]
  * 정렬 기본값은 '아직 반응이 없는 글 먼저'.
  * 아무도 읽지 않은 글이 계속 밑에 깔리는 일을 막는다.
  */
+/*
+ * 정렬은 둘뿐이다.
+ *
+ * 「강사 추천」·「내가 반응한 것」·「우리 모둠」을 뺐다. 강사가 고정한 글은 어느 정렬에서든
+ * 맨 앞에 오므로 따로 고를 이유가 없었고, 나머지 둘은 고르는 사람이 없는 채로 자리만 먹었다.
+ * 수업 중에 누를 것이 적을수록 좋다.
+ */
 export const WALL_SORTS = [
   { key: 'unanswered', label: '아직 반응이 없는 글 먼저' },
   { key: 'recent', label: '최신순' },
-  { key: 'pinned', label: '강사 추천(고정)' },
-  { key: 'mine', label: '내가 반응한 것' },
-  { key: 'group', label: '우리 모둠' },
 ] as const
 
 export type WallSortKey = (typeof WALL_SORTS)[number]['key']

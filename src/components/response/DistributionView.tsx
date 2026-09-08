@@ -8,14 +8,12 @@ import { Caption, ScrollX } from '@/components/ui'
  *
  * 이름을 붙이지 않는다. 순위를 만들지 않는다.
  * 정답률만 보이지 않고 이유 문장을 함께 보인다 (컨텍스트 19.9).
- * 높은 확신의 오개념과 낮은 확신의 정답을 구분해 볼 수 있게 확신도를 함께 집계한다.
+ * 고른 사람 수와 함께 이유 문장을 익명으로 몇 개 보여 준다 — 갈리는 자리가 거기서 드러난다.
  */
 
 interface Bucket {
   label: string
   count: number
-  /** 이 답을 고른 사람들의 평균 확신도 */
-  avgConfidence: number | null
   /** 익명 이유 문장 표본 */
   reasons: string[]
 }
@@ -34,7 +32,7 @@ export function DistributionView({
   totalExpected?: number
 }) {
   const { buckets, answered } = useMemo(() => {
-    const map = new Map<string, { count: number; conf: number[]; reasons: string[] }>()
+    const map = new Map<string, { count: number; reasons: string[] }>()
     let n = 0
     for (const d of docs) {
       const latest = d.versions?.[d.versions.length - 1]
@@ -49,9 +47,8 @@ export function DistributionView({
           : [String(raw ?? '(응답 없음)')]
       const reason = reasonKey ? String(latest.payload?.[reasonKey] ?? '') : ''
       for (const label of labels) {
-        const cur = map.get(label) ?? { count: 0, conf: [], reasons: [] }
+        const cur = map.get(label) ?? { count: 0, reasons: [] }
         cur.count += 1
-        if (latest.confidence != null) cur.conf.push(latest.confidence)
         if (reason.trim()) cur.reasons.push(reason.trim())
         map.set(label, cur)
       }
@@ -62,10 +59,6 @@ export function DistributionView({
       return {
         label,
         count: cur?.count ?? 0,
-        avgConfidence:
-          cur && cur.conf.length > 0
-            ? Math.round((cur.conf.reduce((a, b) => a + b, 0) / cur.conf.length) * 10) / 10
-            : null,
         reasons: (cur?.reasons ?? []).slice(0, 3),
       }
     })
@@ -75,10 +68,6 @@ export function DistributionView({
       out.push({
         label,
         count: cur.count,
-        avgConfidence:
-          cur.conf.length > 0
-            ? Math.round((cur.conf.reduce((a, b) => a + b, 0) / cur.conf.length) * 10) / 10
-            : null,
         reasons: cur.reasons.slice(0, 3),
       })
     }
@@ -109,9 +98,6 @@ export function DistributionView({
               </th>
               <th scope="col" className="caption" style={{ textAlign: 'left', padding: '8px 12px 8px 0' }}>
                 사람 수
-              </th>
-              <th scope="col" className="caption" style={{ textAlign: 'left', padding: '8px 0' }}>
-                평균 확신도
               </th>
             </tr>
           </thead>
@@ -154,9 +140,6 @@ export function DistributionView({
                     <span className="font-mono text-body-sm">{b.count}</span>
                   </div>
                 </td>
-                <td className="font-mono text-body-sm" style={{ padding: '12px 0', verticalAlign: 'top' }}>
-                  {b.avgConfidence != null ? `${b.avgConfidence} / 5` : '—'}
-                </td>
               </tr>
             ))}
           </tbody>
@@ -164,7 +147,7 @@ export function DistributionView({
       </ScrollX>
 
       <p className="text-body-sm" style={{ marginTop: 12, opacity: 0.72 }}>
-        확신도가 높은데 이유가 얇은 답이 있다면, 그 지점이 다음에 다시 볼 곳입니다.
+        고른 사람이 많은 답보다, 이유가 갈리는 답이 다음에 다시 볼 곳입니다.
       </p>
     </section>
   )

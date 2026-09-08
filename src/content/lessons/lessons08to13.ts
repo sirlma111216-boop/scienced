@@ -253,9 +253,6 @@ export const lesson08: Lesson = {
       gameId: '08-variable-dice',
       component: 'dataStudio',
       wallPrompt: '이 통제가 없으면 남는 대안 설명',
-      printable:
-        '활동지 3면: 가상 자료표 3종(표본 5/20/50) + 조사 유형 표 + 조작적 정의 칸 + 세 칸 불확실성 표. ' +
-        '자료는 미리 인쇄해 배부하면 시뮬레이터 없이도 같은 판단을 할 수 있다.',
     },
     formative: {
       question: '표본 수를 늘렸는데도 결론의 확신이 크게 오르지 않았다. 가장 그럴듯한 이유는?',
@@ -511,9 +508,6 @@ export const lesson09: Lesson = {
       gameId: '09-bracket',
       component: 'nodeCanvas',
       wallPrompt: '내 모형이 설명하지 못하는 것',
-      printable:
-        '활동지 3면: v1 그림 칸 + 예측 칸 + (뒷면) 추가 자료 + v2 그림 칸 + 수정 주석 칸. ' +
-        '앞뒤로 인쇄해 v1을 지우지 못하게 한다.',
     },
     formative: {
       question: '학생이 “모형이 실제와 달라서 틀렸다”고 말한다. 가장 적절한 응답은?',
@@ -780,9 +774,6 @@ export const lesson10: Lesson = {
       ],
       gameId: '10-draft-order',
       wallPrompt: '시간이 절반으로 줄면 무엇을 남길 것인가',
-      printable:
-        '활동지 3면: 의사결정 트리 그림(인쇄본) + 주제·학생 상태·선택 모형 칸 + 이유 칸 + 축소 계획 칸. ' +
-        '트리는 종이에서 손가락으로 따라가게 한다.',
     },
     formative: {
       question: '한 차시에 5E 다섯 단계를 모두 넣으려다 생기는 가장 흔한 문제는?',
@@ -1038,9 +1029,6 @@ export const lesson11: Lesson = {
       gameId: '11-representation-roulette',
       component: 'cardSorter',
       wallPrompt: '내 비유의 비대응점과 멈춰야 할 지점',
-      printable:
-        '활동지 3면: 네 표상 인쇄 + 번역 칸 + 겹쳐 보기용 반투명 격자 + 비유 대응표(대응/비대응 2열). ' +
-        '겹쳐 보기는 트레이싱지로 대신한다.',
     },
     formative: {
       question: '“전구를 지나면 전류가 줄어든다”는 학생 말을 만든 가장 직접적인 원인은?',
@@ -1299,9 +1287,6 @@ export const lesson12: Lesson = {
       gameId: '12-jury-roles',
       component: 'nodeCanvas',
       wallPrompt: '내 주장에 대한 가장 강한 반론과 그에 따른 수정',
-      printable:
-        '활동지 3면: 노드 카드(주장/증거/추론/반론) + 연결선 그리는 빈 판 + 연결선마다 한 줄 칸. ' +
-        '카드는 오려서 붙이게 하고, 연결어를 반드시 쓰게 한다.',
     },
     formative: {
       question: '학생이 “근거”로 교과서 문장을 그대로 읽었다. 교사의 다음 발문으로 가장 적절한 것은?',
@@ -1576,9 +1561,6 @@ export const lesson13: Lesson = {
       gameId: '13-stakeholder-lots',
       component: 'cardSorter',
       wallPrompt: '내 조건부 결론과, 그것이 바뀌려면 필요한 자료',
-      printable:
-        '활동지 3면: 자료 ⓐ~ⓔ 인쇄 + 사실/가치 2열 표 + 가중치 5칸(합 100) + 이익·부담 표 + 조건부 결론 칸. ' +
-        '가중치는 스티커나 바둑돌로 나눠 놓게 하면 조절이 눈에 보인다.',
     },
     formative: {
       question: '학생이 “과학적으로 정확히 알면 답이 하나로 나온다”고 말한다. 가장 적절한 응답은?',

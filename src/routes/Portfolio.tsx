@@ -95,7 +95,6 @@ export function Portfolio() {
                   </h2>
                 </div>
                 {rows.map(({ step, doc }) => {
-                  const latest = doc.versions[doc.versions.length - 1]
                   return (
                     <div
                       key={step.id}
@@ -104,9 +103,6 @@ export function Portfolio() {
                       <div className="flex items-center gap-xs">
                         <Caption>{step.title}</Caption>
                         <Badge>v{doc.versions.length}</Badge>
-                        {latest.confidence != null ? (
-                          <Caption>확신도 {latest.confidence}/5</Caption>
-                        ) : null}
                       </div>
                       {doc.versions.length > 1 ? (
                         <p className="text-body-sm" style={{ marginTop: 8 }}>

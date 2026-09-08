@@ -295,7 +295,14 @@ export interface PickerConfig {
 }
 
 /** 입력 한 칸의 정의. ResponseCollector 가 이걸 보고 화면을 만든다. */
-export type FieldKind = 'text' | 'longtext' | 'choice' | 'multi' | 'confidence' | 'allocation' | 'quadrant' | 'rank'
+/*
+ * 확신도를 뺐다.
+ *
+ * 「지금 얼마나 확신하는가」를 1~5로 받아 두었다. 처음에는 「틀린 답을 5로 고른 무리」가
+ * 분포에 드러날 것이라고 봤지만, 실제로는 한 자리에서 몇 분 사이에 눈금만 움직이는 칸이었다.
+ * 판단이 바뀐 이유는 이유 칸이 이미 받고 있다. 숫자는 그 위에 아무것도 얹지 못했다.
+ */
+export type FieldKind = 'text' | 'longtext' | 'choice' | 'multi' | 'allocation' | 'quadrant' | 'rank'
 
 export interface FieldDef {
   key: string
@@ -399,8 +406,13 @@ export interface Step {
   aiTasks: AiTaskId[]
   wall: WallConfig | null
   picker: PickerConfig | null
-  /** 인쇄 활동지에 실을 같은 목표의 오프라인 대안 (지시서 15절) */
-  printableAlternative: string
+  /*
+   * 인쇄 활동지를 뺐다.
+   *
+   * 기기 없이 같은 활동을 하는 법을 단계마다 적어 두었는데, 실제 수업에서
+   * 아무도 펴 보지 않았다. 학생은 각자 기기로 들어오고, 종이가 필요한 날은
+   * 활동 자체를 다르게 짠다. 화면에서 자리만 먹던 자리다.
+   */
   /**
    * 단계 전체를 50분 판에서 빼는가 (3차 F.3).
    * extended 이면 50분 판의 단계 네비게이션에도 나오지 않고 「수업 후 이어서」로 내려간다.

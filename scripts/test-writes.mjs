@@ -234,7 +234,7 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
       fail('즉석 모둠 평균', `평균이 fun ${avg('fun')} · evidence ${avg('evidence')} 다 (둘 다 40이어야 한다)`)
     } else {
       /* 대표가 합의 문장을 올리면 의견 광장의 글이 된다. */
-      await studentRepo.addPost(CID, '01', STEP, {
+      await studentRepo.upsertPost(CID, '01', STEP, {
         uid: STUDENT, nickname: '이나나나', groupId: '1', content: '우리 모둠은 증거와 재미를 반씩 두었다',
       })
       const posts = await new Promise((resolve) => {
@@ -252,7 +252,34 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
       if (posts.length !== 1 || posts[0].groupId !== '1') {
         fail('모둠 문장 공개', '다른 모둠원이 합의 문장을 읽지 못한다')
       } else {
-        pass('즉석 모둠', '제출 뒤에만 열리고, 같은 번호를 고른 두 사람의 평균이 맞고, 합의 문장이 광장에 뜬다')
+        /*
+         * 다시 올리면 글이 늘지 않고 그 글의 내용이 바뀌어야 한다.
+         * 규칙이 작성자에게 versions·latestV 만 열어 주므로, createdAt 을 건드리면 통째로 막힌다.
+         * 실제로 막히는지 앱의 코드로 확인한다.
+         */
+        await studentRepo.upsertPost(CID, '01', STEP, {
+          uid: STUDENT, nickname: '이나나나', groupId: '1', content: '고쳐 쓴 문장',
+        })
+        const after = await new Promise((resolve) => {
+          const stop = repo2.watchPosts(CID, '01', STEP, (list) => {
+            if (list.some((p) => p.versions?.[0]?.content === '고쳐 쓴 문장')) {
+              stop()
+              resolve(list)
+            }
+          })
+          setTimeout(() => {
+            stop()
+            resolve([])
+          }, 5000)
+        })
+        if (after.length !== 1) {
+          fail('글 덮어쓰기', `다시 올렸더니 글이 ${after.length}개다 — 1개여야 한다`)
+        } else if (after[0].latestV !== 1 || after[0].versions.length !== 1) {
+          fail('글 덮어쓰기', '다시 올렸는데 버전이 쌓였다')
+        } else {
+          pass('즉석 모둠', '제출 뒤에만 열리고, 같은 번호를 고른 두 사람의 평균이 맞고, 합의 문장이 광장에 뜬다')
+          pass('글 덮어쓰기', '다시 올리면 글이 늘지 않고 그 글의 내용만 바뀐다')
+        }
       }
     }
   }

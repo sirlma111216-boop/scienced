@@ -525,7 +525,6 @@ export const lesson02: Lesson = {
           required: true,
           sentenceStarters: ['이 주장에 필요한 증거는 ___라고 생각합니다'],
         },
-        { key: 'certainty1', kind: 'confidence', label: '지금 나의 확신도' },
         {
           key: 'afterNewEvidence',
           kind: 'longtext',
@@ -540,29 +539,9 @@ export const lesson02: Lesson = {
             lockedMessage: '강사가 새 증거를 공개하면 열립니다.',
           },
         },
-        {
-          key: 'certainty2',
-          kind: 'confidence',
-          /*
-           * 50분 판에서는 이 눈금만 「수업 후 이어서」로 내린다.
-           * 앞의 「무엇이 달라졌는가」는 남긴다 — 생각이 바뀐 이유를 적는 것이 이 차시의 산출물이고,
-           * 눈금은 그 이유를 요약한 숫자일 뿐이라 나중에 채워도 잃는 것이 적다.
-           */
-          tier: 'extended',
-          label: '새 증거 뒤 확신도',
-          help: '1차 확신도와 나란히 남습니다. 움직인 폭과 그 이유를 함께 봅니다.',
-          gate: {
-            type: 'afterReveal',
-            of: 'evidenceCard',
-            lockedMessage: '강사가 새 증거를 공개하면 열립니다.',
-          },
-        },
       ],
       gameId: '02-sealed-envelope',
       wallPrompt: '이 주장을 판단하려면 무엇이 더 필요한가',
-      printable:
-        '활동지 3면: 기사 전문 + 주장 칸 + 필요한 자료 칸 + 확신도 눈금 2줄(전/후). ' +
-        '새 증거 카드는 접어서 붙여 두고 지시가 있을 때 펼치게 한다.',
     },
 
     formativeStimuli: [
@@ -851,9 +830,6 @@ export const lesson03: Lesson = {
       ],
       gameId: '03-card-flip',
       wallPrompt: '내가 진단한 설명모형과, 다음에 던질 질문 한 개',
-      printable:
-        '활동지 3면: 가상 학생 응답표(질문 유형별 답변을 표로 인쇄) + 질문 5칸 + 진단 칸 + 후속 발문 칸. ' +
-        '짝이 학생 역할을 맡아 표를 보고 답해 준다.',
     },
     formative: {
       question:
@@ -1109,9 +1085,6 @@ export const lesson04: Lesson = {
       ],
       gameId: '04-scaffold-stairs',
       wallPrompt: '내가 도움을 줄일 근거로 삼은 증거',
-      printable:
-        '활동지 3면: 힌트 5단계 카드 + 각 단계 선택 시 가상 학생 반응표 + 제거 근거 칸. ' +
-        '짝이 가상 학생 역할로 표를 읽어 준다.',
     },
     formative: {
       question: '비계가 비계가 되려면 반드시 있어야 하는 것은?',
@@ -1361,9 +1334,6 @@ export const lesson05: Lesson = {
       ],
       gameId: '05-survival',
       wallPrompt: '어떤 증거에서 내 설명을 바꿨는가',
-      printable:
-        '활동지 3면: 증거 카드 4장을 봉투에 넣어 배부 + 라운드별 설명 칸 3개(위아래로 분리) + 변경 사유 칸. ' +
-        '앞 칸을 지우지 못하도록 칸을 세로로 나눠 인쇄한다.',
     },
     formative: {
       question: '예상과 다른 결과를 본 학생이 생각을 바꾸지 않았다. 교사의 다음 행동으로 가장 적절한 것은?',
@@ -1632,9 +1602,6 @@ export const lesson06: Lesson = {
       gameId: '06-map-pin',
       component: 'curriculumMap',
       wallPrompt: '내가 고른 성취기준의 네 층 해부',
-      printable:
-        '활동지 3면: 성취기준 인쇄본 + 네 층 표 + 핵심 아이디어 칸 + 선수/후속 개념 빈 네트워크 그림. ' +
-        '동사에 직접 밑줄을 긋게 한다.',
     },
     formative: {
       question: '“생태계 구성 요소를 안다”로 목표를 축소했을 때 사라지는 것은?',
@@ -1895,9 +1862,6 @@ export const lesson07: Lesson = {
       ],
       gameId: '07-triple-spinner',
       wallPrompt: '내 설계에서 정렬이 어긋났던 자리와 그것을 어떻게 고쳤는가',
-      printable:
-        '활동지 3면: 목표·증거·활동·평가 4칸 표 + 동사 밑줄 칸 + 성공 기준 3줄 + 분기 2칸. ' +
-        '검사기 대신 짝이 동사 일치 여부를 표시해 준다.',
     },
     formative: {
       question: '“전구에 불을 켠다”를 학습목표로 고치면?',

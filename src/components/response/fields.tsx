@@ -31,8 +31,6 @@ export function FieldRenderer(props: FieldProps) {
       return <ChoiceField {...props} />
     case 'multi':
       return <MultiField {...props} />
-    case 'confidence':
-      return <ConfidenceField {...props} />
     case 'allocation':
       return <AllocationField {...props} />
     case 'quadrant':
@@ -224,40 +222,6 @@ function MultiField({ def, value, onChange, error, disabled }: FieldProps) {
     </fieldset>
   )
 }
-
-/* ─────────────────── 확신도 ─────────────────── */
-
-const CONFIDENCE_LABELS = ['전혀 확신 없음', '별로', '보통', '꽤', '매우 확신함']
-
-function ConfidenceField({ def, value, onChange, disabled }: FieldProps) {
-  const v = typeof value === 'number' ? value : 3
-  return (
-    <Field label={def.label} help={def.help}>
-      {(id) => (
-        <div className="flex flex-col gap-xs">
-          <input
-            id={id}
-            type="range"
-            min={1}
-            max={5}
-            step={1}
-            value={v}
-            disabled={disabled}
-            onChange={(e) => onChange(Number(e.target.value))}
-            aria-valuetext={`${v}단계 · ${CONFIDENCE_LABELS[v - 1]}`}
-            style={{ width: '100%', maxWidth: 420, minHeight: 44 }}
-          />
-          {/* 숫자와 글자를 함께 보인다. 눈금 위치만으로 읽게 하지 않는다. */}
-          <p className="text-body-sm">
-            <span className="font-mono">{v} / 5</span> · {CONFIDENCE_LABELS[v - 1]}
-          </p>
-        </div>
-      )}
-    </Field>
-  )
-}
-
-/* ─────────────────── 배분 (합계 강제) ─────────────────── */
 
 function AllocationField({ def, value, onChange, error, disabled }: FieldProps) {
   const items = def.items ?? []

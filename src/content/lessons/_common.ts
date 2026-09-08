@@ -48,7 +48,6 @@ export interface StandardSpec {
     fields: FieldDef[]
     gameId: GameId
     wallPrompt: string
-    printable: string
     /** 전용 화면. 없으면 입력 칸만 그린다. */
     component?: ModuleComponent
   }
@@ -66,16 +65,6 @@ export interface StandardSpec {
   /** 시간 배분 (합계 50) */
   minutes: [number, number, number, number, number]
 }
-
-/**
- * 확신도.
- *
- * 모든 단계에 붙이지 않는다. 두 자리에서만 일한다.
- *   step-open      예상 — 분포에서 「틀린 답을 높은 확신으로 고른 무리」가 보인다
- *   step-formative 재응답 — 「확신은 올랐는데 이유는 그대로」를 학습 분석이 잡는다
- * 그 밖에서는 비교할 앞이 없어 숫자만 남는다.
- */
-const CONFIDENCE: FieldDef = { key: 'confidence', kind: 'confidence', label: '확신도' }
 
 const CHANGE_STARTERS = [
   '나는 처음에 ___라고 생각했으나 ___ 때문에 ___로 수정했다',
@@ -123,7 +112,6 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
         '나는 ___ 경험 때문에 이렇게 본다',
       ],
     },
-    CONFIDENCE,
   )
 
   return [
@@ -157,9 +145,6 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
         opensAfterSubmit: true,
       },
       picker: null,
-      printableAlternative:
-        '활동지 1면: 시작 현상 글 + 관찰/해석 두 칸 + 선택형 + 이유 칸 + 확신도 눈금. ' +
-        '분포는 종이를 걷어 칠판에 집계한다.',
     },
     {
       id: 'step-concepts',
@@ -177,9 +162,6 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       aiTasks: [],
       wall: null,
       picker: null,
-      printableAlternative:
-        '활동지 2면: 개념 카드 4장의 쉬운 한 문장 · 헷갈리지 말자 · 적용 질문을 인쇄. ' +
-        '정확한 정의는 뒷면에 두어 학생이 먼저 자기 말로 써 보게 한다.',
     },
     {
       id: 'step-module',
@@ -201,7 +183,6 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
         opensAfterSubmit: true,
       },
       picker: { enabled: true, gameId: spec.module.gameId, candidateRule: 'all' },
-      printableAlternative: spec.module.printable,
     },
     {
       id: 'step-formative',
@@ -230,8 +211,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
           required: true,
           help: '같은 답이라도 이유가 다르면 다음 수업이 달라집니다.',
         },
-        CONFIDENCE,
-        /*
+            /*
          * ★ 여는 조건 (4차 H.4).
          *   이 두 칸은 짝 토론이 끝난 뒤에 쓰는 것이다. 조건 없이 열어 두었더니
          *   학생 화면에 같은 질문이 두 번 있는 것으로 보였다. 18차시가 모두 그랬다.
@@ -263,9 +243,6 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       aiTasks: ['cluster-responses'],
       wall: null,
       picker: null,
-      printableAlternative:
-        '활동지 3면: 진단 문항 + 이유 칸 + 확신도, 그 아래 “토론 뒤” 칸을 따로 둔다. ' +
-        '첫 답을 지우지 못하도록 칸을 위아래로 분리해 인쇄한다.',
     },
     {
       id: 'step-wrapup',
@@ -304,8 +281,6 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       aiTasks: ['wrapup-self-check'],
       wall: null,
       picker: null,
-      printableAlternative:
-        `활동지 4면(A5 반쪽): 세 칸 「${WRAPUP_LABEL}」. 걷어서 다음 차시 도입 익명 인용으로 쓴다.`,
     },
   ]
 }

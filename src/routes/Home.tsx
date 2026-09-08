@@ -58,16 +58,28 @@ export function Home() {
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
               gap: 16,
+              /* 한 줄의 칸을 모두 같은 높이로 늘린다 — 제목 길이가 달라도 상자는 같다 */
+              gridAutoRows: '1fr',
             }}
           >
             {visible.map((l) => {
               const open = published.includes(l.id)
               return (
-                <li key={l.id}>
+                <li key={l.id} style={{ display: 'grid' }}>
                   <Link
                     to={`/lesson/${l.id}`}
                     className="tile"
-                    style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
+                    style={{
+                      /*
+                       * 칸을 세로 flex 로 두고 마지막 줄(모듈 이름)을 바닥에 붙인다.
+                       * 제목이 한 줄인 차시와 두 줄인 차시의 상자 높이가 달라 보이던 것을 막는다.
+                       */
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                    }}
                   >
                     <div className="flex items-center gap-xs" style={{ marginBottom: 8 }}>
                       <span className="font-mono text-caption">{l.id}강</span>
@@ -80,7 +92,7 @@ export function Home() {
                       {l.centralQuestion}
                     </p>
                     {/* 소요 시간은 붙이지 않는다 (3차 D). */}
-                    <p className="caption" style={{ marginTop: 12, opacity: 0.6 }}>
+                    <p className="caption" style={{ marginTop: 'auto', paddingTop: 12, opacity: 0.6 }}>
                       {l.moduleName}
                     </p>
                   </Link>

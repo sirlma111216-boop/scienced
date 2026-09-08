@@ -11,10 +11,13 @@ import { ScrollX } from '@/components/ui'
  * 접근성: 그림만으로 결과를 읽게 하지 않는다. 그림 아래에 같은 내용을 표로도 낸다.
  */
 
-const COL_W = 56
+const COL_W = 76
 const ROW_H = 22
-const TOP = 44
+/* 자리 번호 동그라미 위에 닉네임 한 줄이 더 들어간다 */
+const TOP = 62
 const BOTTOM = 44
+/** 좁은 칸에 긴 닉네임이 들어가면 옆 칸을 덮는다. 잘라 쓴다. */
+const NAME_MAX = 6
 
 export function LadderBoard({
   seed,
@@ -60,7 +63,15 @@ export function LadderBoard({
           height={height}
           viewBox={`0 0 ${width} ${height}`}
           role="img"
-          aria-label={`자리 ${ladder.columns}개짜리 사다리. 아래쪽 ${presentSlots.map((s) => s + 1).join('번, ')}번 칸이 발표 칸입니다.`}
+          aria-label={
+            `자리 ${ladder.columns}개짜리 사다리. ` +
+            `자리를 잡은 사람: ${
+              Object.entries(seats)
+                .map(([k, v]) => `${Number(k) + 1}번 ${v}`)
+                .join(', ') || '아직 없음'
+            }. ` +
+            `아래쪽 ${presentSlots.map((s) => s + 1).join('번, ')}번 칸이 발표 칸입니다.`
+          }
           style={{ maxWidth: '100%' }}
         >
           {/* 세로줄 */}
@@ -97,27 +108,42 @@ export function LadderBoard({
           {path ? (
             <path d={path} fill="none" stroke="#000" strokeWidth={4} strokeLinejoin="round" />
           ) : null}
-          {/* 위: 자리 번호 */}
-          {Array.from({ length: ladder.columns }, (_, c) => (
-            <g key={`t${c}`}>
-              <circle
-                cx={x(c)}
-                cy={TOP - 20}
-                r={14}
-                fill={seats[String(c)] ? '#000' : '#f7f7f5'}
-              />
-              <text
-                x={x(c)}
-                y={TOP - 15}
-                textAnchor="middle"
-                fontSize={13}
-                fontFamily="JetBrains Mono, monospace"
-                fill={seats[String(c)] ? '#fff' : '#000'}
-              >
-                {c + 1}
-              </text>
-            </g>
-          ))}
+          {/*
+            위: 자리 번호와 그 자리를 잡은 사람의 닉네임.
+            번호만 두면 「1이 모둠인가 사람인가」를 알 수 없다. 자리는 개인이 잡는다.
+          */}
+          {Array.from({ length: ladder.columns }, (_, c) => {
+            const name = seats[String(c)]
+            return (
+              <g key={`t${c}`}>
+                <circle cx={x(c)} cy={TOP - 20} r={14} fill={name ? '#000' : '#f7f7f5'} />
+                <text
+                  x={x(c)}
+                  y={TOP - 15}
+                  textAnchor="middle"
+                  fontSize={13}
+                  fontFamily="JetBrains Mono, monospace"
+                  fill={name ? '#fff' : '#000'}
+                >
+                  {c + 1}
+                </text>
+                <text
+                  x={x(c)}
+                  y={TOP - 42}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill="#000"
+                  opacity={name ? 1 : 0.4}
+                >
+                  {name
+                    ? name.length > NAME_MAX
+                      ? `${name.slice(0, NAME_MAX)}…`
+                      : name
+                    : '빈자리'}
+                </text>
+              </g>
+            )
+          })}
           {/* 아래: 발표 칸 표시 — 색이 아니라 글자로 구분한다 */}
           {Array.from({ length: ladder.columns }, (_, c) => {
             const isPresent = presentSlots.includes(c)

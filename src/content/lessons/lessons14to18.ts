@@ -260,9 +260,6 @@ export const lesson14: Lesson = {
       ],
       gameId: '14-silent-data',
       wallPrompt: '내가 고친 모둠 구조와, 그 구조가 막아 주는 것',
-      printable:
-        '활동지 3면: 관찰 기록 인쇄 + 기여 유형 체크표 + 재설계 칸 + UDL 장벽/지원 2열 표. ' +
-        '기여 유형은 모둠 안에서 서로 표시해 주고 본인이 확인한다.',
     },
     formative: {
       question: '모둠 결과는 좋은데 개인 이해가 불확실할 때 가장 먼저 할 일은?',
@@ -529,9 +526,6 @@ export const lesson15: Lesson = {
       ],
       gameId: '15-by-response-type',
       wallPrompt: '내가 고른 다음 수와 그 근거',
-      printable:
-        '활동지 3면: 응답 분포 막대 + 학생 이유 문장 12개 인쇄 + 유형 묶기 칸 3개 + 다음 수 선택 + 근거 칸. ' +
-        '이유 문장은 오려서 책상 위에 유형별로 모으게 한다.',
     },
     formative: {
       question: '재확인 결과 분포가 거의 그대로였다. 가장 먼저 검토할 것은?',
@@ -791,9 +785,6 @@ export const lesson16: Lesson = {
       gameId: '16-boundary-pair',
       component: 'rubricStudio',
       wallPrompt: '내가 고친 기술어와, 그 말이 왜 모호했는가',
-      printable:
-        '활동지 3면: 학생 보고서 전문 + 원본 루브릭 + 모호 표현 표시 칸 + 고쳐 쓴 기술어 표 + 앵커 칸. ' +
-        '자동 표시 대신 짝이 모호한 낱말에 동그라미를 쳐 준다.',
     },
     formative: {
       question: '채점자 간 차이를 줄이려고 기술어 문장을 두 배로 늘렸다. 예상되는 결과는?',
@@ -1062,9 +1053,6 @@ export const lesson17: Lesson = {
       gameId: '17-sentence-audit',
       component: 'aiAuditBoard',
       wallPrompt: '내가 맡은 문장의 판정과 그 근거',
-      printable:
-        '활동지 3면: AI 응답 인쇄(문장 번호 부여) + 판정 표시 표(5열) + 원출처 칸 + 고쳐 쓴 설명 칸. ' +
-        '원출처 확인은 사전에 인쇄해 둔 자료 묶음에서 찾게 한다.',
     },
     formative: {
       question: 'AI 응답의 여섯 문장 중 넷은 맞고 둘은 틀렸다. 가장 위험한 상황은?',
@@ -1341,10 +1329,6 @@ export const lesson18: Lesson = {
       gameId: '18-reteach-order',
       component: 'videoAnnotator',
       wallPrompt: '수정 전후 학생 반응의 차이와 그 증거',
-      printable:
-        // wording-ok: 관찰 기록지의 시간축 간격
-        '활동지 3~4면: 관찰 코드 표 + 시간축 기록지(2분 간격) + 재수업 계획 칸 + 전후 비교 칸 + ' +
-        '1강 응답 인쇄본(각자 것). 영상 없이 실시간 관찰만으로도 같은 기록을 남길 수 있다.',
     },
     formative: {
       question: '동료 피드백 “설명이 명확했어요”를 증거 기반으로 고치면?',

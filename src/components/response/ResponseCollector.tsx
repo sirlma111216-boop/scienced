@@ -170,10 +170,9 @@ export function ResponseCollector({
       setErrors((e) => ({ ...e, __changed: '무엇을 왜 바꿨는지(또는 왜 유지했는지) 적어 주세요.' }))
       return
     }
-    const confidenceField = step.fields.find((f) => f.kind === 'confidence')
-    const confidence = confidenceField ? Number(values[confidenceField.key] ?? 3) : null
     await repo.submitResponse(classId, lessonId, step.id, uid, values, {
-      confidence,
+      /* 확신도는 더 이상 받지 않는다. 옛 문서에 남은 값은 그대로 둔다. */
+      confidence: null,
       changedReason: submitted ? changedReason.trim() : null,
     })
     setRevising(false)

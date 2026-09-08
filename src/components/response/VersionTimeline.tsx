@@ -29,7 +29,7 @@ export function VersionTimeline({ doc, fields }: { doc: ResponseDoc; fields: Fie
   const [open, setOpen] = useState(true)
   if (versions.length < 2) return null
 
-  const shown = fields.filter((f) => f.kind !== 'confidence')
+  const shown = fields
 
   return (
     <section className="card">
@@ -113,19 +113,6 @@ export function VersionTimeline({ doc, fields }: { doc: ResponseDoc; fields: Fie
                   </tr>
                 )
               })}
-              <tr>
-                <th
-                  scope="row"
-                  style={{ textAlign: 'left', padding: '10px 12px 10px 0', fontWeight: 400 }}
-                >
-                  <span className="text-body-sm">확신도</span>
-                </th>
-                {versions.map((v) => (
-                  <td key={v.v} className="font-mono text-body-sm" style={{ padding: '10px 0' }}>
-                    {v.confidence != null ? `${v.confidence} / 5` : '—'}
-                  </td>
-                ))}
-              </tr>
             </tbody>
           </table>
         </ScrollX>

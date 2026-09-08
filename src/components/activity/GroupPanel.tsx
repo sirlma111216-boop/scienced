@@ -122,7 +122,7 @@ export function GroupPanel({
     setError(null)
     setPosting(true)
     try {
-      await repo.addPost(classId, lessonId, step.id, {
+      await repo.upsertPost(classId, lessonId, step.id, {
         uid,
         nickname: user?.nickname || '이름 없음',
         groupId: myGroup,

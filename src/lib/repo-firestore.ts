@@ -311,37 +311,37 @@ export function createFirestoreRepo(db: Firestore): Repo {
       )
     },
 
-    async addPost(classId, lessonId, stepId, post) {
-      const ref = doc(cc(db, classId, ...stepPath(lessonId, stepId), 'posts'))
+    async upsertPost(classId, lessonId, stepId, post) {
+      /*
+       * 문서 id 가 uid 다. 한 사람이 한 단계에 글 하나.
+       * 다시 올리면 내용만 바뀐다 — 반응과 댓글은 그대로 둔다.
+       */
+      const ref = cd(db, classId, ...stepPath(lessonId, stepId), 'posts', post.uid)
       const now = Date.now()
-      await setDoc(ref, {
-        uid: post.uid,
-        nickname: post.nickname,
-        groupId: post.groupId,
-        versions: [{ v: 1, content: post.content, changedReason: null, createdAt: now }],
-        latestV: 1,
-        reactions: {},
-        comments: [],
-        isPinned: false,
-        isHidden: false,
-        hiddenReason: null,
-        createdAt: now,
-      })
-    },
-
-    async revisePost(classId, lessonId, stepId, postId, content, changedReason) {
-      const ref = cd(db, classId, ...stepPath(lessonId, stepId), 'posts', postId)
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref)
-        if (!snap.exists()) return
-        const p = snap.data() as Post
-        tx.update(ref, {
-          versions: [
-            ...p.versions,
-            { v: p.latestV + 1, content, changedReason, createdAt: Date.now() },
-          ],
-          latestV: p.latestV + 1,
-        })
+        const version = { v: 1, content: post.content, changedReason: null, createdAt: now }
+        if (!snap.exists()) {
+          tx.set(ref, {
+            uid: post.uid,
+            nickname: post.nickname,
+            groupId: post.groupId,
+            versions: [version],
+            latestV: 1,
+            reactions: {},
+            comments: [],
+            isPinned: false,
+            isHidden: false,
+            hiddenReason: null,
+            createdAt: now,
+          })
+          return
+        }
+        /*
+         * 규칙이 작성자에게 versions·latestV 만 열어 준다.
+         * createdAt 을 다시 쓰면 changedKeys 에 걸려 통째로 막힌다.
+         */
+        tx.update(ref, { versions: [version], latestV: 1 })
       })
     },
 

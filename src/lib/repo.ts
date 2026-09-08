@@ -163,20 +163,20 @@ export interface Repo {
     stepId: string,
     cb: (posts: Post[]) => void,
   ): () => void
-  addPost(
+  /**
+   * 의견 광장에 올린다. 한 사람이 한 단계에 하나만 갖는다.
+   *
+   * 문서 id 를 uid 로 쓴다. 다시 올리면 그 글의 내용이 바뀔 뿐 글이 늘지 않는다.
+   * 예전에는 누를 때마다 새 글이 생겨 같은 사람의 글이 여러 개 쌓였다 —
+   * 읽는 쪽에서는 어느 것이 지금 생각인지 알 수 없었다.
+   *
+   * 받은 반응과 댓글은 그대로 둔다. 같은 사람의 같은 자리이기 때문이다.
+   */
+  upsertPost(
     classId: string,
     lessonId: LessonId,
     stepId: string,
     post: { uid: string; nickname: string; groupId: string | null; content: string },
-  ): Promise<void>
-  /** 수정은 덮어쓰기가 아니라 새 버전 쌓기다. */
-  revisePost(
-    classId: string,
-    lessonId: LessonId,
-    stepId: string,
-    postId: string,
-    content: string,
-    changedReason: string,
   ): Promise<void>
   /** 한 사람이 한 글에 하나만. 같은 걸 다시 누르면 취소된다. */
   toggleReaction(

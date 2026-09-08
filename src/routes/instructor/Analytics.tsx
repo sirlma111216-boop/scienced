@@ -99,11 +99,7 @@ export function InstructorAnalytics() {
     let submitted = 0
     let revised = 0
     let revisedWithReason = 0
-    let confidenceUp = 0
-    let confidenceDown = 0
-    let confidenceUpNoReasonChange = 0
-    let highConfThinReason = 0
-    let lowConfThickReason = 0
+    let revisedNoReasonChange = 0
 
     for (const r of all) {
       for (const d of r.docs) {
@@ -118,23 +114,13 @@ export function InstructorAnalytics() {
           const hasReason = vs.slice(1).some((v) => (v.changedReason ?? '').trim().length >= 5)
           if (hasReason) revisedWithReason++
 
-          if (first.confidence != null && last.confidence != null) {
-            if (last.confidence > first.confidence) {
-              confidenceUp++
-              // 확신은 올랐는데 이유가 거의 그대로면 되물을 자리다.
-              if (reasonOf(first.payload).trim() === reasonOf(last.payload).trim()) {
-                confidenceUpNoReasonChange++
-              }
-            } else if (last.confidence < first.confidence) {
-              confidenceDown++
-            }
+          /*
+           * 확신도 통계를 뺐다. 확신도 칸 자체를 없앴기 때문이다.
+           * 「고쳐 썼는데 이유가 그대로」는 아래 revisedWithReason 이 이미 잡는다.
+           */
+          if (reasonOf(first.payload).trim() === reasonOf(last.payload).trim()) {
+            revisedNoReasonChange++
           }
-        }
-
-        const reason = reasonOf(last.payload).trim()
-        if (last.confidence != null) {
-          if (last.confidence >= 4 && reason.length < 20) highConfThinReason++
-          if (last.confidence <= 2 && reason.length >= 60) lowConfThickReason++
         }
       }
     }
@@ -152,11 +138,7 @@ export function InstructorAnalytics() {
       submitted,
       revised,
       revisedWithReason,
-      confidenceUp,
-      confidenceDown,
-      confidenceUpNoReasonChange,
-      highConfThinReason,
-      lowConfThickReason,
+      revisedNoReasonChange,
       posts: posts.length,
       split,
       unanswered,
@@ -229,37 +211,31 @@ export function InstructorAnalytics() {
         ))}
       </div>
 
-      {/* 확신도 — 근거 있는 변화인가 */}
+      {/* 고쳐 쓴 답 — 근거 있는 변화인가 */}
       <div style={{ marginTop: 48 }}>
         <Card>
           <h2 className="text-card-title" style={{ margin: '0 0 4px' }}>
-            확신도의 변화
+            고쳐 쓴 답
           </h2>
-          <Caption>확신도가 움직였다는 사실보다, 그 변화에 근거가 있었는지가 중요합니다.</Caption>
+          <Caption>답을 바꿨다는 사실보다, 그 변화에 근거가 있었는지가 중요합니다.</Caption>
           <ScrollX>
             <table style={{ borderCollapse: 'collapse', marginTop: 16, minWidth: 520 }}>
               <tbody>
                 {[
-                  { k: '확신이 올라간 응답', v: stats.confidenceUp, note: '' },
                   {
-                    k: '확신이 내려간 응답',
-                    v: stats.confidenceDown,
-                    note: '반론을 받아들인 결과일 수 있습니다. 실패가 아닙니다.',
+                    k: '고쳐 쓴 응답',
+                    v: stats.revised,
+                    note: '처음 답은 지워지지 않고 버전으로 남아 있습니다.',
                   },
                   {
-                    k: '확신은 올랐는데 이유는 그대로',
-                    v: stats.confidenceUpNoReasonChange,
-                    note: '되물을 자리입니다. 무엇이 확신을 높였는지 물어보세요.',
+                    k: '고치면서 이유를 적은 응답',
+                    v: stats.revisedWithReason,
+                    note: '근거를 남긴 수정입니다. 다음 시간 도입 자료로 쓸 만합니다.',
                   },
                   {
-                    k: '높은 확신 + 얇은 이유',
-                    v: stats.highConfThinReason,
-                    note: '컨텍스트 19.9가 말한 “높은 확신의 오개념” 후보입니다.',
-                  },
-                  {
-                    k: '낮은 확신 + 두꺼운 이유',
-                    v: stats.lowConfThickReason,
-                    note: '설명은 잘 하는데 스스로 못 믿는 경우입니다. 확인해 주면 좋습니다.',
+                    k: '고쳤는데 이유는 그대로',
+                    v: stats.revisedNoReasonChange,
+                    note: '되물을 자리입니다. 무엇 때문에 바꿨는지 물어보세요.',
                   },
                 ].map((r) => (
                   <tr key={r.k} style={{ boxShadow: 'inset 0 -1px 0 #f1f1f1' }}>
@@ -383,13 +359,13 @@ export function InstructorAnalytics() {
             다시 다룰 후보 단계
           </h2>
           <Caption>
-            고쳐 쓴 사람이 적고 확신은 높은 단계가 위에 옵니다. 순위가 아니라 읽어 볼 순서입니다.
+            고쳐 쓴 사람이 적은 단계가 위에 옵니다. 순위가 아니라 읽어 볼 순서입니다.
           </Caption>
           <ScrollX>
             <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560, marginTop: 16 }}>
               <thead>
                 <tr>
-                  {['단계', '제출', '고쳐 씀', '평균 확신도'].map((h) => (
+                  {['단계', '제출', '고쳐 씀'].map((h) => (
                     <th
                       key={h}
                       scope="col"
@@ -406,19 +382,13 @@ export function InstructorAnalytics() {
                   .map((r) => {
                     const withV = r.docs.filter((d) => (d.versions?.length ?? 0) > 0)
                     const rev = withV.filter((d) => d.versions.length > 1).length
-                    const confs = withV
-                      .map((d) => d.versions[d.versions.length - 1].confidence)
-                      .filter((c): c is number => c != null)
-                    const avg = confs.length
-                      ? confs.reduce((a, b) => a + b, 0) / confs.length
-                      : null
-                    return { r, n: withV.length, rev, avg }
+                    return { r, n: withV.length, rev }
                   })
                   .filter((x) => x.n > 0)
                   .sort((a, b) => {
                     const ra = a.n > 0 ? a.rev / a.n : 1
                     const rb = b.n > 0 ? b.rev / b.n : 1
-                    return ra - rb || (b.avg ?? 0) - (a.avg ?? 0)
+                    return ra - rb || b.n - a.n
                   })
                   .slice(0, 12)
                   .map((x) => (
@@ -431,9 +401,6 @@ export function InstructorAnalytics() {
                       </td>
                       <td className="font-mono text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
                         {x.rev}
-                      </td>
-                      <td className="font-mono text-body-sm" style={{ padding: '10px 0' }}>
-                        {x.avg != null ? `${x.avg.toFixed(1)} / 5` : '—'}
                       </td>
                     </tr>
                   ))}

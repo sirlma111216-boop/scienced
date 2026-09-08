@@ -435,7 +435,6 @@ export const lesson01: Lesson = {
             '장면은 기억나지만 ___는 말하지 못하기 때문입니다',
           ],
         },
-        { key: 'confidence', kind: 'confidence', label: '이 판단에 대한 확신도' },
       ],
       aiTasks: [],
       wall: {
@@ -445,9 +444,6 @@ export const lesson01: Lesson = {
         opensAfterSubmit: true,
       },
       picker: null,
-      printableAlternative:
-        '활동지 1면: 기억나는 과학 수업 장면 칸(3줄) + 남은 것 5지 선다 체크박스 + 이유 칸(2줄) + 확신도 5칸 눈금. ' +
-        '분포는 칠판에 손을 들어 세는 대신 종이를 걷어 칠판에 정(正)자로 집계한다.',
     },
 
     {
@@ -466,9 +462,6 @@ export const lesson01: Lesson = {
       aiTasks: [],
       wall: null,
       picker: null,
-      printableAlternative:
-        '활동지 2~3면: 개념 카드 4장을 각 반쪽씩 인쇄(쉬운 한 문장 / 헷갈리지 말자 / 적용 질문). ' +
-        '옆 단에 PISA 2025 세 역량과 2022 개정 세 범주 대조표를 넣고 겹치는 부분에 학생이 직접 선을 긋게 한다.',
     },
 
     {
@@ -592,9 +585,6 @@ export const lesson01: Lesson = {
         opensAfterSubmit: true,
       },
       picker: null,
-      printableAlternative:
-        '활동지 4~5면: 두 수업 대본 전문 + 4칸 표 2개 + 선택·이유 칸. ' +
-        'AI 되묻기 대신 짝과 교환해 “이 근거로는 왜 부족한가?”를 서로 한 줄 적어 준다.',
     },
 
     {
@@ -670,10 +660,6 @@ export const lesson01: Lesson = {
         opensAfterSubmit: true,
       },
       picker: { enabled: true, gameId: '01-auction', candidateRule: 'all' },
-      printableAlternative:
-        '활동지 6면: 8칸 배분표 + 이유 한 줄 칸 + 모둠 합의 문장 칸. ' +
-        '모둠은 앉은 자리대로 서너 명씩 묶고, 각자의 배분을 칠판 표에 적어 평균을 함께 계산한다. ' +
-        '사다리는 종이에 그려 자리를 고르게 하고, 씨앗 숫자를 칠판에 적어 두면 나중에 같은 결과를 재현할 수 있다.',
     },
 
     {
@@ -712,8 +698,6 @@ export const lesson01: Lesson = {
       aiTasks: ['wrapup-self-check'],
       wall: null,
       picker: null,
-      printableAlternative:
-        `활동지 7면(A5 반쪽): 세 칸 「${WRAPUP_LABEL}」. 걷어서 다음 차시 도입에 익명 인용 3개로 되돌려 준다.`,
     },
   ],
 }

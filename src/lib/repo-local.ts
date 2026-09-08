@@ -274,35 +274,33 @@ export function createLocalRepo(): Repo {
       return subscribe(() => cb(read<Post[]>(kPosts(classId, lessonId, stepId), [])))
     },
 
-    async addPost(classId, lessonId, stepId, post) {
+    async upsertPost(classId, lessonId, stepId, post) {
       const key = kPosts(classId, lessonId, stepId)
       const posts = read<Post[]>(key, [])
       const now = Date.now()
-      posts.push({
-        id: newId(),
-        uid: post.uid,
-        nickname: post.nickname,
-        groupId: post.groupId,
-        versions: [{ v: 1, content: post.content, changedReason: null, createdAt: now }],
-        latestV: 1,
-        reactions: {},
-        comments: [],
-        isPinned: false,
-        isHidden: false,
-        hiddenReason: null,
-        createdAt: now,
-      })
-      write(key, posts)
-    },
-
-    async revisePost(classId, lessonId, stepId, postId, content, changedReason) {
-      const key = kPosts(classId, lessonId, stepId)
-      const posts = read<Post[]>(key, [])
-      const p = posts.find((x) => x.id === postId)
-      if (!p) return
-      // 덮어쓰지 않는다. 새 버전으로 쌓는다.
-      p.versions.push({ v: p.latestV + 1, content, changedReason, createdAt: Date.now() })
-      p.latestV += 1
+      const version = { v: 1, content: post.content, changedReason: null, createdAt: now }
+      const mine = posts.find((p) => p.uid === post.uid)
+      if (mine) {
+        mine.versions = [version]
+        mine.latestV = 1
+        mine.nickname = post.nickname
+        mine.groupId = post.groupId
+      } else {
+        posts.push({
+          id: post.uid,
+          uid: post.uid,
+          nickname: post.nickname,
+          groupId: post.groupId,
+          versions: [version],
+          latestV: 1,
+          reactions: {},
+          comments: [],
+          isPinned: false,
+          isHidden: false,
+          hiddenReason: null,
+          createdAt: now,
+        })
+      }
       write(key, posts)
     },
 

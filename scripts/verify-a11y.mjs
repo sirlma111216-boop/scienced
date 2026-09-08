@@ -133,18 +133,10 @@ const all = [...sources.values()].join('\n')
   pass('터치 표적과 확대', '버튼 44px 이상, 확대를 막지 않는다')
 }
 
-/* 7. 인쇄 가능한 동일 목표 활동지 */
+/* 7. 인쇄 — 활동지는 뺐고, 포트폴리오·기록을 종이로 내보내는 길만 남긴다 */
 {
-  const { LESSONS } = await import('../src/content/lessons/index.ts')
-  for (const l of LESSONS) {
-    for (const s of l.steps) {
-      if (!s.printableAlternative || s.printableAlternative.length < 20) {
-        fail('인쇄 활동지', `${l.id}강 ${s.id} 에 오프라인 대안이 없다`)
-      }
-    }
-  }
   if (!/@media print/.test(all)) fail('인쇄', '인쇄용 스타일이 없다')
-  pass('인쇄 활동지', '모든 단계에 같은 목표의 오프라인 대안과 인쇄 스타일이 있다')
+  pass('인쇄', '포트폴리오와 기록을 종이로 내보낼 때 쓸 인쇄 스타일이 살아 있다')
 }
 
 /* 8. 건너뛰기 링크와 본문 표지 */

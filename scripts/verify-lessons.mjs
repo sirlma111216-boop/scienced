@@ -124,9 +124,6 @@ for (const l of LESSONS) {
         `${l.id}강 ${s.id} 의 「${s.shortTitle}」가 ${[...s.shortTitle].length}자다 (${SHORT_TITLE_MAX}자 이하)`,
       )
     }
-    if (!s.printableAlternative || s.printableAlternative.length < 20) {
-      fail('인쇄 활동지', `${l.id}강 ${s.id} 에 인쇄 가능한 동일 목표 활동지 설명이 없다`)
-    }
     for (const f of s.fields) {
       if (!f.key || !f.label) fail('입력 칸', `${l.id}강 ${s.id} 에 이름 없는 입력 칸이 있다`)
       if ((f.kind === 'choice' || f.kind === 'multi') && (!f.options || f.options.length < 2)) {
@@ -150,7 +147,7 @@ for (const l of LESSONS) {
     }
   }
 }
-pass('단계와 타임라인', '차시마다 5단계 이상, 합계 50분, 인쇄 활동지 설명이 모두 있다')
+pass('단계와 타임라인', '차시마다 5단계 이상, 합계 50분이 모두 맞다')
 pass(
   '짧은 이름',
   `모든 단계의 알약 이름이 ${SHORT_TITLE_MAX}자 이하 — 375px 에서 잘리지 않는다`,
@@ -165,22 +162,17 @@ pass(
  * 그래서 차시마다 하나 이상 있되, 세 개를 넘지 않아야 한다.
  */
 for (const l of LESSONS) {
-  const withConf = l.steps.filter((s) => s.fields.some((f) => f.kind === 'confidence'))
-  if (withConf.length === 0) fail('확신도', `${l.id}강에 확신도를 받는 칸이 없다`)
   /*
-   * 확신도는 예상 단계와 형성평가에 하나씩 둔다.
-   * 그 밖의 단계에 있으려면 같은 단계 안에 전/후 짝이 있어야 한다 —
-   * 2강의 「지금 나의 확신도」 → 「새 증거 뒤 확신도」가 그런 경우다.
-   * 혼자 있는 확신도는 비교할 앞이 없어 숫자만 남는다.
+   * 확신도를 뺐다 (7차 지시).
+   *
+   * 「지금 얼마나 확신하는가」를 1~5로 받았다. 한 자리에서 몇 분 사이에 눈금만 움직였고,
+   * 판단이 바뀐 이유는 이유 칸이 이미 받고 있었다. 그래서 어느 차시에도 있으면 안 된다.
    */
-  for (const st of withConf) {
-    if (st.id === 'step-open' || st.id === 'step-recall' || st.id === 'step-formative') continue
-    const n = st.fields.filter((f) => f.kind === 'confidence').length
-    if (n < 2) {
-      fail(
-        '확신도',
-        `${l.id}강 ${st.id} 에 확신도가 혼자 있다 — 전/후로 짝을 짓거나 빼야 한다`,
-      )
+  for (const st of l.steps) {
+    for (const f of st.fields) {
+      if (f.kind === 'confidence') {
+        fail('확신도', `${l.id}강 ${st.id} 에 확신도 칸이 남아 있다`)
+      }
     }
   }
   const hasReason = l.steps.some((s) =>
@@ -188,7 +180,7 @@ for (const l of LESSONS) {
   )
   if (!hasReason) fail('이유 수집', `${l.id}강에 이유를 받는 칸이 없다`)
 }
-pass('확신도와 이유', '확신도는 일하는 두 자리에만 있고, 모든 차시가 이유를 받는다')
+pass('확신도와 이유', '확신도 칸이 어디에도 없고, 모든 차시가 이유를 받는다')
 
 /*
  * 개념 카드의 밀도.

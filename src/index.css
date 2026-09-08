@@ -259,6 +259,56 @@
   }
 
   /*
+   * 자료와 입력 칸을 좌우로 나눈다.
+   *
+   * 대본을 보고 → 아래로 내려 적고 → 다시 올려 확인하는 일이 칸마다 되풀이됐다.
+   * 넓은 화면에서는 읽을 것을 왼쪽에 세워 두고 오른쪽에서 적게 한다.
+   * 왼쪽은 따로 스크롤한다 — 대본이 길어도 오른쪽 칸이 밀려나지 않는다.
+   *
+   * 1080px 아래에서는 나눌 폭이 없다. 그때는 위아래로 둔다.
+   */
+  .split-work {
+    display: block;
+  }
+
+  @media (min-width: 1080px) {
+    .split-work {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 32px;
+      align-items: start;
+    }
+    .split-source {
+      position: sticky;
+      top: 72px;
+      max-height: calc(100vh - 96px);
+      overflow-y: auto;
+      /* 스크롤 그림자 대신 오른쪽에 실선 하나. 어디까지가 자료인지 보이게 한다. */
+      padding-right: 24px;
+      box-shadow: inset -1px 0 0 #e6e6e6;
+    }
+    .split-source > *:first-child {
+      margin-top: 0;
+    }
+    .split-input > *:first-child {
+      margin-top: 0;
+    }
+  }
+
+  /* 인쇄할 때는 나누지 않는다 */
+  @media print {
+    .split-work {
+      display: block;
+    }
+    .split-source {
+      position: static;
+      max-height: none;
+      overflow: visible;
+      box-shadow: none;
+    }
+  }
+
+  /*
    * 그림 설명은 화면에서는 접어 두고, 인쇄본에서는 펼쳐 둔다.
    * 종이에는 그림이 흐리게 나오는 일이 잦아 글 설명이 더 필요하다.
    */

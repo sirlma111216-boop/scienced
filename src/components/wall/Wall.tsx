@@ -232,7 +232,6 @@ function ComposeDialog({
       const payload = latest.payload ?? {}
       const lines: string[] = []
       for (const f of fields ?? []) {
-        if (f.kind === 'confidence') continue
         const v = payload[f.key]
         const text =
           typeof v === 'string' ? v : Array.isArray(v) ? v.filter(Boolean).join(', ') : ''
@@ -251,7 +250,7 @@ function ComposeDialog({
       setError('내용을 적어 주세요.')
       return
     }
-    await repo.addPost(classId, lessonId, stepId, {
+    await repo.upsertPost(classId, lessonId, stepId, {
       uid: user.uid,
       nickname: user.nickname || '이름 없음',
       groupId: user.groupId,
@@ -271,6 +270,9 @@ function ComposeDialog({
           내가 낸 답을 불러왔습니다. 고쳐서 내도 됩니다.
         </p>
       ) : null}
+      <p className="caption" style={{ marginBottom: 8, opacity: 0.7 }}>
+        한 사람이 한 글만 올립니다. 다시 올리면 올려 둔 글이 이 내용으로 바뀝니다.
+      </p>
       <textarea
         className="field"
         rows={6}
@@ -327,22 +329,6 @@ export function WallDialog({
     switch (sort) {
       case 'recent':
         sorted.sort((a, b) => b.createdAt - a.createdAt)
-        break
-      case 'pinned':
-        sorted.sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || b.createdAt - a.createdAt)
-        break
-      case 'mine':
-        sorted.sort((a, b) => {
-          const am = Object.values(a.reactions ?? {}).some((u) => u.includes(mine ?? ''))
-          const bm = Object.values(b.reactions ?? {}).some((u) => u.includes(mine ?? ''))
-          return Number(bm) - Number(am) || b.createdAt - a.createdAt
-        })
-        break
-      case 'group':
-        sorted.sort((a, b) => {
-          const g = user?.groupId
-          return Number(b.groupId === g) - Number(a.groupId === g) || b.createdAt - a.createdAt
-        })
         break
       case 'unanswered':
       default:
@@ -411,7 +397,6 @@ export function WallCard({
   const [showAllComments, setShowAllComments] = useState(false)
   const [revising, setRevising] = useState(false)
   const [reviseText, setReviseText] = useState('')
-  const [reviseReason, setReviseReason] = useState('')
 
   const latest = post.versions[post.versions.length - 1]
   const mine = user?.uid === post.uid
@@ -433,9 +418,21 @@ export function WallCard({
     setComment('')
   }
 
+  /*
+   * 고치면 그 글이 바뀐다. 버전을 쌓지 않는다.
+   *
+   * 예전에는 v2·v3 로 쌓았는데, 같은 사람의 글이 여러 벌 보여
+   * 읽는 쪽에서 어느 것이 지금 생각인지 알 수 없었다.
+   * 생각의 변화를 남기는 자리는 응답(제출) 쪽이다 — 거기서는 그대로 쌓인다.
+   */
   async function saveRevision() {
-    if (!repo || !reviseText.trim() || !reviseReason.trim()) return
-    await repo.revisePost(classId, lessonId, stepId, post.id, reviseText.trim(), reviseReason.trim())
+    if (!repo || !user || !reviseText.trim()) return
+    await repo.upsertPost(classId, lessonId, stepId, {
+      uid: post.uid,
+      nickname: user.nickname || post.nickname,
+      groupId: post.groupId,
+      content: reviseText.trim(),
+    })
     setRevising(false)
   }
 
@@ -456,7 +453,6 @@ export function WallCard({
           {post.nickname}
         </span>
         <Caption>{relativeTime(post.createdAt)}</Caption>
-        {post.latestV > 1 ? <Badge>v{post.latestV}</Badge> : null}
         {post.isPinned ? <Badge solid>함께 보기</Badge> : null}
         {post.isHidden ? <Badge>숨김</Badge> : null}
       </div>
@@ -584,7 +580,7 @@ export function WallCard({
                   setRevising(true)
                 }}
               >
-                새 버전으로 수정
+                고치기
               </button>
               <button
                 type="button"
@@ -637,17 +633,9 @@ export function WallCard({
             aria-label="수정한 내용"
             onChange={(e) => setReviseText(e.target.value)}
           />
-          <input
-            className="field"
-            type="text"
-            value={reviseReason}
-            aria-label="무엇을 왜 바꿨는가"
-            placeholder="무엇을 왜 바꿨는가 (필수)"
-            onChange={(e) => setReviseReason(e.target.value)}
-          />
-          <p className="caption">이전 버전은 지워지지 않고 함께 남습니다.</p>
+          <p className="caption">고치면 올려 둔 글이 이 내용으로 바뀝니다.</p>
           <div className="flex gap-xs">
-            <Button onClick={() => void saveRevision()}>v{post.latestV + 1}로 저장</Button>
+            <Button onClick={() => void saveRevision()}>저장</Button>
             <Button variant="tertiary" onClick={() => setRevising(false)}>
               취소
             </Button>

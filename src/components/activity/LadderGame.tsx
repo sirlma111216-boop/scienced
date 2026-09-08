@@ -118,7 +118,7 @@ export function LadderGame({
       {state.phase === 'seating' ? (
         <div style={{ marginTop: 24 }}>
           <p className="caption" style={{ marginBottom: 8 }}>
-            자리 고르기 — 마우스 없이 Tab 과 Enter 로도 고를 수 있습니다
+            자리 고르기 — 한 사람이 한 자리입니다. 마우스 없이 Tab 과 Enter 로도 고를 수 있습니다
           </p>
           <div className="flex flex-wrap gap-xs">
             {Array.from({ length: state.columns }, (_, i) => {
