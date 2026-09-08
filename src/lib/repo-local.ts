@@ -50,6 +50,16 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
+/** 키 하나를 지운다. write 와 같은 이름 규칙을 쓴다 — 접두어를 빠뜨리면 조용히 안 지워진다. */
+function remove(key: string) {
+  try {
+    localStorage.removeItem(`${NS}.${key}`)
+  } catch {
+    /* 저장이 막혀도 화면은 계속 동작한다 */
+  }
+  notify()
+}
+
 function write(key: string, value: unknown) {
   try {
     localStorage.setItem(`${NS}.${key}`, JSON.stringify(value))
@@ -117,6 +127,30 @@ export function createLocalRepo(): Repo {
       // 새 클래스는 01강만 공개 상태로 시작한다.
       write(kPublished(c.id), seedPublished())
     },
+    async removeEnrollment(classId, uid) {
+      write(
+        kEnrollments(classId),
+        read<Enrollment[]>(kEnrollments(classId), []).filter((e) => e.uid !== uid),
+      )
+      write(
+        kRoster(classId),
+        read<RosterEntry[]>(kRoster(classId), []).filter((r) => r.uid !== uid),
+      )
+      write(
+        kParticipation(classId),
+        read<Participation[]>(kParticipation(classId), []).filter((p) => p.uid !== uid),
+      )
+      for (const lesson of LESSONS) {
+        for (const step of lesson.steps) {
+          remove(kResponse(classId, lesson.id, step.id, uid))
+          const pk = kPosts(classId, lesson.id, step.id)
+          write(pk, read<Post[]>(pk, []).filter((p) => p.uid !== uid))
+          const sk = kShares(classId, lesson.id, step.id)
+          write(sk, read<GroupShare[]>(sk, []).filter((s) => s.uid !== uid))
+        }
+      }
+    },
+
     async deleteClass(classId) {
       // 로컬 모드에서도 같은 약속을 지킨다 — 이 클래스로 시작하는 키를 전부 지운다.
       const prefix = `${NS}.c.${classId}.`

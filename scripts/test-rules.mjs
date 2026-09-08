@@ -85,6 +85,16 @@ const TEACHER = 'teacher-1'
 const S1 = 'student-1' // A 수강생
 const S2 = 'student-2' // B 수강생
 
+/*
+ * 앞선 실행이 남긴 자료를 지우고 시작한다.
+ *
+ * 에뮬레이터는 실행 사이에 자료를 그대로 들고 있다. 지우지 않으면 두 번째 실행부터
+ * 「versions 없는 첫 제출」이 이미 versions 가 있는 문서에 대한 수정이 되어
+ * versionsAppendOnly 에 막힌다 — 규칙이 아니라 검사가 틀린 것이다.
+ * 실제로 그렇게 몇 분을 규칙에서 원인을 찾았다.
+ */
+await env.clearFirestore()
+
 /** 규칙을 우회해 사전 자료를 심는다. */
 await env.withSecurityRulesDisabled(async (ctx) => {
   const db = ctx.firestore()
@@ -351,6 +361,31 @@ const asAnon = env.unauthenticatedContext().firestore()
   await assertSucceeds(asS1.doc(path(S1)).delete())
 
   pass('즉석 모둠', '제출한 뒤에만 읽고, 남의 자리는 못 쓰며, 내 자리는 지울 수 있다')
+}
+
+/* ── 수강 종료·내보내기: 권한이 실제로 사라지는가 ── */
+{
+  /* 수강 종료 — 문서는 남지만 더는 읽지 못한다 */
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`classes/${A}/enrollments/${S1}`).set({ uid: S1, status: 'ended' })
+  })
+  await assertFails(asS1.doc(`classes/${A}/lessons/01/steps/step-open/responses/${S1}`).get())
+  await assertFails(
+    asS1.doc(`classes/${A}/lessons/01/steps/step-open/responses/${S1}`).set({ uid: S1 }),
+  )
+
+  /* 되돌리면 다시 들어온다 */
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`classes/${A}/enrollments/${S1}`).set({ uid: S1, status: 'active' })
+  })
+  await assertSucceeds(asS1.doc(`classes/${A}/lessons/01/steps/step-open/responses/${S1}`).get())
+
+  /* 내보내기 — 등록 문서 자체가 사라지면 아무것도 못 한다 */
+  await assertSucceeds(asTeacher.doc(`classes/${A}/enrollments/${S1}`).delete())
+  await assertFails(asS1.doc(`classes/${A}/lessons/01/steps/step-open/responses/${S1}`).get())
+  await assertFails(asS1.doc(`classes/${A}/lessons/01/steps/step-open/posts/p1`).get())
+
+  pass('수강 종료와 내보내기', '종료하면 읽지 못하고, 내보내면 등록 문서와 함께 권한이 사라진다')
 }
 
 await env.cleanup()

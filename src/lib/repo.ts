@@ -84,6 +84,18 @@ export interface Repo {
   updateEnrollment(classId: string, uid: string, patch: Partial<Enrollment>): Promise<void>
 
   /**
+   * 이 클래스에서 내보낸다. 계정은 지우지 않는다.
+   *
+   * 등록 문서를 지우면 보안 규칙의 isEnrolled 가 곧바로 false 가 되어
+   * 그 학기 자료에 더는 닿지 못한다. 다른 학기 수강은 그대로다.
+   *
+   * ★ 이 클래스 안에 남긴 것도 함께 치운다 — 응답·의견 글·즉석 모둠 자리·실명·참여 기록.
+   *   등록만 지우면 의견 광장에 그 사람 글이 이름을 달고 남는다. 내보냈다고 할 수 없다.
+   *   되돌릴 수 없다. 기록을 남기려면 「수강 종료」를 쓴다.
+   */
+  removeEnrollment(classId: string, uid: string): Promise<void>
+
+  /**
    * 명단 실명 — 강사만.
    * 학생은 자기 것도 읽지 못한다. 규칙에서 막혀 있다.
    */

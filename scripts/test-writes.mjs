@@ -350,5 +350,46 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   }
 }
 
+/* ── ⑨ 내보내기: 이 클래스에서만 빼고 계정은 남는다 ── */
+{
+  const teacherRepo = createFirestoreRepo(env.authenticatedContext(TEACHER).firestore())
+  const STEP = 'step-auction'
+
+  const t0 = Date.now()
+  await teacherRepo.removeEnrollment(CID, STUDENT)
+  const ms = Date.now() - t0
+  console.log(`  내보내기: ${ms}ms (에뮬레이터 기준)`)
+  /* 화면에서 끝나지 않는 것처럼 보이는 순간부터는 동작하지 않는 것과 같다 */
+  if (ms > 15000) fail('내보내기 속도', `${ms}ms 걸렸다 — 수업 중에 쓸 수 없다`)
+
+  /* 규칙을 우회해 정말 사라졌는지 본다 — 규칙에 가려 안 보이는 것과 없는 것은 다르다 */
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    const gone = async (label, path) => {
+      const snap = await db.doc(path).get()
+      if (snap.exists) fail('내보내기', `${label} 이 남아 있다 — ${path}`)
+      return !snap.exists
+    }
+    const kept = async (label, path) => {
+      const snap = await db.doc(path).get()
+      if (!snap.exists) fail('내보내기', `${label} 까지 지워졌다 — ${path}`)
+      return snap.exists
+    }
+    const checks = await Promise.all([
+      gone('등록', `classes/${CID}/enrollments/${STUDENT}`),
+      gone('응답', `classes/${CID}/lessons/01/steps/${STEP}/responses/${STUDENT}`),
+      gone('의견 글', `classes/${CID}/lessons/01/steps/${STEP}/posts/${STUDENT}`),
+      gone('모둠 자리', `classes/${CID}/lessons/01/steps/${STEP}/groupshares/${STUDENT}`),
+      /* ★ 계정은 남아야 한다. 다른 학기 수강도 그대로다. */
+      kept('계정', `users/${STUDENT}`),
+      /* 같은 클래스의 다른 사람 자료는 건드리지 않는다 */
+      kept('다른 수강생 등록', `classes/${CID}/enrollments/${STUDENT2}`),
+    ])
+    if (checks.every(Boolean)) {
+      pass('내보내기', '이 클래스의 등록·응답·의견·모둠 자리만 사라지고, 계정과 남은 사람은 그대로다')
+    }
+  })
+}
+
 await env.cleanup()
 report('test:writes')

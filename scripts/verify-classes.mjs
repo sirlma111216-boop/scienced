@@ -114,7 +114,18 @@ import { fail, pass, report, walk } from './_report.mjs'
   const rules = await readFile('firestore.rules', 'utf8')
 
   const CHECKS = [
-    [/function isEnrolled\(cid\)[\s\S]{0,220}enrollments\/\$\(uid\(\)\)/, '수강생 판정이 enrollments 문서 존재로 되어 있다'],
+    /*
+     * 수강생 판정은 등록 문서가 있는 것만으로는 안 된다.
+     * 「수강 종료」가 status 만 바꾸는데 규칙이 존재만 보면 종료한 사람이 그대로 읽고 쓴다.
+     */
+    [
+      /function enrollmentStatus\(cid\)[\s\S]{0,300}enrollments\/\$\(uid\(\)\)/,
+      '수강생 판정이 등록 문서를 보지 않는다',
+    ],
+    [
+      /function isEnrolled\(cid\)[\s\S]{0,120}enrollmentStatus\(cid\) == 'active'/,
+      '수강생 판정이 active 를 확인하지 않는다 — 수강 종료가 권한을 뺏지 못한다',
+    ],
     [/exists\([\s\S]{0,160}?\/instructors\/\$\(/, '강사 판정이 instructors 문서 존재로 되어 있다'],
     [/match \/roster\/\{userId\}[\s\S]{0,160}allow read, write: if isInstructor\(\)/, 'roster 는 강사만 읽고 쓴다'],
     [/function classActive\(cid\)[\s\S]{0,140}status == 'active'/, '보관 클래스를 판정하는 함수가 있다'],

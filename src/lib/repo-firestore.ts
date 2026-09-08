@@ -98,6 +98,59 @@ export function createFirestoreRepo(db: Firestore): Repo {
     async updateClass(classId, patch) {
       await setDoc(doc(db, 'classes', classId), patch, { merge: true })
     },
+    async removeEnrollment(classId, uid) {
+      /*
+       * 사람 하나를 이 클래스에서 지운다.
+       *
+       * 응답·즉석 모둠 자리·의견 글은 모두 문서 id 가 uid 라서 읽지 않고 바로 지운다.
+       * 없는 문서를 지우는 것은 배치에서 아무 일도 하지 않으므로 안전하다.
+       * 그래서 왕복이 배치 몇 번으로 끝난다 — 클래스 지우기처럼 훑을 필요가 없다.
+       */
+      const refs = [
+        cd(db, classId, 'enrollments', uid),
+        cd(db, classId, 'roster', uid),
+        cd(db, classId, 'participation', uid),
+      ]
+      for (const lesson of LESSONS) {
+        for (const step of lesson.steps) {
+          const base = stepPath(lesson.id, step.id)
+          refs.push(cd(db, classId, ...base, 'responses', uid))
+          refs.push(cd(db, classId, ...base, 'groupshares', uid))
+          refs.push(cd(db, classId, ...base, 'posts', uid))
+        }
+      }
+
+      const BATCH = 400
+      for (let i = 0; i < refs.length; i += BATCH) {
+        const batch = writeBatch(db)
+        for (const ref of refs.slice(i, i + BATCH)) batch.delete(ref)
+        await batch.commit()
+      }
+
+      /*
+       * 문서 id 가 uid 가 아니던 시절의 옛 글은 위에서 걸리지 않는다.
+       * 그런 글이 남아 있는지 한 번 훑어 지운다. 새 클래스에서는 아무것도 안 걸린다.
+       */
+      const stray: Array<ReturnType<typeof doc>> = []
+      const targets = LESSONS.flatMap((lesson) =>
+        lesson.steps.map((step) => cc(db, classId, ...stepPath(lesson.id, step.id), 'posts')),
+      )
+      const CHUNK = 25
+      for (let i = 0; i < targets.length; i += CHUNK) {
+        const snaps = await Promise.all(targets.slice(i, i + CHUNK).map((t) => getDocs(t)))
+        for (const snap of snaps) {
+          for (const d of snap.docs) {
+            if ((d.data() as { uid?: string }).uid === uid && d.id !== uid) stray.push(d.ref)
+          }
+        }
+      }
+      for (let i = 0; i < stray.length; i += BATCH) {
+        const batch = writeBatch(db)
+        for (const ref of stray.slice(i, i + BATCH)) batch.delete(ref)
+        await batch.commit()
+      }
+    },
+
     async deleteClass(classId) {
       /*
        * Firestore 는 문서를 지워도 하위 컬렉션이 남는다.

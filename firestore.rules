@@ -43,10 +43,30 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/instructors/$(uid()));
     }
 
-    // 이 클래스의 수강생인가. 기존 앱의 isMember 와 같은 방식이다.
+    /*
+     * 이 클래스의 수강생인가.
+     *
+     * ★ 문서가 있는 것만으로는 부족하다.
+     *   「수강 종료」는 status 를 ended 로 바꿔 명단에서만 내렸는데, 규칙이 존재만 보아
+     *   그 사람은 그대로 자료를 읽고 쓸 수 있었다. 화면에서 내린 것과 권한을 뺀 것이 달랐다.
+     *   status 까지 본다. 클래스에서 아예 빼려면 등록 문서를 지운다(내보내기).
+     */
     function isEnrolled(cid) {
-      return signedIn()
-        && exists(/databases/$(database)/documents/classes/$(cid)/enrollments/$(uid()));
+      return signedIn() && enrollmentStatus(cid) == 'active';
+    }
+
+    /*
+     * 등록 상태. 문서가 없으면 'none' 이다.
+     *
+     * ★ 「없으면 ended 가 아니다」로 쓰면 안 된다. 등록한 적 없는 사람이 통과한다.
+     *   반드시 active 인 것만 통과시킨다.
+     * status 가 없던 옛 문서는 active 로 본다 — 그때는 종료라는 개념이 없었다.
+     */
+    function enrollmentStatus(cid) {
+      return exists(/databases/$(database)/documents/classes/$(cid)/enrollments/$(uid()))
+        ? get(/databases/$(database)/documents/classes/$(cid)/enrollments/$(uid()))
+            .data.get('status', 'active')
+        : 'none';
     }
 
     function classDoc(cid) {

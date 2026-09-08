@@ -37,6 +37,42 @@ export function InstructorClassStudents() {
 
   const cls = classes.find((c) => c.id === classId) ?? null
   const readOnly = cls?.status === 'archived'
+  const [removing, setRemoving] = useState<string | null>(null)
+  const [removeNote, setRemoveNote] = useState<string | null>(null)
+
+  /*
+   * 이 클래스에서만 내보낸다. 계정은 남는다.
+   *
+   * 등록 문서가 사라지면 보안 규칙이 곧바로 막으므로 그 학기 자료에 더는 닿지 못한다.
+   * 이 클래스에 남긴 응답·의견 글·모둠 자리도 함께 치운다 —
+   * 등록만 지우면 의견 광장에 그 사람 글이 이름을 달고 남는다.
+   */
+  async function remove(uid: string, who: string) {
+    const ok = confirm(
+      `${who} 님을 이 클래스에서 내보냅니다.
+
+` +
+        `· 이 클래스의 응답·의견 글·모둠 자리·실명이 지워집니다
+` +
+        `· 계정 자체는 지워지지 않습니다. 다른 학기 수강도 그대로입니다
+` +
+        `· 되돌릴 수 없습니다. 기록을 남기려면 「수강 종료」를 쓰세요`,
+    )
+    if (!ok || !repo) return
+    setRemoving(uid)
+    setRemoveNote(null)
+    const t0 = Date.now()
+    try {
+      await repo.removeEnrollment(classId!, uid)
+      setRemoveNote(`${who} 님을 내보냈습니다. (${Math.round((Date.now() - t0) / 100) / 10}초)`)
+    } catch (err) {
+      // 삼키지 않는다. 화면에는 다음에 할 일을, 콘솔에는 이유를 남긴다.
+      console.error('[내보내기] 실패:', err)
+      setRemoveNote('내보내지 못했습니다. 잠시 뒤 다시 눌러 보세요.')
+    } finally {
+      setRemoving(null)
+    }
+  }
 
   useEffect(() => {
     if (classId) void selectClass(classId)
@@ -242,6 +278,12 @@ export function InstructorClassStudents() {
         </p>
       ) : null}
 
+      {removeNote ? (
+        <p role="status" className="text-body-sm" style={{ marginTop: 16, fontWeight: 480 }}>
+          {removeNote}
+        </p>
+      ) : null}
+
       {rows.length === 0 ? (
         <div style={{ marginTop: 48 }}>
           <ColorBlock tone="cream">
@@ -353,11 +395,23 @@ export function InstructorClassStudents() {
                           variant="tertiary"
                           disabled={readOnly}
                           onClick={() => {
-                            if (!confirm('이 학생의 수강을 종료합니다. 기록은 남습니다.')) return
+                            if (!confirm('이 학생의 수강을 종료합니다. 명단에서 내려가고 기록은 남습니다.')) return
                             void repo?.updateEnrollment(classId, e.uid, { status: 'ended' })
                           }}
                         >
                           수강 종료
+                        </Button>
+                        {/*
+                          내보내기 — 계정은 그대로 두고 이 클래스에서만 뺀다.
+                          시험용으로 만든 계정을 치우거나 잘못 등록한 사람을 뺄 때 쓴다.
+                          무엇이 사라지는지 확인 문구에 그대로 적는다. 되돌릴 수 없다.
+                        */}
+                        <Button
+                          variant="tertiary"
+                          disabled={readOnly || removing === e.uid}
+                          onClick={() => void remove(e.uid, nameOf(e.uid) || e.nickname)}
+                        >
+                          {removing === e.uid ? '내보내는 중…' : '내보내기'}
                         </Button>
                       </div>
                     </td>
