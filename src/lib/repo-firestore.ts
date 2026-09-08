@@ -1,5 +1,7 @@
 import {
   collection,
+  query,
+  where,
   FieldPath,
   deleteDoc,
   deleteField,
@@ -397,6 +399,21 @@ export function createFirestoreRepo(db: Firestore): Repo {
          */
         tx.update(ref, { versions: [version], latestV: 1 })
       })
+
+      /*
+       * 문서 id 가 uid 가 아니던 시절에 쓴 글이 남아 있을 수 있다.
+       * 그때는 누를 때마다 새 글이 생겨, 같은 사람의 글이 여러 장으로 흩어졌다.
+       * 다시 올릴 때 그 옛 글들을 거둔다 — 한 사람에 한 글이 이 화면의 규칙이다.
+       * 새 클래스에서는 걸리는 것이 없어 왕복 한 번으로 끝난다.
+       */
+      const col = cc(db, classId, ...stepPath(lessonId, stepId), 'posts')
+      const mine = await getDocs(query(col, where('uid', '==', post.uid)))
+      const stray = mine.docs.filter((d) => d.id !== post.uid)
+      if (stray.length > 0) {
+        const batch = writeBatch(db)
+        for (const d of stray) batch.delete(d.ref)
+        await batch.commit()
+      }
     },
 
     async toggleReaction(classId, lessonId, stepId, postId, uid, reaction) {

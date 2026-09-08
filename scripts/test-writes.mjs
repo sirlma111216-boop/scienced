@@ -350,7 +350,47 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   }
 }
 
-/* ── ⑨ 내보내기: 이 클래스에서만 빼고 계정은 남는다 ── */
+/* ── ⑨ 옛 글이 여러 장이면 다시 올릴 때 하나로 거둔다 ── */
+{
+  const STEP = 'step-auction'
+  /*
+   * 문서 id 가 uid 가 아니던 시절의 글을 심는다.
+   * 그때는 누를 때마다 새 글이 생겨 같은 사람의 글이 흩어졌다.
+   */
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    for (const id of ['old-1', 'old-2']) {
+      await db.doc(`classes/${CID}/lessons/01/steps/${STEP}/posts/${id}`).set({
+        uid: STUDENT, nickname: '이나나나', groupId: null,
+        versions: [{ v: 1, content: '옛 글 ' + id, changedReason: null, createdAt: Date.now() }],
+        latestV: 1, reactions: {}, comments: [],
+        isPinned: false, isHidden: false, hiddenReason: null, createdAt: Date.now(),
+      })
+    }
+  })
+
+  await studentRepo.upsertPost(CID, '01', STEP, {
+    uid: STUDENT, nickname: '이나나나', groupId: null, content: '지금 생각',
+  })
+
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const snap = await ctx.firestore()
+      .collection(`classes/${CID}/lessons/01/steps/${STEP}/posts`)
+      .get()
+    const mine = snap.docs.filter((d) => d.data().uid === STUDENT)
+    if (mine.length !== 1) {
+      fail('옛 글 거두기', `같은 사람의 글이 ${mine.length}장 남았다 — 1장이어야 한다`)
+    } else if (mine[0].id !== STUDENT) {
+      fail('옛 글 거두기', `남은 글의 id 가 ${mine[0].id} 다 — uid 여야 한다`)
+    } else if (mine[0].data().versions[0].content !== '지금 생각') {
+      fail('옛 글 거두기', '남은 글이 최신 내용이 아니다')
+    } else {
+      pass('옛 글 거두기', '다시 올리면 흩어져 있던 옛 글이 거둬지고 최신 한 장만 남는다')
+    }
+  })
+}
+
+/* ── ⑩ 내보내기: 이 클래스에서만 빼고 계정은 남는다 ── */
 {
   const teacherRepo = createFirestoreRepo(env.authenticatedContext(TEACHER).firestore())
   const STEP = 'step-auction'

@@ -310,9 +310,18 @@ export function createLocalRepo(): Repo {
 
     async upsertPost(classId, lessonId, stepId, post) {
       const key = kPosts(classId, lessonId, stepId)
-      const posts = read<Post[]>(key, [])
+      let posts = read<Post[]>(key, [])
       const now = Date.now()
       const version = { v: 1, content: post.content, changedReason: null, createdAt: now }
+      /*
+       * 옛 글이 여러 장 남아 있으면 가장 최근 것만 남기고 거둔다.
+       * 문서 id 가 uid 가 아니던 시절에 누를 때마다 새 글이 생겼다.
+       */
+      const ofMine = posts.filter((p) => p.uid === post.uid)
+      if (ofMine.length > 1) {
+        const keep = ofMine.reduce((a, b) => (b.createdAt > a.createdAt ? b : a))
+        posts = posts.filter((p) => p.uid !== post.uid || p === keep)
+      }
       const mine = posts.find((p) => p.uid === post.uid)
       if (mine) {
         mine.versions = [version]
