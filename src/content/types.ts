@@ -24,7 +24,7 @@ export const LESSON_IDS: LessonId[] = [
  * 이 목록을 늘리면 그 차시의 개념 카드가 「꼭 알아야 할 것」과 「더 읽기」를
  * 갖추고 있어야 한다 — verify:lessons 가 공개된 차시에만 그것을 요구한다.
  */
-export const INITIALLY_OPEN: LessonId[] = ['01', '02']
+export const INITIALLY_OPEN: LessonId[] = ['01', '02', '03', '04', '05', '06']
 
 /** 서버 화이트리스트에 있는 AI 작업만 호출할 수 있다 (지시서 14절). */
 export type AiTaskId =

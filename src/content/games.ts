@@ -73,7 +73,7 @@ export const GAMES: GameDef[] = [
     tab: '비계 계단',
     lead: '말이 계단을 오르다 무작위 칸에서 멈춥니다.\n멈춘 칸이 지금 학생에게 준 도움의 수준입니다.',
     hint: '계단 칸마다 도움의 세기가 다릅니다.',
-    choiceField: 'hintLevel',
+    choiceField: 'hintB',
     reasonField: 'reason',
     askLine: '이 도움을 언제, 어떤 증거를 보고 줄일 것인지 말해 주세요.',
     presenterAsk: '도움의 양이 아니라 제거 시점을 이야기하게 한다.',
