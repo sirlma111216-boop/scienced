@@ -33,6 +33,9 @@ import { DistributionView } from '@/components/response/DistributionView'
 import { ResponseCollector } from '@/components/response/ResponseCollector'
 import { MustSay } from '@/components/teach/MustSay'
 import { ShareBar } from '@/components/wall/Wall'
+import { Rich } from '@/components/theory/Rich'
+import { TheoryPage } from '@/components/theory/TheoryPage'
+import { TheoryProvider } from '@/components/theory/TheoryContext'
 import { Badge, Button, Caption, ColorBlock, Notice, ScrollX } from '@/components/ui'
 
 /**
@@ -61,6 +64,12 @@ export function Lesson() {
   /** 개념 카드 단계의 내 응답. 「잠깐 확인」을 담는다. */
   const [conceptDoc, setConceptDoc] = useState<ResponseDoc | null>(null)
   const [participation, setParticipation] = useState<Participation[]>([])
+  /*
+   * 이론 배경 화면 (5차 K.2). 단계가 아니라 참조 자료다 — 번호도 잠금도 없고 50분 판에서도 남는다.
+   * 그래서 stepIndex 와 따로 든다. 켜져 있으면 단계 화면 대신 이것을 그린다.
+   */
+  const [showTheory, setShowTheory] = useState(false)
+  const [focusEntryId, setFocusEntryId] = useState<string | null>(null)
 
   /* 이 클래스가 도는 판. 강사가 미리보기를 켜면 그쪽을 따른다. */
   const length: SessionLength = preview ?? classSessionLength(currentClass)
@@ -188,12 +197,21 @@ export function Lesson() {
   }
 
   /* 50분 판에서는 심화 단계가 네비게이션에도 나오지 않는다 (3차 F.3). */
-  const navItems = view.steps.map((s) => ({
-    id: s.step.id,
-    label: s.step.title,
-    shortLabel: s.step.shortTitle,
-    instructorHere: session?.instructorAt === s.step.id,
-  }))
+  const navItems = [
+    ...view.steps.map((s) => ({
+      id: s.step.id,
+      label: s.step.title,
+      shortLabel: s.step.shortTitle,
+      instructorHere: session?.instructorAt === s.step.id,
+    })),
+    /* 오른쪽 끝의 고정 항목. 판과 무관하게 늘 있다 (5차 K.2). */
+    { id: 'theory', label: '이론 배경', shortLabel: '이론 배경', fixed: true },
+  ]
+  const theoryEntries = lesson.theory?.entries ?? []
+  function openEntry(entryId: string) {
+    setFocusEntryId(entryId)
+    setShowTheory(true)
+  }
 
   const instructorStep = view.steps.find((s) => s.step.id === session?.instructorAt)?.step
   const showMoved =
@@ -238,15 +256,26 @@ export function Lesson() {
   const ladder: LadderState | null = game ? (session?.ladders?.[game.id] ?? null) : null
 
   return (
+    <TheoryProvider value={{ entries: theoryEntries, openEntry }}>
     <AppShell
       title={`${lesson.id}강 ${lesson.title}`}
       steps={navItems}
-      activeStepId={step?.id}
+      activeStepId={showTheory ? 'theory' : step?.id}
       onSelectStep={(sid) => {
+        if (sid === 'theory') {
+          setShowTheory(true)
+          return
+        }
+        setShowTheory(false)
+        setFocusEntryId(null)
         const i = view.steps.findIndex((s) => s.step.id === sid)
         if (i >= 0) setStepIndex(i)
       }}
     >
+      {showTheory ? (
+        <TheoryPage lesson={lesson} focusEntryId={focusEntryId} isInstructor={isInstructor} />
+      ) : null}
+
       {/* 강사만 보는 판 미리보기. 실제 클래스 설정과 무관하게 두 판을 다 확인한다 (3차 F.6). */}
       {isInstructor ? (
         <PlanPreviewBar
@@ -268,7 +297,7 @@ export function Lesson() {
       ) : null}
 
       {/* ① 오늘의 문 */}
-      {stepIndex === 0 ? (
+      {!showTheory && stepIndex === 0 ? (
         <section style={{ marginBottom: 48 }}>
           <p className="eyebrow">{lesson.id}강</p>
           <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
@@ -290,11 +319,11 @@ export function Lesson() {
           <div className="card" style={{ marginTop: 32 }}>
             <Caption>먼저 한 문장</Caption>
             <p className="text-body-lg" style={{ margin: '8px 0 24px', fontWeight: 480 }}>
-              {lesson.firstSentence}
+              <Rich text={lesson.firstSentence} />
             </p>
             <Caption>친절한 길잡이</Caption>
             <p className="text-body" style={{ margin: '8px 0 0' }}>
-              {lesson.guide}
+              <Rich text={lesson.guide} />
             </p>
           </div>
 
@@ -303,7 +332,7 @@ export function Lesson() {
             <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
               {lesson.objectives.map((o, i) => (
                 <li key={i} className="text-body" style={{ marginBottom: 6 }}>
-                  {o}
+                  <Rich text={o} />
                 </li>
               ))}
             </ul>
@@ -344,7 +373,7 @@ export function Lesson() {
         </section>
       ) : null}
 
-      {step && stepView ? (
+      {!showTheory && step && stepView ? (
         <>
           <MustSay lines={lesson.instructorScript} stepId={step.id} isInstructor={isInstructor} />
 
@@ -605,6 +634,7 @@ export function Lesson() {
         <AfterClass classId={classId} lesson={lesson} view={view} />
       ) : null}
     </AppShell>
+    </TheoryProvider>
   )
 }
 

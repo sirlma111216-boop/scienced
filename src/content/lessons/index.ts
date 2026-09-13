@@ -3,6 +3,7 @@ import { lesson01 } from './lesson01'
 import { lesson02, lesson03, lesson04, lesson05, lesson06, lesson07 } from './lessons02to07'
 import { lesson08, lesson09, lesson10, lesson11, lesson12, lesson13 } from './lessons08to13'
 import { lesson14, lesson15, lesson16, lesson17, lesson18 } from './lessons14to18'
+import { THEORY } from '../theory/index'
 
 /**
  * 18차시 시드 데이터.
@@ -11,6 +12,12 @@ import { lesson14, lesson15, lesson16, lesson17, lesson18 } from './lessons14to1
  * 나머지는 강사가 /instructor/lessons 에서 행마다 켠다.
  * 학생 홈에는 공개된 차시만 보이고, 미공개 차시는 개수도 제목도 나가지 않는다.
  */
+/**
+ * 이론 배경(5차)은 차시 파일이 아니라 content/theory 에 있다. 여기서 붙인다.
+ * 차시 파일이 이미 3천 줄이라 거기 더 얹으면 아무도 못 읽는다.
+ */
+const withTheory = (l: Lesson): Lesson => (THEORY[l.id] ? { ...l, theory: THEORY[l.id] } : l)
+
 export const LESSONS: Lesson[] = [
   lesson01,
   lesson02,
@@ -30,7 +37,7 @@ export const LESSONS: Lesson[] = [
   lesson16,
   lesson17,
   lesson18,
-]
+].map(withTheory)
 
 export const LESSON_MAP: Record<LessonId, Lesson> = Object.fromEntries(
   LESSONS.map((l) => [l.id, l]),

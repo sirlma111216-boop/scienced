@@ -435,6 +435,68 @@ export interface Step {
   tier?: Tier
 }
 
+/*
+ * ── 이론 배경 (5차 지시서 작업 L) ──
+ *
+ * 본문은 쉬운 말로 쓴다. 그런데 「이게 누구의 무슨 이론인지」가 어디에도 없었다.
+ * 예비교사는 졸업하면 논문을 읽고 동료와 용어로 대화해야 한다. 정식 명칭이 없으면 못 한다.
+ *
+ * 그래서 학술 용어는 세 자리에만 둔다 — 개념 카드의 「이론 배경」 탭, 차시의 「이론 배경」 화면,
+ * 본문의 점선 밑줄(팝오버). 본문 자체는 손대지 않는다.
+ *
+ * ★ 인명·연도·원어는 원문과 대조하기 전까지 verified:false 다. 화면은 「확인 중」 배지를 단다.
+ *   교재의 심화 읽기는 OCR 로 이름이 깨져 있어 그대로 옮기지 않는다 (L.2). verify:theory 가 감시한다.
+ */
+export interface TheoryScholar {
+  nameKo: string
+  nameEn: string
+  /** 발표 연도. 두 해면 「1986·1987」처럼 적는다. */
+  year?: string
+}
+
+/** 원문 인용 (② 깊이). 원문·옮김·출처를 셋 다 둔다. 원문을 모르는 것은 지어내지 않고 비운다. */
+export interface TheoryQuote {
+  original: string
+  ko: string
+  source: string
+}
+
+export interface TheoryEntry {
+  id: string
+  termKo: string
+  termEn: string
+  scholars: TheoryScholar[]
+  /** 무엇을 주장하는가 — 한 문단, 학술 언어로 정확히 */
+  claim: string
+  /** 본문의 쉬운 설명과 어떻게 이어지는가 — 「'먼저 쉽게'에서 ___라고 한 것이 이 이론의 ___다」 */
+  bridgeToPlain: string
+  /** 한계와 비판 — 이 이론이 설명하지 못하는 것, 후속 연구의 수정 */
+  limits: string
+  /** 『과학 교육론과 지도법』 제2판 ○장 */
+  textbookRef: string
+  readings: Array<{ title: string; url?: string }>
+  quotes?: TheoryQuote[]
+  /** 도식 (② 깊이). 앱이 그리지 않는다 — genPrompt 로 강의자가 만든다. 규칙은 그림과 같다. */
+  figure?: ImageSpec
+  /** 어느 개념 카드에 붙는가. 없으면 차시 화면에만 나온다. */
+  linkedConceptId?: string
+  /**
+   * 본문의 쉬운 말 가운데 이 항목으로 이어지는 표현. 그 말에 점선 밑줄이 붙고,
+   * 누르면 정식 용어 카드가 뜬다. 본문에 실제로 있는 표현만 적는다 — verify:theory 가 확인한다.
+   */
+  plainTerms?: string[]
+  /** 팝오버·용어 사전용 한 줄 정의 */
+  oneLine: string
+  /** 원문 대조 완료 여부. 켜기 전에는 화면에 「확인 중」 배지가 붙는다. */
+  verified: boolean
+}
+
+export interface LessonTheory {
+  /** 이 차시의 이론적 위치 3~4문장 */
+  summary: string
+  entries: TheoryEntry[]
+}
+
 export interface Lesson {
   id: LessonId
   order: number
@@ -456,4 +518,6 @@ export interface Lesson {
   steps: Step[]
   /** 시드 상태에서 1강만 true (지시서 13절) */
   published: boolean
+  /** 이론 배경 (5차). 차시 파일이 아니라 content/theory 에서 붙인다 — 차시 파일이 이미 크다. */
+  theory?: LessonTheory
 }

@@ -35,6 +35,7 @@
     "audit:lesson": "node --import ./scripts/_loader.mjs scripts/audit-lesson.mjs",
     "verify:stimulus": "node --import ./scripts/_loader.mjs scripts/verify-stimulus.mjs",
     "verify:figures": "node --import ./scripts/_loader.mjs scripts/verify-figures.mjs",
+    "verify:theory": "node --import ./scripts/_loader.mjs scripts/verify-theory.mjs",
     "verify": "node scripts/verify-all.mjs"
   },
   "dependencies": {

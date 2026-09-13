@@ -163,6 +163,58 @@
   .tab-step .step-name-full {
     display: none;
   }
+  /*
+   * 고정 항목 — 이론 배경 (5차 K.2). 단계가 아니므로 점선 테두리로 갈라 두고 오른쪽 끝에 민다.
+   * 넓은 화면에서는 오른쪽 끝, 좁은 화면에서는 줄 바꿈 뒤 마지막.
+   */
+  .step-tabs > li.step-fixed {
+    flex: 0 1 auto;
+    margin-left: auto;
+  }
+  .tab-step[data-fixed='true'] {
+    box-shadow: inset 0 0 0 1px #000;
+    border: 0;
+    outline: 1px dashed #000;
+    outline-offset: -3px;
+  }
+  .tab-step[data-fixed='true'][aria-selected='true'] {
+    outline-color: #fff;
+  }
+
+  /*
+   * 용어 팝오버 (5차 K.3). 본문의 쉬운 말에 점선 밑줄. 단추다 — 마우스를 올려야만 뜨지 않는다.
+   */
+  .term {
+    all: unset;
+    cursor: pointer;
+    border-bottom: 1px dotted currentColor;
+    text-decoration: none;
+  }
+  .term:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  .term[aria-expanded='true'] {
+    border-bottom-style: solid;
+  }
+  .term-pop {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    z-index: 30;
+    width: max-content;
+    max-width: min(360px, 90vw);
+    padding: 10px 12px;
+    background: #fff;
+    color: #000;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0, 0, 0, 0.12);
+    font-weight: 400;
+    text-align: left;
+    white-space: normal;
+  }
   @media (min-width: 768px) {
     .tab-step {
       padding: 8px 14px;

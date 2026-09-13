@@ -21,6 +21,11 @@ export interface StepNavItem {
   done?: boolean
   /** 강사가 지금 보고 있는 단계 */
   instructorHere?: boolean
+  /**
+   * 단계가 아닌 고정 항목 (5차 K.2 — 이론 배경).
+   * 번호를 매기지 않고, 잠그지 않고, 오른쪽 끝에 둔다. 화살표 키로는 닿는다.
+   */
+  fixed?: boolean
 }
 
 /**
@@ -84,7 +89,7 @@ function StepTabs({
       {steps.map((s, i) => {
         const selected = s.id === activeStepId
         return (
-          <li key={s.id} role="presentation">
+          <li key={s.id} role="presentation" className={s.fixed ? 'step-fixed' : undefined}>
             <button
               type="button"
               role="tab"
@@ -97,16 +102,21 @@ function StepTabs({
                 else refs.current.delete(s.id)
               }}
               className="tab-step"
+              data-fixed={s.fixed ? 'true' : undefined}
               onClick={() => onSelectStep?.(s.id)}
               /* 알약에는 짧은 이름만 들어간다. 전체 이름은 여기서 읽힌다. */
-              aria-label={`${i + 1}단계 ${s.label}${s.done ? ' · 제출함' : ''}${
-                s.instructorHere ? ' · 강사가 보고 있음' : ''
-              }`}
+              aria-label={
+                s.fixed
+                  ? `${s.label} · 참조 자료`
+                  : `${i + 1}단계 ${s.label}${s.done ? ' · 제출함' : ''}${
+                      s.instructorHere ? ' · 강사가 보고 있음' : ''
+                    }`
+              }
               title={s.label}
             >
               {/* 소요 시간은 넣지 않는다. 진행 속도는 강의자가 그 자리에서 정한다 (3차 D). */}
               <span className="step-meta" aria-hidden="true">
-                {String(i + 1).padStart(2, '0')}
+                {s.fixed ? '※' : String(i + 1).padStart(2, '0')}
                 {/* 상태를 색만으로 구분하지 않는다 */}
                 {s.done ? ' ✓' : ''}
                 {s.instructorHere ? ' ●' : ''}

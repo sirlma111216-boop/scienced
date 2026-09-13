@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyConcept } from '@/content/types'
 import { Badge, Button, Caption, ColorBlock, type BlockTone } from '@/components/ui'
-import { withEmphasis } from '@/components/emphasis'
+import { Rich } from '@/components/theory/Rich'
+import { EntryView } from '@/components/theory/EntryView'
+import { useTheory } from '@/components/theory/TheoryContext'
 
 /**
  * 개념 카드.
@@ -21,6 +23,8 @@ const LAYERS = [
   { key: 'notToConfuseWith', label: '헷갈리지 말자' },
   { key: 'applyQuestion', label: '직접 써 보기' },
   { key: 'deepDive', label: '더 읽기' },
+  /* 5차 K.1 — 이 개념이 누구의 무슨 이론인지. 본문은 쉬운 말 그대로 두고 여기에만 학술 용어를 둔다. */
+  { key: 'theory', label: '★ 이론 배경' },
 ] as const
 
 const TONES: BlockTone[] = ['lime', 'lilac', 'cream', 'mint']
@@ -41,6 +45,8 @@ export function ConceptCard({
   const [reason, setReason] = useState(answer?.reason ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(Boolean(answer))
+  const { entries, openEntry } = useTheory()
+  const linked = entries.filter((e) => e.linkedConceptId === concept.id)
 
   /*
    * ★ 저장된 답을 화면에 되살린다.
@@ -122,7 +128,7 @@ export function ConceptCard({
             <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
               {(concept.mustKnow ?? []).map((m, i) => (
                 <li key={i} className="text-body" style={{ marginBottom: 6, fontWeight: 480 }}>
-                  {withEmphasis(m)}
+                  <Rich text={m} />
                 </li>
               ))}
             </ul>
@@ -131,7 +137,26 @@ export function ConceptCard({
 
         <div style={{ minHeight: 120 }}>
           <Caption>{cur.label}</Caption>
-          {cur.key === 'deepDive' ? (
+          {cur.key === 'theory' ? (
+            linked.length === 0 ? (
+              <p className="text-body" style={{ margin: '8px 0 0', opacity: 0.7 }}>
+                이 카드에 붙은 이론 항목이 아직 없습니다. 차시의 「이론 배경」에서 계보를 볼 수 있습니다.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-md" style={{ marginTop: 8 }}>
+                {linked.map((e) => (
+                  <EntryView key={e.id} entry={e} compact />
+                ))}
+                {openEntry ? (
+                  <div>
+                    <Button variant="secondary" onClick={() => openEntry(linked[0].id)}>
+                      이론 배경에서 원문·교재·더 읽을 것 보기 →
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )
+          ) : cur.key === 'deepDive' ? (
             (concept.deepDive?.length ?? 0) === 0 ? (
               <p className="text-body" style={{ margin: '8px 0 0', opacity: 0.7 }}>
                 아직 더 읽을 내용이 없습니다.
@@ -147,7 +172,7 @@ export function ConceptCard({
                       className="text-body"
                       style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}
                     >
-                      {withEmphasis(d.body)}
+                      <Rich text={d.body} />
                     </p>
                   </section>
                 ))}
@@ -157,13 +182,13 @@ export function ConceptCard({
             <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
               {concept.notToConfuseWith.map((n, i) => (
                 <li key={i} className="text-body" style={{ marginBottom: 6 }}>
-                  {n}
+                  <Rich text={n} />
                 </li>
               ))}
             </ul>
           ) : (
             <p className="text-body-lg" style={{ margin: '8px 0 0', whiteSpace: 'pre-line' }}>
-              {concept[cur.key as 'plainOneLiner']}
+              <Rich text={concept[cur.key as 'plainOneLiner']} />
             </p>
           )}
         </div>

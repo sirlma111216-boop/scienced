@@ -20,6 +20,7 @@ const CHECKS = [
   ['verify:publish', '시드에서 1강만 공개 · 보안 규칙'],
   ['verify:stimulus', '자료 연결 · 여는 조건 · 지금 할 일 (4차 G·H)'],
   ['verify:figures', '그림 제작 명세 · 그림 속 글자 금지 (4차 J)'],
+  ['verify:theory', '이론 배경 — 깨진 표기 · 확인 중 배지 · 카드 연결 · 팝오버 (5차 L)'],
 ]
 
 let failed = 0

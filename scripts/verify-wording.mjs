@@ -270,6 +270,19 @@ function theoryStrings(lesson) {
       push(`${s.id}.${f.key}.help`, f.help)
     }
   }
+  /*
+   * 이론 배경(5차)도 이론을 설명하는 글이다. 여기서는 학술 용어를 정확히 쓰되
+   * 비유 규칙은 그대로 지킨다 — 지시서가 그렇게 못 박았다.
+   * 원문 인용은 뺀다. 그것은 그 사람의 말이다.
+   */
+  if (lesson.theory) {
+    push('theory.summary', lesson.theory.summary)
+    for (const e of lesson.theory.entries) {
+      push(`theory.${e.id}.claim`, e.claim)
+      push(`theory.${e.id}.bridgeToPlain`, e.bridgeToPlain)
+      push(`theory.${e.id}.limits`, e.limits)
+    }
+  }
   return out
 }
 

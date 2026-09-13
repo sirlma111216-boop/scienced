@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Stimulus, StimulusFormat } from '@/content/types'
+import type { ImageSpec, Stimulus, StimulusFormat } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { Badge, Caption, Notice, ScrollX } from '@/components/ui'
 import { withEmphasis } from '@/components/emphasis'
@@ -128,16 +128,23 @@ function Body({ body }: { body: string }) {
  * 생성 도구로 만든 그림이 비교할 수 없이 낫고, 그것이 J절이 프롬프트를 요구한 이유다.
  */
 function ImageBlock({ s, isInstructor }: { s: Stimulus; isInstructor: boolean }) {
+  if (!s.imageSpec) return null
+  return <FigureBlock spec={s.imageSpec} isInstructor={isInstructor} />
+}
+
+/**
+ * 그림 명세 하나를 그린다. 자료의 그림과 이론 배경의 도식(5차)이 같은 규칙을 쓴다 —
+ * 파일이 있으면 보여 주고, 없으면 대안과 글 설명을 그리고, 강사에게는 프롬프트를 꺼내 준다.
+ */
+export function FigureBlock({ spec, isInstructor }: { spec: ImageSpec; isInstructor: boolean }) {
   /*
    * 파일이 아직 없을 수 있다. 그림은 강의자가 만들어 넣는 것이고,
    * 넣기 전에 수업이 열릴 수도 있다. 그때 깨진 그림 표시를 보여 주면
    * 학생은 앱이 고장 났다고 읽는다. 대신 글 설명과 대안을 그린다.
    */
   const [failed, setFailed] = useState(false)
-  const spec = s.imageSpec
   /* 주소가 바뀌면 다시 시도한다. 한 번 실패했다고 영영 대안만 보이면 안 된다. */
-  useEffect(() => setFailed(false), [spec?.src])
-  if (!spec) return null
+  useEffect(() => setFailed(false), [spec.src])
   const showImage = Boolean(spec.src) && !failed
 
   return (

@@ -86,6 +86,19 @@ const 자료_면제 = {
   },
 }
 
+/**
+ * 본문의 「쉬운 말」 영역 — 점선 밑줄(용어 팝오버)이 그어지는 자리 (5차 K.3).
+ * 화면의 Rich 가 그리는 자리와 같아야 한다. verify:theory 의 plainAreas 와 같은 목록.
+ */
+function 쉬운말영역(lesson) {
+  const out = [lesson.firstSentence, lesson.guide, ...lesson.objectives]
+  for (const c of lesson.keyConcepts) {
+    out.push(c.plainOneLiner, c.whyItMatters, c.classroomScene, c.formalDefinition, c.applyQuestion,
+      ...c.notToConfuseWith, ...(c.mustKnow ?? []), ...(c.deepDive ?? []).map((d) => d.body))
+  }
+  return out.join('\n')
+}
+
 /** 이 단계에 자료가 있어야 하는가. 개념 카드 단계는 카드가 자료다. */
 function 자료가_필요한_단계(lesson, s) {
   if (s.type === 'concepts' || s.fields.length === 0) return false
@@ -304,6 +317,61 @@ const 항목 = [
     run(l) {
       const t = 학생글(l)
       return 묵은_말.filter((w) => t.includes(w)).map((w) => `「${w}」 가 남아 있다`)
+    },
+  },
+
+  /* ── F · 이론 배경 (5차 지시서) ── */
+  {
+    id: 'F1', name: '이론적 위치', doc: '차시의 이론 계보를 3~4문장으로 — theory.summary',
+    run(l) {
+      const s = l.theory?.summary?.trim()
+      if (!s) return ['theory.summary 가 없다']
+      if (s.split(/[.다]\s/).length < 3) return ['theory.summary 가 3~4문장에 못 미친다']
+      return []
+    },
+  },
+  {
+    id: 'F2', name: '이론 항목', doc: '정식 명칭·연구자·주장·본문 연결·한계·교재·한 줄 정의',
+    run(l) {
+      const es = l.theory?.entries ?? []
+      if (es.length === 0) return ['이론 항목이 하나도 없다']
+      const out = []
+      for (const e of es) {
+        for (const k of ['termKo', 'termEn', 'claim', 'bridgeToPlain', 'limits', 'textbookRef', 'oneLine']) {
+          if (!String(e[k] ?? '').trim()) out.push(`「${e.termKo || e.id}」 의 ${k} 가 비었다`)
+        }
+        if (!(e.scholars?.length > 0)) out.push(`「${e.termKo || e.id}」 에 연구자가 없다`)
+        for (const q of e.quotes ?? []) {
+          if (!q.original?.trim() || !q.ko?.trim() || !q.source?.trim()) out.push(`「${e.termKo}」 의 인용에 원문·옮김·출처가 다 있어야 한다`)
+        }
+        if (e.figure) {
+          for (const k of ['purpose', 'genPrompt', 'altText', 'fallback', 'license']) {
+            if (!String(e.figure[k] ?? '').trim()) out.push(`「${e.termKo}」 의 도식에 ${k} 가 비었다`)
+          }
+          if (e.figure.src && !existsSync(`public${e.figure.src.split('?')[0]}`)) out.push(`「${e.termKo}」 의 도식 파일이 없다`)
+        }
+      }
+      return out
+    },
+  },
+  {
+    id: 'F3', name: '카드 연결', doc: '개념 카드마다 「이론 배경」 탭에 붙은 항목이 하나는 있다',
+    run(l) {
+      const linked = new Set((l.theory?.entries ?? []).map((e) => e.linkedConceptId).filter(Boolean))
+      return l.keyConcepts.filter((c) => !linked.has(c.id)).map((c) => `「${c.term}」 카드에 붙은 항목이 없다 — 탭이 빈다`)
+    },
+  },
+  {
+    id: 'F4', name: '용어 팝오버', doc: '항목마다 본문의 쉬운 말 표현 하나 이상 — 실제로 본문에 있는 것만',
+    run(l) {
+      const plain = 쉬운말영역(l)
+      const out = []
+      for (const e of l.theory?.entries ?? []) {
+        const ps = e.plainTerms ?? []
+        if (ps.length === 0) { out.push(`「${e.termKo}」 에 plainTerms 가 없다 — 본문에서 이 이론으로 갈 길이 없다`); continue }
+        for (const p of ps) if (!plain.includes(p)) out.push(`「${e.termKo}」 의 「${p}」 가 본문에 없다`)
+      }
+      return out
     },
   },
 ]
