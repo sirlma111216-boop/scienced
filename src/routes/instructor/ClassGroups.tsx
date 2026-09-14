@@ -2,26 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import type { LessonId } from '@/content/types'
 import { getLesson } from '@/content/lessons'
-import { DEFAULT_CLASS_SIZE, gameDealsCards, gameTakesInput } from '@/content/group-games'
+import { DEFAULT_CLASS_SIZE } from '@/content/group-games'
 import { useAuth } from '@/lib/auth'
-import {
-  dealSets,
-  decodePlan,
-  encodePlan,
-  feasibility,
-  formationLessons,
-  gameForLesson,
-  groupCountOf,
-  historyFromDocs,
-  nameGroups,
-  pairCount,
-  placeLateJoiner,
-  planSchedule,
-  roundNumberOf,
-  runAssignment,
-} from '@/lib/groups'
-import type { Enrollment, GroupInput, GroupRound, GroupRoundGroup, PairHistoryDoc } from '@/lib/types'
+import { feasibility, formationLessons, gameForLesson, groupCountOf, historyFromDocs, pairCount, planSchedule } from '@/lib/groups'
+import type { Enrollment, GroupRound, PairHistoryDoc } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
+import { FormationPanel } from '@/components/groups/FormationPanel'
 import { Badge, Button, Caption, Card, Notice, ScrollX } from '@/components/ui'
 
 /**
@@ -29,46 +15,22 @@ import { Badge, Button, Caption, Card, Notice, ScrollX } from '@/components/ui'
  *
  *   모둠 수 설정 + 가능 여부
  *   회차 목록 (대기 / 완료)
- *   실행 → 미리보기 → 확정. 미리보기에서 다시 배정하거나 사람을 옮긴다. 옮긴 기록은 남는다.
+ *   실행 → 미리보기 → 확정 — FormationPanel. 진행 콘솔도 같은 부품을 쓴다.
  *   동석 기록 격자 — 아직 한 번도 안 만난 짝이 눈에 띈다
- *   고정 규칙 · 결석자 · 지각자
  *
  * 난수는 서버가 만든다. 시드는 결과와 함께 저장돼 나중에 확인할 수 있다.
  */
 
-type Preview = {
-  lessonId: LessonId
-  round: number
-  seed: string
-  groups: GroupRoundGroup[]
-  absentUids: string[]
-  cost: number
-  plannedNext: string[][][]
-  followedPlan: boolean
-  fromServer: boolean
-  manualEdits: GroupRound['manualEdits']
-}
-
 export function InstructorClassGroups() {
   const { classId: classIdParam } = useParams()
   const classId = classIdParam ?? ''
-  const { repo, user, isInstructor, classes } = useAuth()
+  const { repo, isInstructor, classes } = useAuth()
   const cls = classes.find((c) => c.id === classId) ?? null
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [history, setHistory] = useState<PairHistoryDoc[]>([])
   const [rounds, setRounds] = useState<GroupRound[]>([])
-  const [inputs, setInputs] = useState<GroupInput[]>([])
   const [openLesson, setOpenLesson] = useState<LessonId | null>(null)
-  const [absent, setAbsent] = useState<Set<string>>(new Set())
-  const [together, setTogether] = useState<Array<[string, string]>>([])
-  const [apart, setApart] = useState<Array<[string, string]>>([])
-  const [ruleA, setRuleA] = useState('')
-  const [ruleB, setRuleB] = useState('')
-  const [preview, setPreview] = useState<Preview | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [note, setNote] = useState<string | null>(null)
   const [planned, setPlanned] = useState<{ n: number; g: number; rounds: number; repeats: number } | null>(null)
-  const [lateUid, setLateUid] = useState('')
 
   useEffect(() => {
     if (!repo || !classId) return
@@ -82,16 +44,7 @@ export function InstructorClassGroups() {
     }
   }, [repo, classId])
 
-  useEffect(() => {
-    if (!repo || !classId || !openLesson) return
-    return repo.watchGroupInputs(classId, openLesson, setInputs)
-  }, [repo, classId, openLesson])
-
   const students = useMemo(() => enrollments.filter((e) => e.status === 'active'), [enrollments])
-  const nameOf = useMemo(
-    () => Object.fromEntries(students.map((s) => [s.uid, s.nickname || '이름 없음'])) as Record<string, string>,
-    [students],
-  )
   const lessons = formationLessons(cls)
   const groupCount = groupCountOf(cls)
   const hist = useMemo(() => historyFromDocs(history), [history])
@@ -117,134 +70,12 @@ export function InstructorClassGroups() {
   if (!classId) return <Navigate to="/instructor/classes" replace />
 
   const roundOf = (lessonId: LessonId) => rounds.find((r) => r.lessonId === lessonId) ?? null
-  const game = openLesson ? gameForLesson(openLesson) : null
-  const attendees = students.filter((s) => !absent.has(s.uid))
 
   async function setGroupCount(v: number) {
     if (!repo || !cls) return
     const g = Math.max(2, Math.min(12, Math.round(v)))
     await repo.updateClass(cls.id, { groupCount: g })
   }
-
-  function addRule(kind: 'together' | 'apart') {
-    if (!ruleA || !ruleB || ruleA === ruleB) return
-    const pair: [string, string] = [ruleA, ruleB]
-    if (kind === 'together') setTogether((l) => [...l, pair])
-    else setApart((l) => [...l, pair])
-    setRuleA('')
-    setRuleB('')
-  }
-
-  async function run() {
-    if (!openLesson || !repo || !user) return
-    const roundNo = roundNumberOf(openLesson, lessons)
-    if (!roundNo) return
-    setBusy(true)
-    setNote(null)
-    const t0 = Date.now()
-    try {
-      const prev = rounds.filter((r) => r.round < roundNo).sort((a, b) => b.round - a.round)[0] ?? null
-      const res = await runAssignment({
-        classId,
-        lessonId: openLesson,
-        game,
-        uids: attendees.map((s) => s.uid),
-        groupCount,
-        history: hist,
-        round: roundNo,
-        roundsAhead: lessons.length - roundNo + 1,
-        inputs,
-        mustTogether: together,
-        mustApart: apart,
-        plannedRemaining: decodePlan(prev?.plannedNext),
-        planStale: prev ? !prev.followedPlan : false,
-      })
-      const dealt = game && gameDealsCards(game) ? dealSets(game, res.groups.length, res.seed) : []
-      const groups = game ? nameGroups(game, res.groups, inputs, dealt) : res.groups.map((m, i) => ({ id: String(i + 1), name: `${i + 1}모둠`, memberUids: m }))
-      setPreview({
-        lessonId: openLesson,
-        round: roundNo,
-        seed: res.seed,
-        groups,
-        absentUids: [...absent],
-        cost: res.repeats,
-        plannedNext: res.plannedNext,
-        followedPlan: res.followedPlan,
-        fromServer: res.fromServer,
-        manualEdits: [],
-      })
-      setNote(`배정했습니다 (${((Date.now() - t0) / 1000).toFixed(1)}초 · ${res.fromServer ? '서버 시드' : '로컬 시드'}). 확정 전에 미리 보고 옮길 수 있습니다.`)
-    } catch (err) {
-      console.error('[모둠 배정] 실패:', err)
-      setNote(`배정하지 못했습니다 — ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  /** 미리보기에서 사람을 옮긴다. 기록에 남는다 (N.7). */
-  function move(uid: string, toGroup: string) {
-    if (!preview) return
-    const from = preview.groups.find((g) => g.memberUids.includes(uid))
-    if (!from || from.id === toGroup) return
-    const groups = preview.groups.map((g) => ({
-      ...g,
-      memberUids: g.id === from.id ? g.memberUids.filter((u) => u !== uid) : g.id === toGroup ? [...g.memberUids, uid] : g.memberUids,
-    }))
-    setPreview({
-      ...preview,
-      groups,
-      manualEdits: [...preview.manualEdits, { uid, fromGroup: from.id, toGroup, at: Date.now() }],
-      followedPlan: false,
-    })
-  }
-
-  async function confirm() {
-    if (!preview || !repo || !user || !game) return
-    setBusy(true)
-    try {
-      const round: GroupRound = {
-        id: `${classId}-${preview.lessonId}`,
-        round: preview.round,
-        lessonId: preview.lessonId,
-        gameId: game.id,
-        groups: preview.groups,
-        absentUids: preview.absentUids,
-        seed: preview.seed,
-        cost: preview.cost,
-        createdBy: user.uid,
-        createdAt: Date.now(),
-        manualEdits: preview.manualEdits,
-        plannedNext: encodePlan(preview.plannedNext),
-        followedPlan: preview.followedPlan,
-        lateJoins: [],
-      }
-      await repo.confirmGroupRound(classId, round)
-      setPreview(null)
-      setNote(`${preview.lessonId}강 모둠을 확정했습니다. 학생 화면에 모둠 카드가 뜹니다.`)
-    } catch (err) {
-      console.error('[모둠 확정] 실패:', err)
-      setNote(`확정하지 못했습니다 — ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function joinLate(round: GroupRound) {
-    if (!repo || !lateUid) return
-    const idx = placeLateJoiner(round.groups.map((g) => g.memberUids), lateUid, hist, round.round)
-    const target = round.groups[idx]
-    try {
-      await repo.addLateJoiner(classId, round.id, lateUid, target.id)
-      setNote(`${nameOf[lateUid] ?? lateUid} 님을 「${target.name}」 모둠에 넣었습니다 — 중복이 가장 적게 느는 자리입니다.`)
-      setLateUid('')
-    } catch (err) {
-      console.error('[지각 합류] 실패:', err)
-      setNote(`넣지 못했습니다 — ${err instanceof Error ? err.message : String(err)}`)
-    }
-  }
-
-  const inputCount = inputs.filter((i) => attendees.some((a) => a.uid === i.uid)).length
 
   return (
     <AppShell title="모둠 관리">
@@ -337,11 +168,7 @@ export function InstructorClassGroups() {
                     <td style={{ padding: '10px 0' }}>
                       <Button
                         variant={openLesson === lid ? 'primary' : 'secondary'}
-                        onClick={() => {
-                          setOpenLesson(lid)
-                          setPreview(null)
-                          setNote(null)
-                        }}
+                        onClick={() => setOpenLesson(lid)}
                       >
                         {r ? '보기 · 다시' : '실행'}
                       </Button>
@@ -354,176 +181,10 @@ export function InstructorClassGroups() {
         </ScrollX>
       </div>
 
-      {/* ── 실행 → 미리보기 → 확정 ── */}
+      {/* ── 실행 → 미리보기 → 확정 — 진행 콘솔과 같은 부품 ── */}
       {openLesson ? (
         <div style={{ marginTop: 32 }}>
-          <Card>
-            <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-              <Badge>{roundNumberOf(openLesson, lessons)}회차</Badge>
-              <h2 className="text-card-title" style={{ margin: 0 }}>
-                {Number(openLesson)}강 · {game ? game.title : '배정만'}
-              </h2>
-            </div>
-            {game ? (
-              <>
-                <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.8 }}>
-                  <strong>왜 이렇게 묶는가</strong> · {game.why}
-                </p>
-                <p className="text-body-sm" style={{ margin: '4px 0 0', opacity: 0.8 }}>
-                  <strong>학생에게 보이는 문장</strong> · {game.effectScope}
-                </p>
-                {gameTakesInput(game) ? (
-                  <p className="text-body-sm" style={{ margin: '8px 0 0' }}>
-                    학생 선택 {inputCount} / {attendees.length}명 제출.{' '}
-                    {inputCount < attendees.length ? '아직 안 고른 사람은 분류 없이 배정됩니다.' : ''}
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-
-            {roundOf(openLesson) && !preview ? (
-              <RoundSummary round={roundOf(openLesson)!} nameOf={nameOf} />
-            ) : null}
-
-            {/* 결석자 */}
-            <div style={{ marginTop: 20 }}>
-              <Caption>참석자 — 결석자는 체크를 풉니다</Caption>
-              <ul className="flex flex-wrap gap-xs" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
-                {students.map((s) => (
-                  <li key={s.uid}>
-                    <label className="text-body-sm flex items-center gap-xxs" style={{ padding: '4px 8px', boxShadow: 'inset 0 0 0 1px #e6e6e6', borderRadius: 999 }}>
-                      <input
-                        type="checkbox"
-                        checked={!absent.has(s.uid)}
-                        onChange={(e) =>
-                          setAbsent((prev) => {
-                            const next = new Set(prev)
-                            if (e.target.checked) next.delete(s.uid)
-                            else next.add(s.uid)
-                            return next
-                          })
-                        }
-                      />
-                      {s.nickname || '이름 없음'}
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* 고정 규칙 */}
-            <div style={{ marginTop: 20 }}>
-              <Caption>고정 규칙</Caption>
-              <div className="flex items-center gap-xs" style={{ marginTop: 8, flexWrap: 'wrap' }}>
-                <select className="field" style={{ width: 160 }} value={ruleA} onChange={(e) => setRuleA(e.target.value)} aria-label="첫 번째 사람">
-                  <option value="">사람 고르기</option>
-                  {students.map((s) => (
-                    <option key={s.uid} value={s.uid}>{s.nickname || '이름 없음'}</option>
-                  ))}
-                </select>
-                <select className="field" style={{ width: 160 }} value={ruleB} onChange={(e) => setRuleB(e.target.value)} aria-label="두 번째 사람">
-                  <option value="">사람 고르기</option>
-                  {students.map((s) => (
-                    <option key={s.uid} value={s.uid}>{s.nickname || '이름 없음'}</option>
-                  ))}
-                </select>
-                <Button variant="secondary" onClick={() => addRule('together')}>반드시 같이</Button>
-                <Button variant="secondary" onClick={() => addRule('apart')}>반드시 따로</Button>
-              </div>
-              {together.length + apart.length > 0 ? (
-                <ul className="flex flex-wrap gap-xs" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
-                  {together.map(([a, b], i) => (
-                    <li key={`t${i}`}>
-                      <Badge solid>같이 · {nameOf[a]} + {nameOf[b]}</Badge>{' '}
-                      <button type="button" className="btn-tertiary" style={{ minHeight: 28, fontSize: 12 }} onClick={() => setTogether((l) => l.filter((_, j) => j !== i))}>빼기</button>
-                    </li>
-                  ))}
-                  {apart.map(([a, b], i) => (
-                    <li key={`a${i}`}>
-                      <Badge>따로 · {nameOf[a]} / {nameOf[b]}</Badge>{' '}
-                      <button type="button" className="btn-tertiary" style={{ minHeight: 28, fontSize: 12 }} onClick={() => setApart((l) => l.filter((_, j) => j !== i))}>빼기</button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-
-            <div className="flex items-center gap-md" style={{ marginTop: 20, flexWrap: 'wrap' }}>
-              <Button onClick={() => void run()} disabled={busy || attendees.length < 2 || !game}>
-                {busy ? '배정 중…' : preview ? '다시 배정' : '배정 실행'}
-              </Button>
-              {!game ? <span className="text-body-sm" style={{ opacity: 0.7 }}>이 차시에는 게임이 없습니다. 게임 없는 회차는 아직 지원하지 않습니다.</span> : null}
-              {note ? <span className="text-body-sm" role="status">{note}</span> : null}
-            </div>
-
-            {preview ? (
-              <div style={{ marginTop: 20 }}>
-                <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-                  <Caption>미리보기</Caption>
-                  <Badge>중복 {preview.cost}</Badge>
-                  <Badge>{preview.followedPlan ? '계획대로' : '계획에서 벗어남'}</Badge>
-                  <span className="font-mono text-caption" style={{ opacity: 0.7 }}>시드 {preview.seed}</span>
-                </div>
-                <div className="flex flex-wrap gap-md" style={{ marginTop: 12 }}>
-                  {preview.groups.map((g) => (
-                    <div key={g.id} className="rounded-md" style={{ padding: 12, boxShadow: 'inset 0 0 0 1px #e6e6e6', flex: '1 1 200px' }}>
-                      <p className="text-body-sm" style={{ margin: 0, fontWeight: 600 }}>
-                        {g.id}. {g.name} <span style={{ opacity: 0.6 }}>· {g.memberUids.length}명</span>
-                      </p>
-                      <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
-                        {g.memberUids.map((uid) => (
-                          <li key={uid} className="flex items-center gap-xs" style={{ marginBottom: 4 }}>
-                            <span className="text-body-sm" style={{ flex: 1 }}>{nameOf[uid] ?? uid}</span>
-                            {/* 드래그가 아니다. 키보드로도 옮긴다. */}
-                            <select
-                              className="field"
-                              style={{ width: 88, minHeight: 32, padding: '2px 6px', fontSize: 12 }}
-                              value={g.id}
-                              aria-label={`${nameOf[uid] ?? uid} 옮기기`}
-                              onChange={(e) => move(uid, e.target.value)}
-                            >
-                              {preview.groups.map((o) => (
-                                <option key={o.id} value={o.id}>→ {o.id}</option>
-                              ))}
-                            </select>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-                {preview.manualEdits.length > 0 ? (
-                  <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.75 }}>
-                    수동 조정 {preview.manualEdits.length}건 — 확정하면 기록에 남습니다.
-                  </p>
-                ) : null}
-                <div className="flex items-center gap-md" style={{ marginTop: 16 }}>
-                  <Button onClick={() => void confirm()} disabled={busy}>확정</Button>
-                  <Button variant="secondary" onClick={() => setPreview(null)} disabled={busy}>버리기</Button>
-                </div>
-              </div>
-            ) : null}
-
-            {/* 지각자 */}
-            {roundOf(openLesson) && !preview ? (
-              <div style={{ marginTop: 20 }}>
-                <Caption>늦게 온 학생 넣기</Caption>
-                <div className="flex items-center gap-xs" style={{ marginTop: 8, flexWrap: 'wrap' }}>
-                  <select className="field" style={{ width: 200 }} value={lateUid} onChange={(e) => setLateUid(e.target.value)} aria-label="늦게 온 학생">
-                    <option value="">사람 고르기</option>
-                    {students
-                      .filter((s) => !roundOf(openLesson)!.groups.some((g) => g.memberUids.includes(s.uid)))
-                      .map((s) => (
-                        <option key={s.uid} value={s.uid}>{s.nickname || '이름 없음'}</option>
-                      ))}
-                  </select>
-                  <Button variant="secondary" onClick={() => void joinLate(roundOf(openLesson)!)} disabled={!lateUid}>
-                    비용이 가장 적게 느는 모둠에 넣기
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </Card>
+          <FormationPanel key={openLesson} classId={classId} lessonId={openLesson} cls={cls} students={students} hist={hist} rounds={rounds} />
         </div>
       ) : null}
 
@@ -536,32 +197,6 @@ export function InstructorClassGroups() {
         <PairGrid students={students} hist={hist} />
       </div>
     </AppShell>
-  )
-}
-
-function RoundSummary({ round, nameOf }: { round: GroupRound; nameOf: Record<string, string> }) {
-  return (
-    <div style={{ marginTop: 16 }}>
-      <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-        <Caption>확정된 모둠</Caption>
-        <Badge>중복 {round.cost}</Badge>
-        <Badge>{round.followedPlan ? '계획대로' : '계획에서 벗어남'}</Badge>
-        {round.manualEdits.length > 0 ? <Badge>수동 조정 {round.manualEdits.length}</Badge> : null}
-        <span className="font-mono text-caption" style={{ opacity: 0.7 }}>시드 {round.seed}</span>
-      </div>
-      <ul className="flex flex-wrap gap-xs" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
-        {round.groups.map((g) => (
-          <li key={g.id} className="text-body-sm rounded-md" style={{ padding: '6px 10px', boxShadow: 'inset 0 0 0 1px #e6e6e6' }}>
-            <strong>{g.id}. {g.name}</strong> · {g.memberUids.map((u) => nameOf[u] ?? u).join(', ')}
-          </li>
-        ))}
-      </ul>
-      {round.absentUids.length > 0 ? (
-        <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.75 }}>
-          결석 · {round.absentUids.map((u) => nameOf[u] ?? u).join(', ')}
-        </p>
-      ) : null}
-    </div>
   )
 }
 

@@ -20,7 +20,7 @@ import {
 import { LESSONS } from '@/content/lessons'
 import type { GameId, LessonId } from '@/content/types'
 import type { Repo } from './repo'
-import { pairKey } from '@shared/groups-core'
+import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
   AiLog,
   AiProposal,
@@ -628,34 +628,44 @@ export function createFirestoreRepo(db: Firestore): Repo {
     },
     async confirmGroupRound(classId, round) {
       /*
-       * 한 번에 쓴다. 회차 문서 · 짝마다 동석 기록(+1) · 모둠원의 현재 모둠.
+       * 한 번에 쓴다. 회차 문서 · 짝마다 동석 기록 · 모둠원의 현재 모둠.
        * 짝 기록은 increment 로 올린다 — 읽고 더해 쓰면 두 강사 화면이 겹칠 때 한 번을 잃는다.
+       *
+       * ★ 같은 회차를 다시 확정하면(콘솔의 「다시 나누기」) 이전 확정의 짝을 빼고 새 짝을 더한다.
+       *   그냥 +1 만 하면 한 회차가 두 번 세어져 다음 회차 배정이 그 짝을 피하려 든다.
+       *   그래서 이전 회차 문서를 트랜잭션 안에서 읽는다.
        */
-      const batch = writeBatch(db)
-      batch.set(cd(db, classId, 'groupRounds', round.id), round)
-      for (const g of round.groups) {
-        for (let i = 0; i < g.memberUids.length; i++) {
-          for (let j = i + 1; j < g.memberUids.length; j++) {
-            const key = pairKey(g.memberUids[i], g.memberUids[j])
-            batch.set(
-              cd(db, classId, 'pairHistory', key),
-              { pairKey: key, count: increment(1), lastRound: round.round },
-              { merge: true },
-            )
-          }
-        }
-        for (const uid of g.memberUids) {
-          batch.set(
-            cd(db, classId, 'enrollments', uid),
-            { currentGroupId: g.id, currentRoundId: round.id },
+      const ref = cd(db, classId, 'groupRounds', round.id)
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref)
+        const prev = snap.exists() ? (snap.data() as GroupRound) : null
+        const deltas = pairDeltas(prev ? prev.groups.map((g) => g.memberUids) : null, round.groups.map((g) => g.memberUids))
+        tx.set(ref, round)
+        for (const [key, delta] of Object.entries(deltas)) {
+          tx.set(
+            cd(db, classId, 'pairHistory', key),
+            delta > 0 ? { pairKey: key, count: increment(delta), lastRound: round.round } : { pairKey: key, count: increment(delta) },
             { merge: true },
           )
         }
-      }
-      for (const uid of round.absentUids) {
-        batch.set(cd(db, classId, 'enrollments', uid), { currentGroupId: null, currentRoundId: round.id }, { merge: true })
-      }
-      await batch.commit()
+        const placed = new Set<string>()
+        for (const g of round.groups) {
+          for (const uid of g.memberUids) {
+            placed.add(uid)
+            tx.set(cd(db, classId, 'enrollments', uid), { currentGroupId: g.id, currentRoundId: round.id }, { merge: true })
+          }
+        }
+        for (const uid of round.absentUids) {
+          placed.add(uid)
+          tx.set(cd(db, classId, 'enrollments', uid), { currentGroupId: null, currentRoundId: round.id }, { merge: true })
+        }
+        /* 이전 확정에는 있었는데 이번에는 어디에도 없는 사람 — 모둠 자리를 비운다 */
+        for (const g of prev?.groups ?? []) {
+          for (const uid of g.memberUids) {
+            if (!placed.has(uid)) tx.set(cd(db, classId, 'enrollments', uid), { currentGroupId: null, currentRoundId: round.id }, { merge: true })
+          }
+        }
+      })
     },
     async addLateJoiner(classId, roundId, uid, groupId) {
       await runTransaction(db, async (tx) => {

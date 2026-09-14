@@ -514,6 +514,32 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
     } else pass('지각 합류', '늦게 온 사람이 지정한 모둠에 들어가고, 기록(lateJoins·동석)이 남는다')
   })
 
+  /*
+   * 다시 확정 — 콘솔의 「다시 나누기」. 같은 회차를 새 모둠으로 다시 확정하면
+   * 이전 확정의 짝은 빠지고 새 짝만 남아야 한다. +1 만 하면 한 회차가 두 번 세어진다.
+   * 기대값: 1회차 + (다시 짠) 2회차 + 지각 합류. 이전 2회차의 짝은 흔적이 없어야 한다.
+   */
+  {
+    const r2b = assignGroups({ uids, groupCount: 2, history, round: 2, roundsAhead: 1, seed: 'test:2-redo' })
+    const round2b = { ...round2, groups: r2b.groups.map((m, i) => ({ id: String(i + 1), name: `${i + 1}모둠`, memberUids: m })), seed: r2b.seed, cost: r2b.repeats, plannedNext: encodePlan(r2b.plannedNext), followedPlan: r2b.followedPlan }
+    await teacherRepo.confirmGroupRound(CID2, round2b)
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore()
+      const hist = await db.collection(`classes/${CID2}/pairHistory`).get()
+      const byKey = Object.fromEntries(hist.docs.map((d) => [d.id, d.data()]))
+      const expected = applyRound(history, r2b.groups, 2)
+      let bad = 0
+      for (const [k, rec] of Object.entries(expected)) if ((byKey[k]?.count ?? 0) !== rec.count) bad += 1
+      /* 지각 합류의 짝(count 1)은 남고, 그 밖에 기대에 없는데 count 가 0 이 아닌 짝이 있으면 두 번 세어진 것이다 */
+      const stray = Object.entries(byKey).filter(([k, v]) => !(k in expected) && !k.includes('g-late') && v.count !== 0).length
+      if (bad > 0 || stray > 0) fail('다시 확정', `같은 회차를 다시 확정했더니 pairHistory 가 ${bad}곳 다르고 이전 짝 ${stray}개가 남아 있다 — 이전 확정의 짝을 빼야 한다`)
+      else pass('다시 확정', '같은 회차를 다시 확정하면 이전 확정의 짝이 빠지고 새 짝만 남는다 (두 번 세지 않는다)')
+      const enr = await db.doc(`classes/${CID2}/enrollments/g-a`).get()
+      const gA = round2b.groups.find((g) => g.memberUids.includes('g-a'))
+      if (enr.data()?.currentGroupId !== gA.id) fail('다시 확정 · 현재 모둠', `등록의 currentGroupId 가 ${enr.data()?.currentGroupId} — 다시 확정한 ${gA.id} 이어야 한다`)
+    })
+  }
+
   /* 학생은 자기 등록의 모둠 자리를 못 옮긴다 */
   let moved = false
   try {

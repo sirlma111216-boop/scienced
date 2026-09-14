@@ -2,7 +2,7 @@ import type { LessonId } from '@/content/types'
 import type { TierOverrides } from './tiers'
 import { LESSONS } from '@/content/lessons'
 import type { Repo } from './repo'
-import { pairKey } from '@shared/groups-core'
+import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
   AiProposal,
   AppUser,
@@ -516,17 +516,16 @@ export function createLocalRepo(): Repo {
       return subscribe(() => cb(read<GroupRound[]>(kGroupRounds(classId), [])))
     },
     async confirmGroupRound(classId, round) {
-      const rounds = read<GroupRound[]>(kGroupRounds(classId), []).filter((r) => r.id !== round.id)
-      write(kGroupRounds(classId), [...rounds, round])
+      const all = read<GroupRound[]>(kGroupRounds(classId), [])
+      const prevRound = all.find((r) => r.id === round.id) ?? null
+      write(kGroupRounds(classId), [...all.filter((r) => r.id !== round.id), round])
       const hist = read<PairHistoryDoc[]>(kPairHistory(classId), [])
       const byKey = new Map(hist.map((h) => [h.pairKey, h]))
-      for (const g of round.groups) {
-        for (let i = 0; i < g.memberUids.length; i++)
-          for (let j = i + 1; j < g.memberUids.length; j++) {
-            const key = pairKey(g.memberUids[i], g.memberUids[j])
-            const prev = byKey.get(key)
-            byKey.set(key, { pairKey: key, count: (prev?.count ?? 0) + 1, lastRound: round.round })
-          }
+      /* 다시 확정이면 이전 짝을 빼고 새 짝을 더한다 — Firestore 쪽과 같은 계산 */
+      const deltas = pairDeltas(prevRound ? prevRound.groups.map((g) => g.memberUids) : null, round.groups.map((g) => g.memberUids))
+      for (const [key, delta] of Object.entries(deltas)) {
+        const prev = byKey.get(key)
+        byKey.set(key, { pairKey: key, count: (prev?.count ?? 0) + delta, lastRound: delta > 0 ? round.round : (prev?.lastRound ?? 0) })
       }
       write(kPairHistory(classId), [...byKey.values()])
       const enrollments = read<Enrollment[]>(kEnrollments(classId), [])

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { getLesson } from '@/content/lessons'
 import { GAMES_BY_LESSON } from '@/content/games'
 import { useAuth } from '@/lib/auth'
 import { buildLessonView, classSessionLength, type TierOverrides } from '@/lib/tiers'
-import { roundForLesson } from '@/lib/groups'
+import { formationLessons, historyFromDocs, roundForLesson } from '@/lib/groups'
 import type {
   AiProposal,
   AppUser,
   Enrollment,
   GroupRound,
+  PairHistoryDoc,
   Participation,
   Post,
   ResponseDoc,
@@ -17,6 +18,7 @@ import type {
 } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { DistributionView } from '@/components/response/DistributionView'
+import { FormationPanel } from '@/components/groups/FormationPanel'
 import { LadderPanel } from '@/components/teach/LadderPanel'
 import { MustSay } from '@/components/teach/MustSay'
 import { SubmissionList } from '@/components/teach/SubmissionList'
@@ -44,6 +46,7 @@ export function InstructorLive() {
   const [docs, setDocs] = useState<ResponseDoc[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [groupRounds, setGroupRounds] = useState<GroupRound[]>([])
+  const [pairHistory, setPairHistory] = useState<PairHistoryDoc[]>([])
   const [posts, setPosts] = useState<Post[]>([])
   const [proposals, setProposals] = useState<AiProposal[]>([])
   /*
@@ -114,12 +117,14 @@ export function InstructorLive() {
     const c = repo.watchAiProposals(classId, setProposals)
     const d = repo.watchEnrollments(classId, setEnrollments)
     const e = repo.watchGroupRounds(classId, setGroupRounds)
+    const f = repo.watchPairHistory(classId, setPairHistory)
     return () => {
       a()
       b()
       c()
       d()
       e()
+      f()
     }
   }, [repo, classId])
 
@@ -152,6 +157,10 @@ export function InstructorLive() {
     () => new Set(docs.filter((d) => (d.latestV ?? 0) > 0).map((d) => d.uid)),
     [docs],
   )
+  /* 모둠 나누기 — 이 차시가 나누는 회차면 콘솔 맨 위에 패널이 붙는다 (6차). */
+  const activeEnrollments = useMemo(() => enrollments.filter((e) => e.status === 'active'), [enrollments])
+  const pairHist = useMemo(() => historyFromDocs(pairHistory), [pairHistory])
+  const isFormationLesson = lesson ? formationLessons(currentClass).includes(lesson.id) : false
 
   /** 반응이 갈린 글 — 다음 추첨의 후보 풀로 넘어간다 */
   const splitPosts = useMemo(
@@ -241,6 +250,31 @@ export function InstructorLive() {
           학생 화면은 강제로 이동하지 않습니다. 안내만 뜹니다.
         </Caption>
       </div>
+
+      {/*
+        모둠 나누기 — 학생이 게임에서 고르는 동안 여기서 몇 명이 골랐는지 보고, 배정 → 미리보기 → 확정한다.
+        ★ 처음에는 모둠 관리 화면에만 있어서 수업 중에 콘솔에서 찾을 수 없었다. 수업 중에 쓰는 것은 콘솔에 있어야 한다.
+      */}
+      {isFormationLesson && classId ? (
+        <div style={{ marginTop: 24 }}>
+          <FormationPanel
+            key={lesson.id}
+            classId={classId}
+            lessonId={lesson.id}
+            cls={currentClass}
+            students={activeEnrollments}
+            hist={pairHist}
+            rounds={groupRounds}
+          />
+          <Caption style={{ marginTop: 6 }}>
+            모둠 수·회차 목록·동석 격자는{' '}
+            <Link to={`/instructor/class/${classId}/groups`} className="text-link">
+              모둠 관리
+            </Link>
+            에 있습니다.
+          </Caption>
+        </div>
+      ) : null}
 
       {step ? (
         <>

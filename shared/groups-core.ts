@@ -697,3 +697,25 @@ export function applyRound(
       }
   return next
 }
+
+/** 모둠 목록의 모든 짝 키 */
+export function pairKeysOf(groups: string[][]): PairKey[] {
+  const out: PairKey[] = []
+  for (const m of groups)
+    for (let i = 0; i < m.length; i++)
+      for (let j = i + 1; j < m.length; j++) out.push(pairKey(m[i], m[j]))
+  return out
+}
+
+/**
+ * 회차를 다시 확정할 때 동석 기록에 더할 값.
+ * 같은 회차를 두 번 확정하면 짝이 두 번 세어진다 — 이전 확정의 짝은 −1, 새 확정의 짝은 +1, 양쪽에 다 있는 짝은 0.
+ * 처음 확정(이전 없음)이면 전부 +1.
+ */
+export function pairDeltas(prevGroups: string[][] | null, nextGroups: string[][]): Record<PairKey, number> {
+  const d: Record<PairKey, number> = {}
+  if (prevGroups) for (const k of pairKeysOf(prevGroups)) d[k] = (d[k] ?? 0) - 1
+  for (const k of pairKeysOf(nextGroups)) d[k] = (d[k] ?? 0) + 1
+  for (const k of Object.keys(d)) if (d[k] === 0) delete d[k]
+  return d
+}

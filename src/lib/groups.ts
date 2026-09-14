@@ -10,6 +10,7 @@ import {
   assignGroups,
   makeRng,
   pairKey,
+  pairKeysOf,
   type AssignInput,
   type AssignResult,
   type PairRecord,
@@ -66,6 +67,21 @@ export function historyFromDocs(docs: PairHistoryDoc[]): Record<string, PairReco
   const out: Record<string, PairRecord> = {}
   for (const d of docs) out[d.pairKey] = { count: d.count, lastRound: d.lastRound }
   return out
+}
+
+/**
+ * 이미 확정된 회차를 다시 나눌 때 — 그 회차가 올린 짝을 뺀 기록.
+ * 빼지 않으면 방금 확정한 모둠을 「이미 만난 사람」으로 보고 피하려 든다.
+ */
+export function historyWithoutRound(history: Record<string, PairRecord>, groups: string[][]): Record<string, PairRecord> {
+  const next: Record<string, PairRecord> = { ...history }
+  for (const k of pairKeysOf(groups)) {
+    const prev = next[k]
+    if (!prev) continue
+    if (prev.count <= 1) delete next[k]
+    else next[k] = { ...prev, count: prev.count - 1 }
+  }
+  return next
 }
 
 /** 학생은 pairHistory 를 읽지 못한다. 회차 문서에서 「누구와 만났나」를 직접 센다. */
