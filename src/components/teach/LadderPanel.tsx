@@ -10,7 +10,7 @@ import {
   weightedDraw,
   winnersFromLadder,
 } from '@/lib/ladder'
-import type { AppUser, GroupRound, LadderState, Participation } from '@/lib/types'
+import type { AppUser, Enrollment, GroupRound, LadderState, Participation } from '@/lib/types'
 import { Badge, Button, Caption, Card, ScrollX } from '@/components/ui'
 import { PickerVisual } from '@/components/activity/PickerVisual'
 
@@ -45,6 +45,7 @@ export function LadderPanel({
   game,
   state,
   users,
+  enrollments,
   participation,
   groupRound = null,
 }: {
@@ -54,6 +55,12 @@ export function LadderPanel({
   game: GameDef
   state: LadderState | null
   users: AppUser[]
+  /**
+   * 이 클래스의 등록(active). 후보와 자리 수는 여기서 나온다.
+   * ★ 예전에는 전역 사용자 목록의 학생 계정을 전부 후보로 삼았다 — 수강생이 두 명인 반에 자리가 16개 열렸다.
+   *   콘솔 명단과 같은 원칙이다: 이 클래스에 등록한 사람만 센다.
+   */
+  enrollments: Enrollment[]
   participation: Participation[]
   /** 6차 모둠 나누기의 이 차시 모둠. candidateRule 이 groupRepresentative 면 모둠마다 한 명만 후보다. */
   groupRound?: GroupRound | null
@@ -62,7 +69,12 @@ export function LadderPanel({
   const [excluded, setExcluded] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
 
-  const students = useMemo(() => users.filter((u) => u.role === 'student'), [users])
+  const students = useMemo<AppUser[]>(() => {
+    const byUid = new Map(users.map((u) => [u.uid, u]))
+    return enrollments
+      .filter((e) => e.status === 'active')
+      .map((e) => byUid.get(e.uid) ?? ({ uid: e.uid, nickname: e.nickname, role: 'student' } as AppUser))
+  }, [users, enrollments])
   const candidates = useMemo(() => {
     const present = students.filter((s) => !excluded.includes(s.uid))
     /*
@@ -84,8 +96,12 @@ export function LadderPanel({
   }, [students, excluded, game.candidateRule, groupRound, participation])
 
   const nicknames = useMemo(
-    () => Object.fromEntries(users.map((u) => [u.uid, u.nickname || '이름 없음'])),
-    [users],
+    () =>
+      Object.fromEntries([
+        ...users.map((u) => [u.uid, u.nickname || '이름 없음']),
+        ...enrollments.filter((e) => e.nickname).map((e) => [e.uid, e.nickname]),
+      ]),
+    [users, enrollments],
   )
 
   const weights = useMemo(() => {
@@ -107,7 +123,8 @@ export function LadderPanel({
     if (!repo) return
     setBusy(true)
     const seed = await requestSeed(game.id, round)
-    const columns = Math.max(2, candidates.length || 6)
+    /* 자리 수 = 후보 수. 후보가 한 명이어도 사다리는 두 칸이 있어야 그려진다. */
+    const columns = Math.max(2, candidates.length)
     await repo.setLadder(classId, lessonId, game.id, {
       gameId: game.id,
       phase: 'seating',

@@ -333,7 +333,7 @@ export function InstructorLive() {
         ) : null}
         {overlay?.kind === 'ladder' && classId && step && game ? (
           <Overlay title={`발표자 뽑기 · ${step.title}`} onClose={() => setOverlay(null)} wide>
-            <LadderPanel classId={classId} lessonId={lesson.id} stepId={step.id} game={game} state={session?.ladders?.[game.id] ?? null} users={users} participation={participation} groupRound={round} />
+            <LadderPanel classId={classId} lessonId={lesson.id} stepId={step.id} game={game} state={session?.ladders?.[game.id] ?? null} users={users} enrollments={activeEnrollments} participation={participation} groupRound={round} />
           </Overlay>
         ) : null}
         {overlay?.kind === 'student' ? (
