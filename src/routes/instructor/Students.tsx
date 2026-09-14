@@ -15,16 +15,17 @@ import { Badge, Button, Caption, Card, Notice, ScrollX } from '@/components/ui'
  * 계정 생성·초기화는 전부 서버에서 한다. 이 화면은 요청만 보낸다.
  */
 export function InstructorStudents() {
-  const { repo, isInstructor, classId } = useAuth()
+  const { repo, isInstructor, classId, classes } = useAuth()
   const [users, setUsers] = useState<AppUser[]>([])
   const [participation, setParticipation] = useState<Participation[]>([])
   const [csv, setCsv] = useState('')
   const [log, setLog] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  /* 학번으로 진단·되살리기 — 명단(users 문서)에 없는 계정도 다룬다 */
+  /* 학번으로 진단·되살리기·등록시키기 — 명단(users 문서)에 없는 계정도 다룬다 */
   const [repairId, setRepairId] = useState('')
   const [repairLog, setRepairLog] = useState<string | null>(null)
   const [repairBusy, setRepairBusy] = useState(false)
+  const [enrollTo, setEnrollTo] = useState('')
 
   useEffect(() => {
     if (!repo) return
@@ -93,16 +94,25 @@ export function InstructorStudents() {
     }
   }
 
-  async function repairStudent(repair: boolean) {
+  async function repairStudent(mode: 'diagnose' | 'repair' | 'enroll') {
     const studentId = repairId.trim()
     if (!/^\d{4,}$/.test(studentId)) {
       setRepairLog('학번을 숫자로 적어 주세요.')
       return
     }
+    const repair = mode === 'repair'
     if (repair && !confirm(`${studentId} 계정을 되살립니다 — users 문서를 채우고 비밀번호를 학번으로 되돌립니다. 응답은 건드리지 않습니다. 계속할까요?`)) return
+    if (mode === 'enroll' && !enrollTo) {
+      setRepairLog('등록시킬 클래스를 고르세요.')
+      return
+    }
     setRepairBusy(true)
     try {
-      const data = await apiPost<{ ok: boolean; found?: boolean; report?: string; actions?: string[]; message?: string }>('/api/admin/students/repair', { studentId, repair })
+      const data = await apiPost<{ ok: boolean; found?: boolean; report?: string; actions?: string[]; message?: string }>('/api/admin/students/repair', {
+        studentId,
+        repair,
+        enrollClassId: mode === 'enroll' ? enrollTo : undefined,
+      })
       const parts = [data.report ?? '', ...(data.actions ?? []).map((a) => `✓ ${a}`), data.message ?? ''].filter(Boolean)
       setRepairLog(parts.join('\n') || (data.ok ? '완료' : '실패'))
     } catch (err) {
@@ -190,12 +200,33 @@ export function InstructorStudents() {
               onChange={(e) => setRepairId(e.target.value)}
               style={{ width: 180 }}
             />
-            <Button variant="secondary" disabled={repairBusy} onClick={() => void repairStudent(false)}>
+            <Button variant="secondary" disabled={repairBusy} onClick={() => void repairStudent('diagnose')}>
               {repairBusy ? '보는 중…' : '진단'}
             </Button>
-            <Button disabled={repairBusy} onClick={() => void repairStudent(true)}>
+            <Button disabled={repairBusy} onClick={() => void repairStudent('repair')}>
               되살리기 — 문서 채우고 비밀번호 초기화
             </Button>
+          </div>
+          {/*
+            강사가 학생을 클래스에 직접 넣는다.
+            규칙상 등록 문서는 학생 본인만, 그것도 「수강 등록 열림」일 때만 만들 수 있어 강사가 넣을 길이 없었다.
+            등록이 닫힌 클래스에 늦게 온 학생, 두 수업을 함께 듣는 학생을 여기서 넣는다.
+          */}
+          <div className="flex flex-wrap items-center gap-xs" style={{ marginTop: 8 }}>
+            <select className="field" style={{ width: 260 }} value={enrollTo} onChange={(e) => setEnrollTo(e.target.value)} aria-label="등록시킬 클래스">
+              <option value="">등록시킬 클래스 고르기</option>
+              {classes
+                .filter((c) => c.status === 'active')
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.displayName}
+                  </option>
+                ))}
+            </select>
+            <Button variant="secondary" disabled={repairBusy || !enrollTo} onClick={() => void repairStudent('enroll')}>
+              이 클래스에 등록시키기
+            </Button>
+            <Caption>수강 등록이 닫혀 있어도 넣습니다. 학생은 새로고침하면 그 클래스로 들어갑니다.</Caption>
           </div>
           {repairLog ? (
             <pre className="text-body-sm" role="status" style={{ marginTop: 12, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
