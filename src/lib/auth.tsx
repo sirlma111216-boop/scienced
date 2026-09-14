@@ -48,8 +48,10 @@ interface AuthState {
   currentClass: ClassDoc | null
   /** 전체 클래스 (강사는 전부, 학생은 모집 중인 것과 자기가 등록한 것) */
   classes: ClassDoc[]
-  /** 내가 등록한 클래스 id */
+  /** 내가 등록한(active) 클래스 id */
   myClassIds: string[]
+  /** 등록 확인이 끝났는가. 끝나기 전에는 「등록 없음」이 확정이 아니다 */
+  enrollmentsChecked: boolean
   selectClass: (classId: string) => Promise<void>
   enrollIn: (classId: string, joinCode?: string) => Promise<void>
 
@@ -101,6 +103,14 @@ function writableUser(user: AppUser, instructor: boolean): AppUser {
   return out as unknown as AppUser
 }
 
+/**
+ * 한 수업에 들어간 학생이 다른 수업을 고르려 할 때 보이는 문장.
+ * 클래스 선택 화면과 enrollIn 이 같은 말을 쓴다.
+ */
+export function lockedMessage(currentName: string): string {
+  return `이미 「${currentName}」에 등록되어 있습니다. 학생은 한 번에 한 수업만 들을 수 있어, 담당 교수가 그 수업에서 내보내기 전에는 다른 수업으로 들어갈 수 없습니다.`
+}
+
 export function needsSetup(user: AppUser | null): boolean {
   if (!user) return false
   return user.mustResetPassword || !user.nickname?.trim()
@@ -134,6 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [classes, setClasses] = useState<ClassDoc[]>([])
   const [classId, setClassId] = useState<string | null>(null)
   const [myEnrollments, setMyEnrollments] = useState<Record<string, Enrollment>>({})
+  /** 등록 확인이 한 번이라도 끝났는가 — 끝나기 전에는 「등록 없음」을 믿지 않는다 */
+  const [enrollmentsChecked, setEnrollmentsChecked] = useState(false)
   const repoRef = useRef<Repo | null>(null)
 
   // 저장소를 한 번만 고른다.
@@ -164,25 +176,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return repo.watchClasses(setClasses)
   }, [repo, user?.uid])
 
-  /** 내가 어느 클래스에 등록되어 있는지 확인한다. */
+  /**
+   * 내가 어느 클래스에 등록되어 있는지 확인한다. active 인 등록만 「내 클래스」다.
+   *
+   * ★ 예전에는 클래스를 차례로 읽다가 하나라도 읽지 못하면(규칙이 막으면) 그 자리에서 멈췄고,
+   *   그러면 목록이 갱신되지 않아 이미 등록한 수업이 「등록할 수 있는 클래스」로 다시 보였다.
+   *   클래스 순서에 따라 됐다 안 됐다 했다 — 학생이 같은 수업을 두 번 등록하거나 다른 수업으로 새는 길이었다.
+   *   한 클래스를 못 읽어도 나머지는 센다. 못 읽은 것은 콘솔에 남긴다.
+   * ★ 내보내진(ended) 등록은 세지 않는다. 세면 내보낸 수업이 「내 클래스」로 남아 들어가려다 막힌다.
+   */
   useEffect(() => {
     if (!user) {
       setMyEnrollments({})
+      setEnrollmentsChecked(false)
       return
     }
     let cancelled = false
     void (async () => {
+      const results = await Promise.all(
+        classes.map(async (c) => {
+          try {
+            return [c.id, await repo.getEnrollment(c.id, user.uid)] as const
+          } catch (err) {
+            console.warn('[등록 확인] 읽지 못했다:', c.id, err)
+            return [c.id, null] as const
+          }
+        }),
+      )
       const found: Record<string, Enrollment> = {}
-      for (const c of classes) {
-        const e = await repo.getEnrollment(c.id, user.uid)
-        if (e) found[c.id] = e
-      }
-      if (!cancelled) setMyEnrollments(found)
+      for (const [cid, e] of results) if (e && e.status === 'active') found[cid] = e
+      if (cancelled) return
+      setMyEnrollments(found)
+      setEnrollmentsChecked(true)
     })()
     return () => {
       cancelled = true
     }
   }, [repo, user, classes])
+
+  /**
+   * 학생이 내보내진 클래스를 계속 보고 있으면 안 된다.
+   * lastClassId 는 내보내기와 무관하게 남아 있으므로, 등록 확인이 끝난 뒤 active 등록이 없는 클래스는 내려놓는다.
+   * 강사는 등록 없이 클래스를 본다 — 여기 해당하지 않는다.
+   */
+  useEffect(() => {
+    if (!enrollmentsChecked || isInstructor || !classId) return
+    if (!myEnrollments[classId]) setClassId(null)
+  }, [enrollmentsChecked, isInstructor, classId, myEnrollments])
 
   /** 로그인한 uid 로 users/{uid} 와 instructors/{uid} 를 확인한다. */
   const loadProfile = useCallback(
@@ -323,6 +363,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (given !== target.joinCode) throw new Error('참여 코드가 맞지 않습니다.')
       }
       /*
+       * ★ 학생은 한 번에 한 수업만 듣는다.
+       *   한 수업에 들어간 학생은 담당 교수가 내보내기 전에는 다른 수업으로 옮길 수 없다.
+       *   응답·의견·모둠 기록이 클래스 안에 쌓이므로, 오가면 두 수업에 흔적이 갈라진다.
+       *   강사 계정은 등록으로 클래스를 보는 것이 아니므로 해당하지 않는다.
+       */
+      if (!isInstructor) {
+        const current = Object.keys(myEnrollments).find((id) => id !== cid && myEnrollments[id].status === 'active')
+        if (current) {
+          const name = classes.find((c) => c.id === current)?.displayName ?? current
+          throw new Error(lockedMessage(name))
+        }
+      }
+      /*
        * Firestore 는 undefined 를 저장하지 못한다. setDoc 이 통째로 거부한다.
        * users/{uid} 문서가 없는 계정(콘솔에서 손으로 만들었거나 명단 저장이 실패한 경우)은
        * nickname·studentId 가 undefined 라, 그대로 넣으면 수강 등록이 통째로 막혔다.
@@ -351,7 +404,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }))
       await selectClass(cid)
     },
-    [repo, user, classes, selectClass],
+    [repo, user, classes, selectClass, isInstructor, myEnrollments],
   )
 
   const signInStudent = useCallback(async (studentId: string, password: string) => {
@@ -473,6 +526,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentClass,
       classes,
       myClassIds,
+      enrollmentsChecked,
       selectClass,
       enrollIn,
       signInStudent,
@@ -492,6 +546,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentClass,
       classes,
       myClassIds,
+      enrollmentsChecked,
       selectClass,
       enrollIn,
       signInStudent,

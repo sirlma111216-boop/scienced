@@ -213,8 +213,8 @@ export function createLocalRepo(): Repo {
       return read<Enrollment[]>(kEnrollments(classId), []).find((e) => e.uid === uid) ?? null
     },
     async enroll(classId, e) {
-      const list = read<Enrollment[]>(kEnrollments(classId), [])
-      if (list.some((x) => x.uid === e.uid)) return
+      /* 내보내진(ended) 등록 위에 다시 등록하면 새 문서로 덮는다 — Firestore 의 setDoc 과 같다 */
+      const list = read<Enrollment[]>(kEnrollments(classId), []).filter((x) => x.uid !== e.uid)
       write(kEnrollments(classId), [...list, e])
     },
     async updateEnrollment(classId, uid, patch) {

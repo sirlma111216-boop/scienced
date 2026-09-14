@@ -172,7 +172,12 @@ service cloud.firestore {
 
       /* ── 수강 등록 ── */
       match /enrollments/{userId} {
-        allow read: if isEnrolled(cid) || isInstructor();
+        /*
+         * 자기 등록 문서는 등록 전에도 읽는다 — 「없음」을 확인해야 클래스 선택 화면이 선다.
+         * 예전에는 등록한 클래스에서만 읽혀서, 안 들어간 클래스를 먼저 읽으면 확인이 통째로 멈췄다.
+         * 남의 등록은 같은 클래스 수강생과 강사만.
+         */
+        allow read: if isSelf(userId) || isEnrolled(cid) || isInstructor();
         // 학생이 스스로 등록한다. 모집 중이고 보관되지 않은 클래스만.
         allow create: if isSelf(userId)
                       && classDoc(cid).enrollmentOpen == true

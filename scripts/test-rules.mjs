@@ -146,6 +146,8 @@ const asAnon = env.unauthenticatedContext().firestore()
 {
   await assertSucceeds(asS1.doc(`classes/${A}/enrollments/${S1}`).get())
   await assertFails(asS1.doc(`classes/${B}/enrollments/${S2}`).get())
+  /* 자기 등록 문서는 등록하지 않은 클래스에서도 읽힌다(없음을 확인해야 클래스 선택 화면이 선다) */
+  await assertSucceeds(asS1.doc(`classes/${B}/enrollments/${S1}`).get())
   await assertFails(asS1.doc(`classes/${B}/lessonState/01`).get())
   await assertFails(asS1.doc(`classes/${B}/lessons/01/steps/step-open/responses/${S2}`).get())
   await assertFails(asS1.doc(`classes/${B}/lessons/01/steps/step-open/posts/p1`).get())
