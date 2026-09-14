@@ -26,6 +26,7 @@ import { Badge, Button, Caption, usePresent } from '@/components/ui'
 import { NamesProvider, Overlay, submitted, useNames } from '@/components/console/shared'
 import { CanvasGridView, CanvasThumb, ChoiceView, GateView, ResponseCardsView, SorterView, WallView } from '@/components/console/BlockViews'
 import { RosterColumn, StudentDetail } from '@/components/console/Roster'
+import { MusicToggle } from '@/components/console/MusicToggle'
 
 /**
  * 진행 콘솔 (7차 지시서 작업 R).
@@ -461,6 +462,8 @@ function ProgressBar(p: {
 
         <span style={{ flex: 1 }} />
 
+        {/* 배경음악 — 강사 노트북의 파일을 그 자리에서 튼다. 학생에게는 가지 않는다 */}
+        <MusicToggle />
         <label className="flex items-center gap-xxs text-body-sm">
           <input type="checkbox" checked={p.hideNames || present} disabled={present} onChange={(e) => p.onHideNames(e.target.checked)} />
           실명 가리기
