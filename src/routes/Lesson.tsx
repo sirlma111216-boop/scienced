@@ -420,11 +420,19 @@ export function Lesson() {
           <section>
             {/* 현재 모둠 — 차시 화면 상단에 늘 보인다. 두 차시 동안 유지된다 (6차 P.3). */}
             {myGroup && activeRound ? (
-              <p className="text-body-sm" style={{ margin: '0 0 10px', opacity: 0.85 }}>
-                <Badge solid>{myGroup.id}모둠</Badge>{' '}
-                <strong>{myGroup.name}</strong> ·{' '}
-                {myGroup.memberUids.map((u) => nicknames[u] ?? '이름 없음').join(' · ')}
-                <span className="caption" style={{ marginLeft: 8 }}>{Number(activeRound.lessonId)}강에 나눈 모둠</span>
+              <p className="flex items-center gap-xs text-body-sm" style={{ margin: '0 0 12px', flexWrap: 'wrap' }}>
+                {/* 모둠 번호가 먼저, 크게. 이름·모둠원은 그 뒤에 작게. */}
+                <span
+                  className="text-card-title"
+                  style={{ padding: '2px 14px', borderRadius: 999, background: '#111', color: '#fff', lineHeight: 1.5 }}
+                >
+                  {myGroup.id}모둠
+                </span>
+                <span>
+                  <strong>{myGroup.name}</strong> ·{' '}
+                  {myGroup.memberUids.map((u) => nicknames[u] ?? '이름 없음').join(' · ')}
+                  <span className="caption" style={{ marginLeft: 8 }}>{Number(activeRound.lessonId)}강에 나눈 모둠</span>
+                </span>
               </p>
             ) : null}
             {/* 단계 제목 옆에 소요 시간을 붙이지 않는다 (3차 D). */}

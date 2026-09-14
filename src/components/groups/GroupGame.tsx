@@ -262,9 +262,24 @@ function GroupResult({
     <section aria-labelledby="group-result-title" style={{ marginBottom: 40 }}>
       <ColorBlock tone="pink">
         <p className="eyebrow">모둠 나누기 · {game.title}</p>
-        <h2 id="group-result-title" className="text-headline" style={{ margin: '12px 0 0' }}>
-          {final ? '모둠이 정해졌습니다' : phase === 'mine' ? '여러분에게 배달된 카드' : '결과를 봅니다'}
-        </h2>
+        {/*
+          결과가 나오면 「내가 몇 모둠인가」가 화면에서 가장 큰 글자다.
+          ★ 처음에는 카드 안의 작은 배지뿐이어서 학생이 결과 화면에서 자기 모둠 번호를 찾아야 했다.
+        */}
+        {final && myGroup ? (
+          <>
+            <h2 id="group-result-title" className="text-display-lg" style={{ margin: '12px 0 0', fontWeight: 600 }}>
+              {myGroup.id}모둠
+            </h2>
+            <p className="text-subhead" style={{ margin: '4px 0 0' }}>
+              {myGroup.name} · 나는 <strong>{myGroup.id}모둠</strong>입니다
+            </p>
+          </>
+        ) : (
+          <h2 id="group-result-title" className="text-headline" style={{ margin: '12px 0 0' }}>
+            {final ? '모둠이 정해졌습니다' : phase === 'mine' ? '여러분에게 배달된 카드' : '결과를 봅니다'}
+          </h2>
+        )}
         <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.85 }}>
           {game.effectScope}
         </p>
@@ -291,10 +306,18 @@ function GroupResult({
               ? round.groups.map((g, gi) => (
                   <span
                     key={g.id}
-                    className="caption"
-                    style={{ position: 'absolute', left: `${6 + (88 * (gi + 0.5)) / round.groups.length}%`, top: 8, transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}
+                    className="text-body-sm"
+                    style={{
+                      position: 'absolute',
+                      left: `${6 + (88 * (gi + 0.5)) / round.groups.length}%`,
+                      top: 8,
+                      transform: 'translateX(-50%)',
+                      whiteSpace: 'nowrap',
+                      fontWeight: g.id === myGroup?.id ? 700 : 400,
+                      opacity: g.id === myGroup?.id ? 1 : 0.7,
+                    }}
                   >
-                    {g.name}
+                    {g.id}모둠 · {g.name}
                   </span>
                 ))
               : null}
