@@ -12,9 +12,11 @@ import type { LumiActivity } from './types'
  *   부모 → 게임   lumi:mount(config) · lumi:start · lumi:stop · lumi:restart · lumi:destroy
  * 부모는 event.origin 과 event.source 를 확인하고, postMessage 의 targetOrigin 에 '*' 를 쓰지 않는다.
  *
- * 게임 주소는 VITE_LUMI_ORIGIN 에 둔다. 비어 있으면 화면이 「아직 연결되지 않았다」고 말한다 — 예시 주소로 동작을 흉내 내지 않는다.
+ * 게임 주소는 Render 에 배포한 실제 주소다(강의자가 2026-09-15 에 준 것). 다른 곳으로 옮기면 VITE_LUMI_ORIGIN 으로 바꾼다.
+ * 빌드 변수가 비어 있어도 이 주소로 붙는다 — Pages 대시보드에 변수를 더 넣지 않아도 되게.
  */
-export const LUMI_ORIGIN = String(import.meta.env.VITE_LUMI_ORIGIN ?? '').replace(/\/+$/, '')
+export const LUMI_DEFAULT_ORIGIN = 'https://gamerun-mlhh.onrender.com'
+export const LUMI_ORIGIN = (String(import.meta.env.VITE_LUMI_ORIGIN ?? '').trim() || LUMI_DEFAULT_ORIGIN).replace(/\/+$/, '')
 export const lumiConfigured = () => /^https?:\/\//.test(LUMI_ORIGIN)
 export const LUMI_MAX_PLAYERS = 30
 

@@ -135,7 +135,7 @@ AI 분류 요청  →  addAiProposal (status: pending)  →  /instructor/ai-revi
 
 | 이름 | 값 |
 |---|---|
-| `VITE_LUMI_ORIGIN` | 루미 런 게임 주소 (Render origin). 게임 쪽에는 `LESSON_RESULT_URL=https://scienced.labbitory.com/api/lumi/result` 와 `ALLOWED_ORIGINS` 에 이 앱 주소를 넣는다 |
+| `VITE_LUMI_ORIGIN` | 루미 런 게임 주소. 비어 있으면 코드의 기본값 `https://gamerun-mlhh.onrender.com`. 게임 쪽(Render)에는 `LESSON_SHARED_SECRET`(같은 비밀)과 `LESSON_RESULT_URL=https://scienced.labbitory.com/api/lumi/result` 를 넣는다 |
 
 #### ① 구글 클라우드에서 API 를 켠다
 

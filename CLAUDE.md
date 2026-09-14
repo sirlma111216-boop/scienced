@@ -86,7 +86,7 @@ Vertex AI 는 무료 등급이 없어 결제 계정도 연결되어 있어야 �
 - **발표자는 webhook 으로만 확정된다.** 브라우저의 `lumi:result` 는 「확인 중」으로만 보이고, 게임 서버가 서명해 `/api/lumi/result` 로 보낸 결과가 세션(`lumi.result` · `ladders[gameId].winnerUids`) · `lumiResults` · `picks` · `participation.presentCount` 에 적힌다. 같은 경기는 한 번만 센다.
 - 학생은 코드·닉네임을 넣지 않는다. 강사가 「게임 방 만들기」를 누르면 세션 `lumi.roomCode` 가 적히고, 학생 화면은 `/api/lumi/ticket` 으로 자기 티켓을 받아 저절로 들어간다. 티켓은 현재 활동(`activityInstanceId`)에만 나온다.
 - 동점은 공동 선정이다(N명을 요청해도 더 뽑힐 수 있다). 완주가 없으면 빈 결과를 그대로 적는다 — 임의로 채우지 않는다.
-- **외부 설정 넷이 다 있어야 한다.** Cloudflare `LUMI_SHARED_SECRET` · `VITE_LUMI_ORIGIN`(빌드 변수 — 게임 주소, 없으면 화면이 「연결되지 않았다」고 말한다) / Render `LESSON_SHARED_SECRET`(같은 값) · `LESSON_RESULT_URL` · `ALLOWED_ORIGINS`(강의 앱 주소 포함). 하나라도 빠지면 그 자리에서 조용히 막힌다.
+- **외부 설정 셋이 다 있어야 한다.** Cloudflare `LUMI_SHARED_SECRET` / Render `LESSON_SHARED_SECRET`(같은 값) · `LESSON_RESULT_URL`. 게임 주소는 `src/lib/lumi.ts` 의 `LUMI_DEFAULT_ORIGIN`(https://gamerun-mlhh.onrender.com)이고 `VITE_LUMI_ORIGIN` 은 옮길 때만. 게임 `/health` 의 `lesson.configured` · `resultUrl` 로 Render 쪽을 확인한다. Render 의 `ALLOWED_ORIGINS` 는 두지 않는다(WebSocket 은 iframe 이 있는 게임 origin 에서 오므로 기본 같은-host 검사로 충분하고, 강의 앱 주소만 넣으면 오히려 막힌다).
 - 로컬 저장 모드에서는 서버 함수가 없으므로 티켓을 브라우저가 `local-dev` 비밀로 만든다(`fetchTicket`). 게임 서버를 `LESSON_SHARED_SECRET=local-dev` 로 띄우면 방 만들기·자동 참가·경기까지 돈다. webhook 은 `npm run test:lumi` 가 **그 함수 그대로** 에뮬레이터에 대고 확인한다.
 
 ## 강의 콘텐츠를 고칠 때
