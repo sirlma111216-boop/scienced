@@ -103,14 +103,6 @@ function writableUser(user: AppUser, instructor: boolean): AppUser {
   return out as unknown as AppUser
 }
 
-/**
- * 한 수업에 들어간 학생이 다른 수업을 고르려 할 때 보이는 문장.
- * 클래스 선택 화면과 enrollIn 이 같은 말을 쓴다.
- */
-export function lockedMessage(currentName: string): string {
-  return `이미 「${currentName}」에 등록되어 있습니다. 학생은 한 번에 한 수업만 들을 수 있어, 담당 교수가 그 수업에서 내보내기 전에는 다른 수업으로 들어갈 수 없습니다.`
-}
-
 export function needsSetup(user: AppUser | null): boolean {
   if (!user) return false
   return user.mustResetPassword || !user.nickname?.trim()
@@ -363,18 +355,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (given !== target.joinCode) throw new Error('참여 코드가 맞지 않습니다.')
       }
       /*
-       * ★ 학생은 한 번에 한 수업만 듣는다.
-       *   한 수업에 들어간 학생은 담당 교수가 내보내기 전에는 다른 수업으로 옮길 수 없다.
-       *   응답·의견·모둠 기록이 클래스 안에 쌓이므로, 오가면 두 수업에 흔적이 갈라진다.
-       *   강사 계정은 등록으로 클래스를 보는 것이 아니므로 해당하지 않는다.
+       * 한 학생이 두 수업 이상을 듣는다 — 과학교육론과 과학교과교수법을 함께 듣는 학생이 실제로 있다.
+       * 클래스마다 등록 문서가 따로 있고 응답·의견·모둠도 클래스 안에서만 움직이므로, 겹쳐 들어도 섞이지 않는다.
+       * 상단 클래스 전환으로 오간다. (한때 「한 번에 한 수업」으로 잠갔다가 되돌렸다 — 2026-09-14.)
        */
-      if (!isInstructor) {
-        const current = Object.keys(myEnrollments).find((id) => id !== cid && myEnrollments[id].status === 'active')
-        if (current) {
-          const name = classes.find((c) => c.id === current)?.displayName ?? current
-          throw new Error(lockedMessage(name))
-        }
-      }
       /*
        * Firestore 는 undefined 를 저장하지 못한다. setDoc 이 통째로 거부한다.
        * users/{uid} 문서가 없는 계정(콘솔에서 손으로 만들었거나 명단 저장이 실패한 경우)은
@@ -404,7 +388,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }))
       await selectClass(cid)
     },
-    [repo, user, classes, selectClass, isInstructor, myEnrollments],
+    [repo, user, classes, selectClass],
   )
 
   const signInStudent = useCallback(async (studentId: string, password: string) => {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { lockedMessage, needsSetup, useAuth } from '@/lib/auth'
+import { needsSetup, useAuth } from '@/lib/auth'
 import { AppShell } from '@/components/layout/AppShell'
 import { Badge, Button, Caption, Card, ColorBlock, Notice } from '@/components/ui'
 
@@ -12,10 +12,9 @@ import { Badge, Button, Caption, Card, ColorBlock, Notice } from '@/components/u
  *
  * 목록에는 모집 중인 클래스만 보인다. 이미 등록한 클래스는 위에 따로 모은다.
  *
- * ★ 학생은 한 번에 한 수업만 듣는다.
- *   한 수업에 들어간 학생에게는 다른 수업의 「수강 등록」을 보이지 않고, 왜 못 고르는지를 적는다.
- *   담당 교수가 내보내 듣는 수업이 없어진 학생만 다시 고를 수 있다.
- *   예전에는 등록 확인이 클래스 순서에 따라 됐다 안 됐다 해서, 학생이 이 수업 저 수업을 오갈 수 있었다.
+ * 한 학생이 두 수업 이상을 들을 수 있다(과학교육론 + 과학교과교수법). 등록한 것은 「내 클래스」에,
+ * 더 등록할 수 있는 것은 아래에 함께 보인다. 상단 클래스 전환으로 오간다.
+ * 등록 확인이 끝나기 전에는 목록을 보이지 않는다 — 잠깐 보였다 사라지면 눌러 버린다.
  */
 export function ClassSelect() {
   const { user, loading, classes, myClassIds, enrollmentsChecked, selectClass, enrollIn, isInstructor } = useAuth()
@@ -36,8 +35,6 @@ export function ClassSelect() {
     [classes, myClassIds],
   )
 
-  /* 학생이 이미 한 수업에 들어가 있으면 다른 수업은 고르지 못한다 */
-  const locked = !isInstructor && mine.length > 0
   /* 등록 확인이 끝나기 전에는 「등록할 수 있는 클래스」를 보이지 않는다 — 잠깐 보였다 사라지면 눌러 버린다 */
   const checking = !isInstructor && !enrollmentsChecked
 
@@ -115,15 +112,7 @@ export function ClassSelect() {
         </section>
       ) : null}
 
-      {locked ? (
-        <section style={{ marginTop: 48 }}>
-          <Notice tone="cream">
-            <p className="text-body-sm" style={{ margin: 0 }}>
-              {lockedMessage(mine[0].displayName)}
-            </p>
-          </Notice>
-        </section>
-      ) : checking ? (
+      {checking ? (
         <section style={{ marginTop: 48 }}>
           <p className="text-body-sm" style={{ margin: 0, opacity: 0.7 }} role="status">
             등록 상태를 확인하는 중…
