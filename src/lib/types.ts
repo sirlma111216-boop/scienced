@@ -301,10 +301,12 @@ export interface GroupShare {
   nickname: string
   /** '1' ~ '8'. 화면에서 고른 모둠 번호 그대로. */
   groupId: string
-  /** 요소 id → 점수 */
+  /** 요소 id → 점수. 배분 칸이 없는 활동에서는 빈 객체다. */
   allocation: Record<string, number>
   /** 개인 의견 한 줄 */
   opinion: string
+  /** 의견 위에 함께 보이는 한 줄 (GroupBuildConfig.headlineKey). 없는 활동은 비운다. */
+  headline?: string
   updatedAt: number
 }
 

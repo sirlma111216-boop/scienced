@@ -195,7 +195,6 @@ export const lesson01: Lesson = {
     },
     {
       id: 'c01-identity',
-      tier: 'extended',
       term: '과학 정체성',
       plainOneLiner: '학생이 자신을 과학을 쓸 수 있는 사람으로 여기는지에 관한 것이다.',
       whyItMatters:
@@ -251,7 +250,6 @@ export const lesson01: Lesson = {
     },
     {
       id: 'c01-agency',
-      tier: 'extended',
       term: '학생 주도성',
       plainOneLiner:
         '목표를 이해하고 선택하고 증거를 점검하며 결과에 책임 있게 참여하는 능력이다.',
@@ -488,6 +486,15 @@ export const lesson01: Lesson = {
       title: '두 수업 비교',
       shortTitle: '두 수업 비교',
       durationMinutes: 15,
+      /*
+       * 50분 판에서는 이 단계가 통째로 「수업 후 이어서」로 내려간다.
+       *
+       * ★ 예전에는 개념 카드 두 장(과학 정체성·학생 주도성)을 내렸다. 강의자가 되돌렸다 —
+       *   개념 카드는 그날 내용 자체라 수업 밖으로 빼면 안 된다. 대신 학생 활동 두 단계(3·4)를
+       *   다 하면 시간이 넘치므로 하나를 뺀다. 1강은 3단계(두 수업 비교)를 빼고, 모둠 토의와
+       *   발표자 뽑기가 있는 4단계(좋은 수업이란?)를 남긴다.
+       */
+      tier: 'extended',
       lead:
         '같은 소재(드라이아이스)로 만든 두 수업의 기록입니다. 요약문이 아니라 실제 대본입니다.\n' +
         '수업 B가 정답이고 A가 오답인 것이 아닙니다. A에서 무엇이 빠졌는지를 찾습니다.',

@@ -374,10 +374,17 @@ export const SHORT_TITLE_MAX = 8
  * 갈림이 사라지고, 갈림을 보는 것이 이런 활동의 목적이다.
  */
 export interface GroupBuildConfig {
-  /** 평균을 낼 배분 칸의 key. 그 칸의 items 가 요소 목록이 된다. */
-  allocationKey: string
+  /**
+   * 평균을 낼 배분 칸의 key. 그 칸의 items 가 요소 목록이 된다.
+   * 배분 칸이 없는 활동(2강 주장－증거)은 비운다 — 그러면 평균 표 없이 모둠원의 글만 모인다.
+   */
+  allocationKey?: string
   /** 모둠원에게 모아 보여 줄 개인 의견 칸의 key */
   opinionKey: string
+  /** 의견 위에 한 줄로 함께 보여 줄 칸의 key (예: 2강의 「기사가 주장하는 것」) */
+  headlineKey?: string
+  /** 모둠원 글 목록의 제목. 없으면 「모둠원이 쓴 이유」 */
+  membersLabel?: string
   /** 고를 수 있는 모둠 번호 개수 */
   groupCount: number
   /** 모둠 대표가 올리는 한 문장 */

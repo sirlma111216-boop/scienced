@@ -64,8 +64,10 @@ export function GroupPanel({
     return repo.watchGroupShares(classId, lessonId, step.id, setShares)
   }, [repo, classId, lessonId, step.id])
 
+  /* 배분 칸이 없는 활동(2강)은 평균 표를 그리지 않는다 — 모둠원의 글만 모인다 */
+  const hasAllocation = Boolean(config.allocationKey)
   const items = useMemo(
-    () => step.fields.find((f) => f.key === config.allocationKey)?.items ?? [],
+    () => (config.allocationKey ? step.fields.find((f) => f.key === config.allocationKey)?.items ?? [] : []),
     [step.fields, config.allocationKey],
   )
 
@@ -83,8 +85,9 @@ export function GroupPanel({
     return map
   }, [shares])
 
-  const myAlloc = (myValues?.[config.allocationKey] ?? {}) as Record<string, number>
+  const myAlloc = (config.allocationKey ? (myValues?.[config.allocationKey] ?? {}) : {}) as Record<string, number>
   const myOpinion = String(myValues?.[config.opinionKey] ?? '').trim()
+  const myHeadline = config.headlineKey ? String(myValues?.[config.headlineKey] ?? '').trim() : ''
 
   /* 정해진 모둠이 있으면 제출한 뒤 저절로 그 자리에 들어간다. 번호를 다시 고르게 하지 않는다. */
   useEffect(() => {
@@ -97,6 +100,7 @@ export function GroupPanel({
         groupId: assigned.id,
         allocation: myAlloc,
         opinion: myOpinion,
+        headline: myHeadline,
         updatedAt: Date.now(),
       })
       .catch((e) => console.error('[모둠] 정해진 모둠에 들어가지 못했다:', e))
@@ -107,7 +111,7 @@ export function GroupPanel({
     if (!repo || !uid) return
     setError(null)
     if (!myOpinion) {
-      setError('먼저 위에서 배분과 이유를 제출해 주세요. 모둠에는 그 두 가지를 가지고 들어갑니다.')
+      setError(hasAllocation ? '먼저 위에서 배분과 이유를 제출해 주세요. 모둠에는 그 두 가지를 가지고 들어갑니다.' : '먼저 위의 칸을 제출해 주세요. 모둠에는 그 글을 가지고 들어갑니다.')
       return
     }
     try {
@@ -117,6 +121,7 @@ export function GroupPanel({
         groupId,
         allocation: myAlloc,
         opinion: myOpinion,
+        headline: myHeadline,
         updatedAt: Date.now(),
       })
     } catch (e) {
@@ -175,7 +180,7 @@ export function GroupPanel({
           </h3>
           <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.78 }}>
             이 차시 시작에 나눈 모둠입니다. 제출하면 저절로 이 모둠에 들어가고,
-            모둠의 평균과 각자가 쓴 문장이 아래에 모입니다.
+            {hasAllocation ? ' 모둠의 평균과 각자가 쓴 문장이 아래에 모입니다.' : ' 각자가 쓴 글이 아래에 모입니다.'}
           </p>
         </>
       ) : (
@@ -241,7 +246,9 @@ export function GroupPanel({
 
       {!myGroup ? (
         <p className="text-body-sm" style={{ marginTop: 16, opacity: 0.66 }}>
-          {assigned ? '제출하면 모둠원의 배분이 보입니다.' : '번호를 고르기 전에는 모둠원의 배분이 보이지 않습니다.'}
+          {assigned
+            ? hasAllocation ? '제출하면 모둠원의 배분이 보입니다.' : '제출하면 모둠원의 글이 보입니다.'
+            : hasAllocation ? '번호를 고르기 전에는 모둠원의 배분이 보이지 않습니다.' : '번호를 고르기 전에는 모둠원의 글이 보이지 않습니다.'}
         </p>
       ) : (
         <>
@@ -254,9 +261,12 @@ export function GroupPanel({
               </span>
             </div>
             <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.72 }}>
-              {assigned ? '모둠원이 제출할 때마다 평균이 바로 다시 계산됩니다.' : '같은 번호를 고른 사람이 늘면 평균이 바로 다시 계산됩니다.'}
+              {hasAllocation
+                ? assigned ? '모둠원이 제출할 때마다 평균이 바로 다시 계산됩니다.' : '같은 번호를 고른 사람이 늘면 평균이 바로 다시 계산됩니다.'
+                : '모둠원이 제출할 때마다 아래에 글이 더해집니다.'}
             </p>
 
+            {hasAllocation ? (
             <ScrollX>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
                 <caption className="caption" style={{ textAlign: 'left', padding: '12px 0 8px' }}>
@@ -319,11 +329,12 @@ export function GroupPanel({
                 </tbody>
               </table>
             </ScrollX>
+            ) : null}
           </div>
 
           {/* 모둠원의 문장 */}
           <div style={{ marginTop: 32 }}>
-            <Caption>모둠원이 쓴 이유</Caption>
+            <Caption>{config.membersLabel ?? '모둠원이 쓴 이유'}</Caption>
             <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
               {members.map((m) => (
                 <li
@@ -339,6 +350,11 @@ export function GroupPanel({
                     {m.nickname}
                     {m.uid === uid ? <span className="font-mono text-caption ml-xs">나</span> : null}
                   </span>
+                  {m.headline ? (
+                    <p className="text-body" style={{ margin: '4px 0 0', fontWeight: 480 }}>
+                      {m.headline}
+                    </p>
+                  ) : null}
                   <p className="text-body" style={{ margin: '4px 0 0', whiteSpace: 'pre-line' }}>
                     {m.opinion}
                   </p>
@@ -407,7 +423,8 @@ export function GroupPanel({
             ) : null}
           </div>
 
-          {/* 모둠별 비교 — 어디에서 갈리는지가 이 활동의 목적이다 */}
+          {/* 모둠별 비교 — 어디에서 갈리는지가 이 활동의 목적이다. 배분이 있는 활동에서만. */}
+          {hasAllocation ? (
           <div style={{ marginTop: 32 }}>
             <Caption>모둠별 1순위</Caption>
             <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}>
@@ -434,6 +451,7 @@ export function GroupPanel({
                 })}
             </ul>
           </div>
+          ) : null}
         </>
       )}
     </section>

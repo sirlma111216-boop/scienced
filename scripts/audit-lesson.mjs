@@ -20,6 +20,7 @@ import { existsSync } from 'node:fs'
 
 const { LESSONS } = await import('../src/content/lessons/index.ts')
 const { parseBody } = await import('../src/lib/body-text.ts')
+const { buildLessonView } = await import('../src/lib/tiers.ts')
 
 /* 자료가 화면에 없는 것을 가리키는 말 (4차 G.2 기준 ②) */
 const 가리키는_말 = ['이 기사가', '이 자료에서', '위 그림의', '아래 표를 보고', '이 학생의 답안',
@@ -371,6 +372,42 @@ const 항목 = [
         if (ps.length === 0) { out.push(`「${e.termKo}」 에 plainTerms 가 없다 — 본문에서 이 이론으로 갈 길이 없다`); continue }
         for (const p of ps) if (!plain.includes(p)) out.push(`「${e.termKo}」 의 「${p}」 가 본문에 없다`)
       }
+      return out
+    },
+  },
+
+  /* ── G · 50분 판 (1·2강에서 강의자가 정한 것, 2026-09-14) ── */
+  {
+    id: 'G1', name: '개념 카드는 남긴다', doc: '50분 판에서 개념 카드를 「수업 후 이어서」로 내리지 않는다 — 그날 내용 자체다',
+    run(l) {
+      const v = buildLessonView(l, 'short')
+      return [...v.steps, ...v.deferredSteps]
+        .flatMap((s) => (s.step.type === 'concepts' ? s.deferredConcepts.map((c) => `「${c.term}」 카드가 50분 판에서 내려간다`) : []))
+    },
+  },
+  {
+    id: 'G2', name: '활동 단계 하나를 내린다', doc: '3·4단계(학생 활동) 중 하나를 통째로 내린다 — 둘 다 하면 시간이 넘치고, 칸 몇 개만 빼면 절감이 안 된다',
+    run(l) {
+      const v = buildLessonView(l, 'short')
+      const activity = (s) => s.step.order === 3 || s.step.order === 4
+      const down = v.deferredSteps.filter(activity)
+      const up = v.steps.filter(activity)
+      const out = []
+      if (down.length !== 1) out.push(`3·4단계 중 내려간 단계가 ${down.length}개다 (1개여야 한다)`)
+      for (const s of up) {
+        if (s.deferredFields.length > 0) out.push(`${s.step.id} 는 남는 단계인데 칸 ${s.deferredFields.length}개가 내려간다 — 단계는 통째로 남기거나 내린다`)
+      }
+      return out
+    },
+  },
+  {
+    id: 'G3', name: '남는 활동 단계에 토의와 발표', doc: '50분 판에 남는 활동 단계 끝에 모둠 토의(groupBuild)와 발표자 뽑기(picker)가 있다',
+    run(l) {
+      const v = buildLessonView(l, 'short')
+      const up = v.steps.filter((s) => s.step.order === 3 || s.step.order === 4)
+      const out = []
+      if (!up.some((s) => s.step.picker?.enabled)) out.push('50분 판에 남는 활동 단계에 발표자 뽑기가 없다')
+      if (!up.some((s) => s.step.groupBuild)) out.push('50분 판에 남는 활동 단계에 모둠 토의(groupBuild)가 없다')
       return out
     },
   },

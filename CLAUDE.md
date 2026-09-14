@@ -74,7 +74,7 @@ Vertex AI 는 무료 등급이 없어 결제 계정도 연결되어 있어야 �
 **`docs/강의-일괄-수정-기준.md`** 대로 한다. 무엇을 고쳐야 하는지 다시 묻지 않는다.
 
 1·2강은 실제 수업에 쓰면서 강의자의 지시로 열두 가지를 고쳤다.
-그 열두 가지에 5차 지시서의 이론 배경(F)을 더해 항목 A1~F4 로 정리돼 있고, **`npm run audit:lesson -- 03` 이 그것을 센다.**
+그 열두 가지에 5차 지시서의 이론 배경(F)과 50분 판 규칙(G)을 더해 항목 A1~G3 으로 정리돼 있고, **`npm run audit:lesson -- 03` 이 그것을 센다.**
 문서와 스크립트가 어긋나면 스크립트가 맞다 — 문서를 고친다.
 
 ## 검사 명령
@@ -83,7 +83,7 @@ Vertex AI 는 무료 등급이 없어 결제 계정도 연결되어 있어야 �
 npm run verify        # 17종 — 소스 불변식
 npm run typecheck
 npm run lint
-npm run audit:lesson  # 차시가 1·2강 기준(A~F)에 맞는가 (인수 없으면 18차시 요약)
+npm run audit:lesson  # 차시가 1·2강 기준(A~G)에 맞는가 (인수 없으면 18차시 요약)
 npm run verify:theory # 이론 배경 — 깨진 인명 표기 · 확인 중 배지 · 카드 연결 · 팝오버 (5차)
 npm run verify:groups # 모둠 나누기 — 게임 6종 · 모의 실행 1000번 (SIM_RUNS 로 조절) · 접근성 (6차)
 npm run emulators     # 아래 둘의 선행

@@ -1,5 +1,5 @@
 import { WRAPUP_LABEL } from '../types'
-import type { FieldDef, GameId, ModuleComponent, Step, Stimulus } from '../types'
+import type { FieldDef, GameId, GroupBuildConfig, ModuleComponent, Step, Stimulus, Tier } from '../types'
 
 /**
  * 2~18강 공통 단계 골격.
@@ -64,6 +64,20 @@ export interface StandardSpec {
   wrapupPrompt: string
   /** 시간 배분 (합계 50) */
   minutes: [number, number, number, number, number]
+  /**
+   * 50분 판에서 통째로 「수업 후 이어서」로 내리는 단계 (3차 F.3).
+   * 정리(wrapup)는 늘 내린다. 그 밖에 학생 활동 단계 하나(module 또는 formative)를 더 내린다 —
+   * 개념 카드는 그날 내용 자체라 내리지 않는다(강의자 결정, 1·2강에서 되돌림).
+   */
+  tiers?: Partial<Record<'open' | 'concepts' | 'module' | 'formative', Tier>>
+  /**
+   * 발표자 뽑기를 어느 단계 끝에 붙이는가. 기본은 formative —
+   * 「1차 답 → 서로 의견 → 2차 답」을 다 거친 뒤에 듣는다.
+   * formative 를 50분 판에서 내리는 차시는 module 끝에 붙인다. 발표자 뽑기는 50분 판에서도 남아야 한다.
+   */
+  pickerAt?: 'formative' | 'module'
+  /** 핵심 모듈 끝의 모둠 토의. 제출한 뒤 모둠원의 글이 모이고, 합의 문장이 의견 광장에 오른다. */
+  moduleGroupBuild?: GroupBuildConfig
 }
 
 const CHANGE_STARTERS = [
@@ -121,6 +135,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       type: 'recall',
       title: '오늘의 문 · 내 생각 먼저',
       shortTitle: '내 생각',
+      tier: spec.tiers?.open,
       durationMinutes: spec.minutes[0],
       lead: spec.openLead,
       doNow: spec.doNow?.open,
@@ -152,6 +167,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       type: 'concepts',
       title: '오늘의 개념 카드',
       shortTitle: '개념 카드',
+      tier: spec.tiers?.concepts,
       durationMinutes: spec.minutes[1],
       lead:
         '카드 네 장을 한 장씩 엽니다. 쉬운 한 문장에서 시작해 정확한 정의까지 내려갑니다.\n' +
@@ -169,12 +185,14 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
       type: 'module',
       title: spec.module.title,
       shortTitle: spec.module.shortTitle,
+      tier: spec.tiers?.module,
       durationMinutes: spec.minutes[2],
       lead: spec.module.lead,
       doNow: spec.doNow?.module,
       material: spec.moduleStimuli,
       fields: spec.module.fields,
       moduleComponent: spec.module.component,
+      groupBuild: spec.moduleGroupBuild,
       aiTasks: [],
       wall: {
         enabled: true,
@@ -183,11 +201,12 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
         opensAfterSubmit: true,
       },
       /*
-       * 발표자 뽑기는 형성평가로 내려갔다.
+       * 발표자 뽑기는 기본적으로 형성평가에 있다.
        * 발표는 「1차 답 → 서로 의견 → 2차 답」을 다 거친 뒤에 듣는 것이 맞다.
        * 핵심 모듈에서 뽑으면 아직 생각이 갈리기 전에 발표를 시키게 된다.
+       * 다만 형성평가를 50분 판에서 내리는 차시(2강)는 모듈 끝에서 뽑는다 — 발표자 뽑기는 50분 판에도 남아야 한다.
        */
-      picker: null,
+      picker: spec.pickerAt === 'module' ? { enabled: true, gameId: spec.module.gameId, candidateRule: 'all' } : null,
     },
     {
       id: 'step-formative',
@@ -199,6 +218,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
        */
       title: '형성평가 · 다시 고르기',
       shortTitle: '형성평가',
+      tier: spec.tiers?.formative,
       durationMinutes: spec.minutes[3],
       /* 강사가 할 일은 학생 안내에 넣지 않는다 (4차 H.2). */
       lead:
@@ -267,7 +287,7 @@ export function buildStandardSteps(spec: StandardSpec): Step[] {
         anonymous: false,
         opensAfterSubmit: true,
       },
-      picker: { enabled: true, gameId: spec.module.gameId, candidateRule: 'all' },
+      picker: spec.pickerAt === 'module' ? null : { enabled: true, gameId: spec.module.gameId, candidateRule: 'all' },
     },
     {
       id: 'step-wrapup',
