@@ -264,7 +264,13 @@ export function createFirestoreRepo(db: Firestore): Repo {
       return snap.exists() ? ({ ...(snap.data() as Enrollment), uid }) : null
     },
     async enroll(classId, e) {
-      await setDoc(cd(db, classId, 'enrollments', e.uid), e)
+      /*
+       * merge 로 쓴다.
+       * 내보내진(ended) 등록에는 모둠 자리(currentGroupId·currentRoundId)가 남아 있는데, 통째로 덮어쓰면
+       * 그 두 키가 「바뀐 키」에 들어가 규칙(학생은 모둠 자리를 못 옮긴다)에 막혔다 — 다시 등록이 영영 안 됐다.
+       * 남은 자리 값은 해롭지 않다. 학생 화면의 내 모둠은 회차 문서(groupRounds)에서 찾는다.
+       */
+      await setDoc(cd(db, classId, 'enrollments', e.uid), e, { merge: true })
     },
     async updateEnrollment(classId, uid, patch) {
       await setDoc(cd(db, classId, 'enrollments', uid), patch, { merge: true })

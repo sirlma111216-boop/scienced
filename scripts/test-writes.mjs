@@ -141,6 +141,37 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   }
 }
 
+/* ── ④-b 내보내진 뒤 다시 등록 ── */
+{
+  /*
+   * 강사가 내보내면(status: ended) 등록 문서에 모둠 자리(currentGroupId·currentRoundId)가 남는다.
+   * 그 학생이 다시 등록할 때 문서를 통째로 덮어쓰면 그 두 키가 「바뀐 키」에 들어가
+   * 규칙(학생은 모둠 자리를 못 옮긴다)에 막힌다 — 「Missing or insufficient permissions」.
+   * 실제로 한 학생이 이 자리에 갇혔다(2026-09-15). 다시 등록은 반드시 통과해야 한다.
+   */
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`classes/${CID}/enrollments/${STUDENT}`).set(
+      { status: 'ended', currentGroupId: '2', currentRoundId: `${CID}-01` },
+      { merge: true },
+    )
+  })
+  const payload = {
+    uid: STUDENT, studentId: '2024123456', nickname: '이나나나',
+    groupId: null, joinedAt: Date.now(), lastSeenAt: Date.now(), status: 'active',
+  }
+  try {
+    await studentRepo.enroll(CID, payload)
+    let back = null
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      back = (await ctx.firestore().doc(`classes/${CID}/enrollments/${STUDENT}`).get()).data()
+    })
+    if (back?.status !== 'active') fail('다시 등록', `등록했는데 status 가 ${back?.status} 다`)
+    else pass('다시 등록', '내보내진 학생이 다시 등록하면 active 로 돌아온다 — 모둠 자리 키가 있어도 막히지 않는다')
+  } catch (err) {
+    fail('다시 등록', `내보내진 학생이 다시 등록하지 못한다 — ${err.message}`)
+  }
+}
+
 /* ── ⑤ 마지막으로 본 클래스 저장 ── */
 {
   const payload = {
