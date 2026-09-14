@@ -163,22 +163,36 @@ export function GroupPanel({
 
   return (
     <section aria-labelledby="group-build-heading" className="card">
-      <Caption>모둠 만들기</Caption>
-      <h3 id="group-build-heading" className="text-card-title" style={{ margin: '8px 0 0' }}>
-        옆에 앉은 사람과 모둠을 만드세요
-      </h3>
-      <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.78 }}>
-        서너 명끼리 「우리는 몇 모둠」이라고 정한 다음, <strong>같은 번호</strong>를 고릅니다.
-        고르는 순간 우리 모둠의 평균과 각자가 쓴 문장이 아래에 모입니다.
-      </p>
+      {/*
+        이 차시 시작에 모둠을 나눴으면(6차) 「모둠을 만드세요」라고 하지 않는다.
+        이미 있는 모둠에 저절로 들어가므로, 그 모둠이 무엇이고 무엇이 보이는지만 적는다.
+      */}
+      {assigned ? (
+        <>
+          <Caption>우리 모둠</Caption>
+          <h3 id="group-build-heading" className="text-card-title" style={{ margin: '8px 0 0' }}>
+            <Badge solid>{assigned.id}모둠</Badge> {assigned.name}
+          </h3>
+          <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.78 }}>
+            이 차시 시작에 나눈 모둠입니다. 제출하면 저절로 이 모둠에 들어가고,
+            모둠의 평균과 각자가 쓴 문장이 아래에 모입니다.
+          </p>
+        </>
+      ) : (
+        <>
+          <Caption>모둠 만들기</Caption>
+          <h3 id="group-build-heading" className="text-card-title" style={{ margin: '8px 0 0' }}>
+            옆에 앉은 사람과 모둠을 만드세요
+          </h3>
+          <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.78 }}>
+            서너 명끼리 「우리는 몇 모둠」이라고 정한 다음, <strong>같은 번호</strong>를 고릅니다.
+            고르는 순간 우리 모둠의 평균과 각자가 쓴 문장이 아래에 모입니다.
+          </p>
+        </>
+      )}
 
       {/* 번호 고르기 — 정해진 모둠이 있으면 고르지 않는다 */}
-      {assigned ? (
-        <p className="text-body-sm" style={{ marginTop: 16 }}>
-          <Badge solid>{assigned.id}모둠</Badge>{' '}
-          <strong>{assigned.name}</strong> — 이 차시 시작에 나눈 모둠입니다. 제출하면 저절로 이 모둠에 들어갑니다.
-        </p>
-      ) : (
+      {assigned ? null : (
       <div style={{ marginTop: 16 }}>
         <p className="text-body-sm" style={{ fontWeight: 480, marginBottom: 8 }}>
           우리 모둠 번호
@@ -227,7 +241,7 @@ export function GroupPanel({
 
       {!myGroup ? (
         <p className="text-body-sm" style={{ marginTop: 16, opacity: 0.66 }}>
-          번호를 고르기 전에는 모둠원의 배분이 보이지 않습니다.
+          {assigned ? '제출하면 모둠원의 배분이 보입니다.' : '번호를 고르기 전에는 모둠원의 배분이 보이지 않습니다.'}
         </p>
       ) : (
         <>
@@ -236,11 +250,11 @@ export function GroupPanel({
             <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
               <Badge solid>{myGroup}모둠</Badge>
               <span className="text-body-sm" style={{ fontWeight: 480 }}>
-                지금 {members.length}명
+                {assigned ? `제출한 모둠원 ${members.length}명` : `지금 ${members.length}명`}
               </span>
             </div>
             <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.72 }}>
-              같은 번호를 고른 사람이 늘면 평균이 바로 다시 계산됩니다.
+              {assigned ? '모둠원이 제출할 때마다 평균이 바로 다시 계산됩니다.' : '같은 번호를 고른 사람이 늘면 평균이 바로 다시 계산됩니다.'}
             </p>
 
             <ScrollX>
