@@ -9,6 +9,7 @@ import {
   formationLessons,
   gameForLesson,
   groupCountOf,
+  groupSizes,
   historyWithoutRound,
   nameGroups,
   placeLateJoiner,
@@ -71,6 +72,7 @@ export function FormationPanel({
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [lateUid, setLateUid] = useState('')
+  const [countDraft, setCountDraft] = useState<string | null>(null)
 
   useEffect(() => {
     if (!repo || !classId || !lessonId) return
@@ -88,6 +90,29 @@ export function FormationPanel({
   const roundNo = roundNumberOf(lessonId, lessons)
   const attendees = students.filter((s) => !absent.has(s.uid))
   const inputCount = inputs.filter((i) => attendees.some((a) => a.uid === i.uid)).length
+
+  /**
+   * 모둠 수 — 강사가 정한다 (6차 P.2). 클래스 설정에 저장돼 모둠 관리 화면과 같은 값을 쓴다.
+   * ★ 처음에는 모둠 관리 화면에만 있었다. 콘솔에서 나누는데 몇 모둠으로 나눌지 여기서 못 정하면 빠진 것과 같다.
+   */
+  async function saveGroupCount(raw: string) {
+    setCountDraft(null)
+    if (!repo || !cls) return
+    const v = Number(raw)
+    if (!Number.isFinite(v)) return
+    const g = Math.max(2, Math.min(12, Math.round(v)))
+    if (g === groupCount) return
+    try {
+      await repo.updateClass(cls.id, { groupCount: g })
+      setNote(`모둠 수를 ${g}개로 바꿨습니다. 다음 배정부터 적용됩니다.`)
+    } catch (err) {
+      console.error('[모둠 수] 저장하지 못했다:', err)
+      setNote(`모둠 수를 저장하지 못했습니다 — ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+  const sizes = groupSizes(Math.max(attendees.length, groupCount), groupCount)
+  const sizeText =
+    sizes.length === 0 ? '' : Math.min(...sizes) === Math.max(...sizes) ? `${sizes[0]}명` : `${Math.min(...sizes)}~${Math.max(...sizes)}명`
 
   function addRule(kind: 'together' | 'apart') {
     if (!ruleA || !ruleB || ruleA === ruleB) return
@@ -227,6 +252,35 @@ export function FormationPanel({
           모둠 나누기 · {game ? game.title : '배정만'}
         </h2>
         {round ? <Badge solid>확정됨 · 모둠 {round.groups.length}</Badge> : <Badge>아직 안 나눔</Badge>}
+      </div>
+
+      {/* 모둠 수 — 강사가 정한다 */}
+      <div className="flex items-center gap-xs" style={{ marginTop: 12, flexWrap: 'wrap' }}>
+        <label htmlFor={`group-count-${lessonId}`} className="text-body-sm" style={{ fontWeight: 480 }}>
+          모둠 수
+        </label>
+        <input
+          id={`group-count-${lessonId}`}
+          type="number"
+          min={2}
+          max={12}
+          inputMode="numeric"
+          className="field"
+          style={{ width: 88 }}
+          value={countDraft ?? String(groupCount)}
+          disabled={!cls || cls.status === 'archived' || busy}
+          onChange={(e) => setCountDraft(e.target.value)}
+          onBlur={(e) => void saveGroupCount(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return
+            e.preventDefault()
+            void saveGroupCount((e.target as HTMLInputElement).value)
+          }}
+        />
+        <span className="text-body-sm" style={{ opacity: 0.8 }}>
+          참석 {attendees.length}명 → 모둠 크기 {sizeText}
+          {round && round.groups.length !== groupCount ? ` · 확정된 모둠은 ${round.groups.length}개 — 바꾸려면 다시 나눕니다` : ''}
+        </span>
       </div>
       {game ? (
         <>
