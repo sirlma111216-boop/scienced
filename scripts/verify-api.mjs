@@ -66,13 +66,15 @@ const files = await walk('src', ['.ts', '.tsx'])
   let open = 0
   for (const file of fns) {
     const code = await readFile(file, 'utf8')
-    if (!code.includes('verifyIdToken')) {
+    /* 사람이 부르는 함수는 ID 토큰으로, 서버끼리(게임 서버 → 결과 webhook)는 공유 비밀 서명으로 확인한다 */
+    const signed = code.includes('verifyLumiSignature')
+    if (!code.includes('verifyIdToken') && !signed) {
       fail('열린 서버 함수', `${norm(file)} 이 호출자를 확인하지 않는다`)
       open++
     }
   }
   if (open === 0) {
-    pass('열린 서버 함수', `서버 함수 ${fns.length}개가 모두 verifyIdToken 으로 호출자를 확인한다`)
+    pass('열린 서버 함수', `서버 함수 ${fns.length}개가 모두 ID 토큰(사람) 또는 서명(서버끼리)으로 호출자를 확인한다`)
   }
 }
 

@@ -79,6 +79,16 @@ Vertex AI 는 무료 등급이 없어 결제 계정도 연결되어 있어야 �
 - 이름: 기본은 강사가 적은 이름(`rosterName`), 없으면 닉네임. **발표 모드거나 「실명 가리기」가 켜지면 닉네임만** (`components/console/shared.tsx` 의 `useNames`).
 - `npm run audit:console` 이 18차시 블록과 등록표를 대조해 `docs/7차-콘솔-대조표.md` 를 만든다.
 
+## 루미 런 — 3·4강 발표자 선정 게임
+
+3·4강의 발표자 뽑기(`03-lumi-race` 먼저 도착 · `04-lumi-last` 꼴찌)는 따로 배포된 게임(저장소 `sirlma111216-boop/gamerun`, Render)을 iframe 으로 붙인다. 화면 쪽은 `src/lib/lumi.ts` · `src/components/lumi/`, 서버 쪽은 `functions/api/lumi/`.
+
+- **발표자는 webhook 으로만 확정된다.** 브라우저의 `lumi:result` 는 「확인 중」으로만 보이고, 게임 서버가 서명해 `/api/lumi/result` 로 보낸 결과가 세션(`lumi.result` · `ladders[gameId].winnerUids`) · `lumiResults` · `picks` · `participation.presentCount` 에 적힌다. 같은 경기는 한 번만 센다.
+- 학생은 코드·닉네임을 넣지 않는다. 강사가 「게임 방 만들기」를 누르면 세션 `lumi.roomCode` 가 적히고, 학생 화면은 `/api/lumi/ticket` 으로 자기 티켓을 받아 저절로 들어간다. 티켓은 현재 활동(`activityInstanceId`)에만 나온다.
+- 동점은 공동 선정이다(N명을 요청해도 더 뽑힐 수 있다). 완주가 없으면 빈 결과를 그대로 적는다 — 임의로 채우지 않는다.
+- **외부 설정 넷이 다 있어야 한다.** Cloudflare `LUMI_SHARED_SECRET` · `VITE_LUMI_ORIGIN`(빌드 변수 — 게임 주소, 없으면 화면이 「연결되지 않았다」고 말한다) / Render `LESSON_SHARED_SECRET`(같은 값) · `LESSON_RESULT_URL` · `ALLOWED_ORIGINS`(강의 앱 주소 포함). 하나라도 빠지면 그 자리에서 조용히 막힌다.
+- 로컬 저장 모드에서는 서버 함수가 없으므로 티켓을 브라우저가 `local-dev` 비밀로 만든다(`fetchTicket`). 게임 서버를 `LESSON_SHARED_SECRET=local-dev` 로 띄우면 방 만들기·자동 참가·경기까지 돈다. webhook 은 `npm run test:lumi` 가 **그 함수 그대로** 에뮬레이터에 대고 확인한다.
+
 ## 강의 콘텐츠를 고칠 때
 
 강의자가 **「3, 4강을 지난 강의들처럼 일괄로 수정해」** 라고 하면
@@ -101,4 +111,5 @@ npm run emulators     # 아래 둘의 선행
 npm run test:rules    # 보안 규칙을 실제로 읽고 써 본다
 npm run test:writes   # 앱이 쓰는 코드로 실제 저장·모둠·덮어쓰기·내보내기
 npm run test:delete   # 지우기가 하위 자료까지 치우는지 + 걸리는 시간
+npm run test:lumi     # 루미 런 결과 webhook 함수를 그대로 불러 발표자 저장·멱등·거절을 본다
 ```

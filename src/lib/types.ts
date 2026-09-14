@@ -293,7 +293,47 @@ export interface SessionState {
    * uid → 마지막 알림. 학생 화면은 자기 것만 본다.
    */
   nudges?: Record<string, { kind: 'submit' | 'reask'; stepId: string; at: number }>
+  /**
+   * 루미 런 (3·4강 발표자 선정 게임) — 이 차시의 활동 실행 하나.
+   * 강사가 방을 만들면 여기에 적고, 학생은 이 구독으로 방을 알아 저절로 들어간다.
+   * 결과(result)는 게임 서버가 서명해 보낸 것을 서버 함수가 확인한 뒤에만 채운다.
+   */
+  lumi?: LumiActivity | null
   updatedAt: number
+}
+
+export interface LumiActivity {
+  /** 활동 실행 id — `${classId}:${lessonId}:${실행 번호}`. 티켓·방·결과가 이 값으로 묶인다 */
+  activityInstanceId: string
+  gameId: GameId
+  stepId: string
+  /** 게임 서버가 준 6자리 참가 코드. 방을 만들기 전에는 null */
+  roomCode: string | null
+  /** open 방 열림 · ended 결과 확정 · lost 서버가 재시작돼 방이 사라짐 */
+  status: 'open' | 'ended' | 'lost'
+  /** 강사가 지정한 선정 인원 N (1~30) */
+  requestedCount: number
+  round: number
+  createdBy: string
+  createdAt: number
+  lastMatchId?: string | null
+  resultAt?: number | null
+  result?: LumiResultSummary | null
+}
+
+/** 서버 함수가 확인한 결과의 요약 — 강사·학생 화면이 이것을 그린다 */
+export interface LumiResultSummary {
+  matchId: string
+  selectedIds: string[]
+  selectedNames: Record<string, string>
+  requestedCount: number
+  selectedCount: number
+  mode: string
+  selectionReason: string
+  tieHandling: string
+  endReason: 'normal' | 'timeout' | 'teacher'
+  endedAt: string
+  playerCount: number
 }
 
 /**

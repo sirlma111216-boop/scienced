@@ -41,8 +41,8 @@ export type GameId = `${LessonId}-${string}`
 export type PickerMode =
   | 'ladder'          // 1강 · 사다리타기 (기존 구현 그대로)
   | 'sealed-envelope' // 2강 · 발표자 선정 봉투
-  | 'card-flip'       // 3강 · 학생 발화 카드 뒤집기
-  | 'scaffold-stairs' // 4강 · 비계 계단
+  | 'lumi-race'       // 3강 · 루미 런 — 먼저 도착한 사람이 발표자 (Render 게임 서버, 강의 앱 티켓으로 참가)
+  | 'lumi-last'       // 4강 · 루미 런 — 꼴찌 선정
   | 'survival'        // 5강 · 설명 생존
   | 'map-pin'         // 6강 · 교육과정 지도 핀
   | 'triple-spinner'  // 7강 · 목표·증거·활동 스피너

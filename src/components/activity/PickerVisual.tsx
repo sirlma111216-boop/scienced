@@ -162,90 +162,22 @@ export function PickerVisual(props: PickerVisualProps) {
         </div>
       )
 
-    /* 3강 — 학생 발화 카드 뒤집기 */
-    case 'card-flip': {
-      const utterances = [
-        '무거운 게 빨리 떨어져요',
-        '전류가 전구에서 없어져요',
-        '나무는 흙을 먹고 자라요',
-        '여름엔 태양이 가까워요',
-        '기체는 무게가 없어요',
-        '식물은 밤에 숨 안 쉬어요',
-      ]
+    /*
+     * 3·4강 — 루미 런. 사다리 판이 아니라 별도 게임(iframe)에서 뛴다.
+     * 이 화면은 사다리 계열이 쓰는 자리 판 대신 안내만 그린다 — 실제 게임은 LumiTeacher / LumiStudent 가 붙인다.
+     */
+    case 'lumi-race':
       return (
         <div>
-          <Caption>카드 앞면에는 중학생의 말이 있습니다. 한 장 뒤에 발표 표시가 있습니다.</Caption>
-          <div style={{ marginTop: 12 }}>
-            <TileRow
-              {...common}
-              aria={`발화 카드 ${columns}장`}
-              render={(i, on, mine) => (
-                <div style={{ ...tileStyle(on, mine), minWidth: 150, minHeight: 92 }}>
-                  <span className="text-caption" style={{ opacity: 0.75 }}>
-                    “{utterances[i % utterances.length]}”
-                  </span>
-                  <span className="font-mono text-caption">{i + 1}</span>
-                  {revealed ? (
-                    <span className="text-caption">{on ? '발표!' : '—'}</span>
-                  ) : mine ? (
-                    <span className="text-caption">내 카드</span>
-                  ) : null}
-                </div>
-              )}
-            />
-          </div>
+          <Caption>루미 런 — 먼저 도착한 사람이 이번 발표자입니다. 선생님이 방을 열면 저절로 들어갑니다.</Caption>
         </div>
       )
-    }
-
-    /* 4강 — 비계 계단 */
-    case 'scaffold-stairs': {
-      const steps = ['힌트 없음', '무엇을 볼지', '부분 완성 예', '완성 예', '답 제시']
-      const stop = revealed ? pick(seed, 'stairs', steps.length) : -1
+    case 'lumi-last':
       return (
         <div>
-          <Caption>말이 계단을 오르다 한 칸에서 멈춥니다. 멈춘 칸이 오늘 줄 도움의 수준입니다.</Caption>
-          <ol
-            style={{ listStyle: 'none', padding: 0, margin: '12px 0 0' }}
-            aria-label="비계 계단"
-          >
-            {steps.map((s, i) => {
-              const here = stop === i
-              return (
-                <li
-                  key={s}
-                  className="flex items-center gap-sm"
-                  style={{
-                    marginLeft: i * 24,
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    background: here ? '#000' : '#f7f7f5',
-                    color: here ? '#fff' : '#000',
-                    marginBottom: 6,
-                    maxWidth: 420,
-                  }}
-                >
-                  <span className="font-mono text-caption">{i + 1}단계</span>
-                  <span className="text-body-sm">{s}</span>
-                  {here ? (
-                    <>
-                      <span className="flex-1" />
-                      <span className="font-mono text-caption">여기 멈춤</span>
-                    </>
-                  ) : null}
-                </li>
-              )
-            })}
-          </ol>
-          {revealed ? (
-            <p className="text-body-sm" style={{ marginTop: 12 }}>
-              발표: {presentSlots.map((s) => label(seats, s)).join(', ')} — 이 도움을 언제, 어떤
-              증거를 보고 줄일 것인지 말해 주세요.
-            </p>
-          ) : null}
+          <Caption>루미 런 — 뒤처진 사람이 이번 발표자입니다. 선생님이 방을 열면 저절로 들어갑니다.</Caption>
         </div>
       )
-    }
 
     /* 5강 — 설명 생존 */
     case 'survival': {

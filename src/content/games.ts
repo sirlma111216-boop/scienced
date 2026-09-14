@@ -50,13 +50,19 @@ export const GAMES: GameDef[] = [
     revealWeights: false,
     winnerCount: 2,
   },
+  /*
+   * 3·4강 — 루미 런 (횡스크롤 멀티플레이 게임, 별도 배포).
+   * 강사가 방을 열고, 학생은 자기 계정·닉네임으로 저절로 들어가 각자 캐릭터를 조작한다.
+   * 선정은 게임 서버가 확정하고 서명해서 보낸 결과로만 발표자를 정한다 (functions/api/lumi/result.ts).
+   * 동점은 공동 선정 — N명을 요청해도 실제 선정이 더 많을 수 있다. 자르지 않는다.
+   */
   {
-    id: '03-card-flip',
+    id: '03-lumi-race',
     lessonId: '03',
-    mode: 'card-flip',
-    tab: '학생 발화 카드 뒤집기',
-    lead: '카드 앞면에는 중학생의 말이 적혀 있습니다.\n한 장 뒤에 발표 표시가 있습니다.',
-    hint: '카드를 고르면 그 발화가 먼저 보이고, 그다음에 표시가 열립니다.',
+    mode: 'lumi-race',
+    tab: '루미 런 · 먼저 도착',
+    lead: '루미와 함께 달립니다. 먼저 도착한 사람이 이번 발표자입니다.\n선생님이 방을 열면 저절로 들어갑니다.',
+    hint: '휴대폰은 가로로. ← → 이동, 스페이스(또는 점프 버튼)로 점프.',
     choiceField: 'diagnosis',
     reasonField: 'followUpQuestion',
     askLine: '그 발화 뒤에 있는 학생의 사고모형을 진단해 주세요.',
@@ -67,12 +73,12 @@ export const GAMES: GameDef[] = [
     winnerCount: 2,
   },
   {
-    id: '04-scaffold-stairs',
+    id: '04-lumi-last',
     lessonId: '04',
-    mode: 'scaffold-stairs',
-    tab: '비계 계단',
-    lead: '말이 계단을 오르다 무작위 칸에서 멈춥니다.\n멈춘 칸이 지금 학생에게 준 도움의 수준입니다.',
-    hint: '계단 칸마다 도움의 세기가 다릅니다.',
+    mode: 'lumi-last',
+    tab: '루미 런 · 꼴찌 선정',
+    lead: '루미와 함께 달립니다. 이번에는 뒤처진 사람이 발표자입니다.\n선생님이 방을 열면 저절로 들어갑니다.',
+    hint: '휴대폰은 가로로. ← → 이동, 스페이스(또는 점프 버튼)로 점프.',
     choiceField: 'hintB',
     reasonField: 'reason',
     askLine: '이 도움을 언제, 어떤 증거를 보고 줄일 것인지 말해 주세요.',

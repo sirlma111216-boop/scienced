@@ -22,6 +22,8 @@ import type {
 import { AppShell } from '@/components/layout/AppShell'
 import { FormationPanel } from '@/components/groups/FormationPanel'
 import { LadderPanel } from '@/components/teach/LadderPanel'
+import { LumiTeacher } from '@/components/lumi/LumiTeacher'
+import { isLumiGame } from '@/lib/lumi'
 import { Badge, Button, Caption, usePresent } from '@/components/ui'
 import { NamesProvider, Overlay, submitted, useNames } from '@/components/console/shared'
 import { CanvasGridView, CanvasThumb, ChoiceView, GateView, ResponseCardsView, SorterView, WallView } from '@/components/console/BlockViews'
@@ -334,7 +336,11 @@ export function InstructorLive() {
         ) : null}
         {overlay?.kind === 'ladder' && classId && step && game ? (
           <Overlay title={`발표자 뽑기 · ${step.title}`} onClose={() => setOverlay(null)} wide>
-            <LadderPanel classId={classId} lessonId={lesson.id} stepId={step.id} game={game} state={session?.ladders?.[game.id] ?? null} users={users} enrollments={activeEnrollments} participation={participation} groupRound={round} />
+            {isLumiGame(game) ? (
+              <LumiTeacher classId={classId} lessonId={lesson.id} stepId={step.id} game={game} session={session} students={activeEnrollments} />
+            ) : (
+              <LadderPanel classId={classId} lessonId={lesson.id} stepId={step.id} game={game} state={session?.ladders?.[game.id] ?? null} users={users} enrollments={activeEnrollments} participation={participation} groupRound={round} />
+            )}
           </Overlay>
         ) : null}
         {overlay?.kind === 'student' ? (
@@ -566,7 +572,7 @@ function BlockBody(p: {
       return (
         <div>
           <p className="text-body-sm" style={{ margin: 0 }}>
-            발표자 뽑기는 덮개 화면에서 합니다 — 후보 확인 → 제외 → 실행 → 결과 → 재추첨 / 수동 지정.
+            {isLumiGame(GAMES_BY_LESSON[p.lesson.id]) ? '이 차시의 발표자는 루미 런(게임)으로 정합니다 — 덮개 화면에서 방 만들기 → 학생 자동 참가 → 시작 → 결과.' : '발표자 뽑기는 덮개 화면에서 합니다 — 후보 확인 → 제외 → 실행 → 결과 → 재추첨 / 수동 지정.'}
           </p>
           <Button style={{ marginTop: 12 }} onClick={p.onLadder}>
             뽑기 열기

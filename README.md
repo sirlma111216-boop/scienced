@@ -129,6 +129,13 @@ AI 분류 요청  →  addAiProposal (status: pending)  →  /instructor/ai-revi
 | `AI_RATE_PER_MIN` | `6` |
 | `FIREBASE_PROJECT_ID` | `scienced-e721d` |
 | `STUDENT_EMAIL_DOMAIN` | `students.slstudio.local` |
+| `LUMI_SHARED_SECRET` | 루미 런 게임 서버(Render)의 `LESSON_SHARED_SECRET` 과 같은 값 — 티켓·결과 서명 |
+
+**빌드 변수** (Pages 의 빌드 환경 변수 — 번들에 들어가도 되는 값만)
+
+| 이름 | 값 |
+|---|---|
+| `VITE_LUMI_ORIGIN` | 루미 런 게임 주소 (Render origin). 게임 쪽에는 `LESSON_RESULT_URL=https://scienced.labbitory.com/api/lumi/result` 와 `ALLOWED_ORIGINS` 에 이 앱 주소를 넣는다 |
 
 #### ① 구글 클라우드에서 API 를 켠다
 

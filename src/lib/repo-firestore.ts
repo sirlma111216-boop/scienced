@@ -185,6 +185,8 @@ export function createFirestoreRepo(db: Firestore): Repo {
         'pairHistory',
         'groupRounds',
         'groupInputs',
+        /* 루미 런 결과 — 서버 함수가 쓴 것도 이 클래스의 것이다 */
+        'lumiResults',
       ].map((name) => cc(db, classId, name))
 
       for (const lesson of LESSONS) {

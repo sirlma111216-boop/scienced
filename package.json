@@ -38,7 +38,8 @@
     "verify:figures": "node --import ./scripts/_loader.mjs scripts/verify-figures.mjs",
     "verify:theory": "node --import ./scripts/_loader.mjs scripts/verify-theory.mjs",
     "verify:groups": "node --import ./scripts/_loader.mjs scripts/verify-groups.mjs",
-    "verify": "node scripts/verify-all.mjs"
+    "verify": "node scripts/verify-all.mjs",
+    "test:lumi": "node --import ./scripts/_loader.mjs scripts/test-lumi.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

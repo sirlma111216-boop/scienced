@@ -144,10 +144,13 @@ export function stepBlocks(stepView: StepView, opts: { formationRound: boolean }
     const next = stepView.fields[i + 1]
     return next && (next.kind === 'longtext' || next.kind === 'text') && /reason|이유/i.test(next.key + next.label) ? next.key : undefined
   }
+  /* 같은 여는 조건(secondRound)이 두 칸에 걸려 있어도 열기 블록은 하나다 */
+  const gateSeen = new Set<string>()
   for (const f of stepView.fields) {
     const kind = fieldBlockKind(f)
     out.push(mk(kind, f.key, f.label, { field: f, reasonKey: kind === 'choice' ? reasonOf(f) : undefined }))
-    if (f.gate?.type === 'afterInstructorOpen') {
+    if (f.gate?.type === 'afterInstructorOpen' && !gateSeen.has(f.gate.of)) {
+      gateSeen.add(f.gate.of)
       out.push(mk('gateOpen', f.gate.of, f.gate.of === 'secondRound' ? '2차 응답 열기' : `열기 · ${f.label}`, { gateId: f.gate.of, field: f }))
     }
   }

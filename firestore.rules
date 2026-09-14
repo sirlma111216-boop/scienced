@@ -337,6 +337,12 @@ service cloud.firestore {
         allow delete: if isInstructor();
       }
 
+      /* 루미 런 결과 — 게임 서버 → 서버 함수(서비스 계정)만 쓴다. 강사가 읽는다. 학생은 세션의 요약으로 본다. */
+      match /lumiResults/{resultId} {
+        allow read, delete: if isInstructor();
+        allow create, update: if false;
+      }
+
       match /groupWork/{workId} {
         allow read: if isEnrolled(cid) || isInstructor();
         allow write: if isEnrolled(cid) && classActive(cid);

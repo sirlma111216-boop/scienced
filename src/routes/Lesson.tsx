@@ -26,6 +26,8 @@ import { AppShell, InstructorMovedBanner, InstructorNoticeCard } from '@/compone
 import { AiAssistPanel } from '@/components/ai/AiAssistPanel'
 import { ConceptCard } from '@/components/concept/ConceptCard'
 import { LadderGame } from '@/components/activity/LadderGame'
+import { LumiStudent } from '@/components/lumi/LumiStudent'
+import { isLumiGame } from '@/lib/lumi'
 import { GroupPanel } from '@/components/activity/GroupPanel'
 import { LockedCard, StimulusView } from '@/components/stimulus/StimulusView'
 import { ModuleHost } from '@/components/activity/ModuleHost'
@@ -641,8 +643,12 @@ export function Lesson() {
               </div>
             </div>
 
-            {/* ⑦ 발표자 뽑기 */}
-            {step.picker?.enabled && game ? (
+            {/* ⑦ 발표자 뽑기 — 3·4강은 루미 런(별도 게임), 나머지는 사다리 계열 */}
+            {step.picker?.enabled && game && isLumiGame(game) && classId ? (
+              <div style={{ marginTop: 48 }}>
+                <LumiStudent classId={classId} lessonId={lesson.id} game={game} session={session} nicknames={nicknames} />
+              </div>
+            ) : step.picker?.enabled && game ? (
               <div style={{ marginTop: 48 }}>
                 <LadderGame
                   classId={classId!}

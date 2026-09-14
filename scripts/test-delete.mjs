@@ -63,6 +63,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await db.doc(`classes/${CID}/groupRounds/${CID}-01`).set({ id: `${CID}-01`, round: 1, lessonId: '01', groups: [] })
   await db.doc(`classes/${CID}/groupInputs/01_${STUDENT}`).set({ uid: STUDENT, lessonId: '01', choice: 'fun' })
   await db.doc(`classes/${CID}/sessions/01`).set({ lessonId: '01', stepOpen: true })
+  await db.doc(`classes/${CID}/lumiResults/act__m1`).set({ id: 'act__m1', matchId: 'm1', selectedIds: [] })
   await db
     .doc(`classes/${CID}/lessons/01/steps/step-recall/responses/${STUDENT}`)
     .set({ uid: STUDENT, versions: [{ v: 1, payload: { scene: '내 답' } }], latestV: 1 })
@@ -104,13 +105,14 @@ await env.withSecurityRulesDisabled(async (ctx) => {
     gone('모둠 회차', `classes/${CID}/groupRounds/${CID}-01`),
     gone('게임 선택', `classes/${CID}/groupInputs/01_${STUDENT}`),
     gone('진행 상태', `classes/${CID}/sessions/01`),
+    gone('게임 결과', `classes/${CID}/lumiResults/act__m1`),
     gone('학생 응답', `classes/${CID}/lessons/01/steps/step-recall/responses/${STUDENT}`),
     gone('의견 광장 글', `classes/${CID}/lessons/01/steps/step-recall/posts/p1`),
     gone('즉석 모둠 자료', `classes/${CID}/lessons/01/steps/step-recall/groupshares/${STUDENT}`),
   ])
 
   if (checks.every(Boolean)) {
-    pass('클래스 지우기', '클래스 문서와 하위 자료 12종이 전부 사라졌다 — 실명·응답·의견 포함')
+    pass('클래스 지우기', '클래스 문서와 하위 자료 13종이 전부 사라졌다 — 실명·응답·의견 포함')
   }
 })
 
