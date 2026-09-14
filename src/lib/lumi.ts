@@ -8,7 +8,7 @@ import type { LumiActivity } from './types'
  *
  * 게임은 Render 에 따로 배포돼 있고(저장소 sirlma111216-boop/gamerun), 강의 앱은 iframe 으로 붙인다.
  *   iframe URL   {origin}/embed.html?parentOrigin={이 앱의 origin}
- *   게임 → 부모   lumi:available · lumi:ready · lumi:lobby(참가자 변동) · lumi:start · lumi:end · lumi:result
+ *   게임 → 부모   lumi:available · lumi:ready · lumi:lobby(참가자 변동) · lumi:start · lumi:end · lumi:result · lumi:error(서버가 거절한 이유)
  *   부모 → 게임   lumi:mount(config) · lumi:start · lumi:stop · lumi:restart · lumi:destroy
  * 부모는 event.origin 과 event.source 를 확인하고, postMessage 의 targetOrigin 에 '*' 를 쓰지 않는다.
  *
@@ -23,8 +23,21 @@ export const LUMI_MAX_PLAYERS = 30
 export function isLumiGame(game: GameDef | null | undefined): boolean {
   return Boolean(game && game.mode.startsWith('lumi-'))
 }
-export function lumiMode(game: GameDef): 'race' | 'last' {
-  return game.mode === 'lumi-last' ? 'last' : 'race'
+/** 강사가 방을 만들 때 게임에 넘기는 규칙 — 등수(ranks)가 든다. 학생 쪽은 studentRules 로 등수 없이. */
+export function teacherRules(game: GameDef) {
+  const l = game.lumi ?? { map: 1, ranks: [1], timeLimit: 60, course: 30 }
+  return { mode: 'ranks' as const, ranks: l.ranks, timeLimit: l.timeLimit, duration: l.course, lives: 0, count: l.ranks.length, text: '이번 발표자' }
+}
+/** 학생 브라우저에는 등수를 보내지 않는다 — 규칙은 서버 스냅숏이 준다 */
+export function studentRules(game: GameDef) {
+  const { ranks: _ranks, ...rest } = teacherRules(game)
+  return rest
+}
+export function lumiMap(game: GameDef): number {
+  return game.lumi?.map ?? 1
+}
+export function lumiCount(game: GameDef): number {
+  return game.lumi?.ranks.length ?? game.winnerCount
 }
 
 export function embedUrl(): string {

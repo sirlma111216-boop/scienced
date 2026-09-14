@@ -81,11 +81,13 @@ Vertex AI 는 무료 등급이 없어 결제 계정도 연결되어 있어야 �
 
 ## 루미 런 — 3·4강 발표자 선정 게임
 
-3·4강의 발표자 뽑기(`03-lumi-race` 먼저 도착 · `04-lumi-last` 꼴찌)는 따로 배포된 게임(저장소 `sirlma111216-boop/gamerun`, Render)을 iframe 으로 붙인다. 화면 쪽은 `src/lib/lumi.ts` · `src/components/lumi/`, 서버 쪽은 `functions/api/lumi/`.
+3·4강의 발표자 뽑기(`03-lumi` 공중정원 6·9등 · `04-lumi` 수정동굴 1·3등)는 따로 배포된 게임(저장소 `sirlma111216-boop/gamerun`, Render)을 iframe 으로 붙인다. 화면 쪽은 `src/lib/lumi.ts` · `src/components/lumi/`, 서버 쪽은 `functions/api/lumi/`.
 
 - **발표자는 webhook 으로만 확정된다.** 브라우저의 `lumi:result` 는 「확인 중」으로만 보이고, 게임 서버가 서명해 `/api/lumi/result` 로 보낸 결과가 세션(`lumi.result` · `ladders[gameId].winnerUids`) · `lumiResults` · `picks` · `participation.presentCount` 에 적힌다. 같은 경기는 한 번만 센다.
-- 학생은 코드·닉네임을 넣지 않는다. 강사가 「게임 방 만들기」를 누르면 세션 `lumi.roomCode` 가 적히고, 학생 화면은 `/api/lumi/ticket` 으로 자기 티켓을 받아 저절로 들어간다. 티켓은 현재 활동(`activityInstanceId`)에만 나온다.
-- 동점은 공동 선정이다(N명을 요청해도 더 뽑힐 수 있다). 완주가 없으면 빈 결과를 그대로 적는다 — 임의로 채우지 않는다.
+- 학생은 코드·닉네임·QR 을 보지 않는다. 강사가 「게임 방 만들기」를 누르면 세션 `lumi.roomCode` 가 적히고, 학생 화면은 `/api/lumi/ticket` 으로 자기 티켓을 받아 「게임 참가」 한 번으로 들어간다. 티켓은 현재 활동(`activityInstanceId`)에만 나온다. 강사는 다 들어왔는지 보고 「다 함께 시작」만 누른다.
+- **발표할 등수(`games.ts` 의 `lumi.ranks`)는 학생 화면·강사 콘솔 어디에도 적지 않는다.** 학생 config 에는 `ranks` 를 넣지 않고(`studentRules`), 게임 서버 스냅숏도 결과 전에는 `ranks` 를 뺀다. 결과 때 게임 서버가 적은 `selectionReason` 으로만 드러난다. 문구는 「몇 등이 발표자가 될지는 결과 때 알려드립니다」.
+- 제한 시간 60초(`lumi.timeLimit`). 그 전에 모두 완주·탈락하면 끝. 그 등수까지 완주가 안 됐으면 게임 서버가 **접속 중인 미완주자 중 무작위**로 채운다(끊긴 사람 제외, 같은 사람 두 번 없음). 참가자가 등수보다 적어 전원 완주했으면 완주자 중 무작위. 규칙은 gamerun `docs/RULES.md` 「등수 발표」.
+- 코스는 30초 코스(`lumi.course`) — 60초 안에 아홉 명 이상이 들어와야 등수가 채워진다. 같은 틱 도착은 공동 선정.
 - **외부 설정 셋이 다 있어야 한다.** Cloudflare `LUMI_SHARED_SECRET` / Render `LESSON_SHARED_SECRET`(같은 값) · `LESSON_RESULT_URL`. 게임 주소는 `src/lib/lumi.ts` 의 `LUMI_DEFAULT_ORIGIN`(https://gamerun-mlhh.onrender.com)이고 `VITE_LUMI_ORIGIN` 은 옮길 때만. 게임 `/health` 의 `lesson.configured` · `resultUrl` 로 Render 쪽을 확인한다. Render 의 `ALLOWED_ORIGINS` 는 두지 않는다(WebSocket 은 iframe 이 있는 게임 origin 에서 오므로 기본 같은-host 검사로 충분하고, 강의 앱 주소만 넣으면 오히려 막힌다).
 - 로컬 저장 모드에서는 서버 함수가 없으므로 티켓을 브라우저가 `local-dev` 비밀로 만든다(`fetchTicket`). 게임 서버를 `LESSON_SHARED_SECRET=local-dev` 로 띄우면 방 만들기·자동 참가·경기까지 돈다. webhook 은 `npm run test:lumi` 가 **그 함수 그대로** 에뮬레이터에 대고 확인한다.
 

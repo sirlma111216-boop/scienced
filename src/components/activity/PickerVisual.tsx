@@ -166,16 +166,11 @@ export function PickerVisual(props: PickerVisualProps) {
      * 3·4강 — 루미 런. 사다리 판이 아니라 별도 게임(iframe)에서 뛴다.
      * 이 화면은 사다리 계열이 쓰는 자리 판 대신 안내만 그린다 — 실제 게임은 LumiTeacher / LumiStudent 가 붙인다.
      */
-    case 'lumi-race':
+    case 'lumi-garden':
+    case 'lumi-cave':
       return (
         <div>
-          <Caption>루미 런 — 먼저 도착한 사람이 이번 발표자입니다. 선생님이 방을 열면 저절로 들어갑니다.</Caption>
-        </div>
-      )
-    case 'lumi-last':
-      return (
-        <div>
-          <Caption>루미 런 — 뒤처진 사람이 이번 발표자입니다. 선생님이 방을 열면 저절로 들어갑니다.</Caption>
+          <Caption>루미 런 — 몇 등이 발표자가 될지는 결과 때 알려드립니다. 선생님이 방을 열면 「참가」로 들어갑니다.</Caption>
         </div>
       )
 

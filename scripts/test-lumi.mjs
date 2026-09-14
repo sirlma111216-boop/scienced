@@ -36,7 +36,7 @@ const SECRET = 'test-secret'
 const CID = 'c-lumi'
 const LID = '03'
 const ACT = `${CID}:${LID}:run1`
-const GAME = '03-lumi-race'
+const GAME = '03-lumi'
 const S1 = 'stu-1'
 const S2 = 'stu-2'
 const S3 = 'stu-3'
@@ -72,8 +72,8 @@ function envelope(matchId, act = ACT, selectedIds = [S1, S2], endReason = 'norma
     result: {
       gameVersion: '2.0.0', moduleVersion: '1.0.0', resultVersion: '1',
       matchId, activityId: act, map: 1,
-      rules: { mode: 'race', duration: 60, lives: 0, count: 2, text: '이번 발표자' },
-      players, selectedIds, selectionReason: '먼저 도착한 순서', tieHandling: '동시 도착은 공동 선정', endReason, endedAt: new Date().toISOString(),
+      rules: { mode: 'ranks', duration: 30, lives: 0, count: 2, text: '이번 발표자', ranks: [6, 9], timeLimit: 60 },
+      players, selectedIds, selectionReason: '6등·9등 발표 — 6등 민준 / 9등 완주자 없음 → 미완주자 중 무작위 서연', tieHandling: '같은 도착 틱은 공동 선정 · 그 등수까지 완주가 안 됐으면 접속 중인 미완주자 중 무작위', endReason, endedAt: new Date().toISOString(),
     },
   }
 }
@@ -115,14 +115,14 @@ async function read(path) {
   if (took > 3000) fail('결과 저장 시간', `${took}ms — 3초를 넘는다`)
   const sess = await read(`classes/${CID}/sessions/${LID}`)
   const lumi = sess?.lumi ?? {}
-  if (lumi.status === 'ended' && lumi.result?.matchId === 'm-1' && JSON.stringify(lumi.result.selectedIds) === JSON.stringify([S1, S2]) && lumi.result.selectedNames?.[S1] === '민준' && lumi.activityInstanceId === ACT && lumi.roomCode === '714347')
-    pass('세션 lumi.result', '발표자·이름·경기 id 가 적히고 활동·방 코드는 그대로다')
+  if (lumi.status === 'ended' && lumi.result?.matchId === 'm-1' && JSON.stringify(lumi.result.selectedIds) === JSON.stringify([S1, S2]) && lumi.result.selectedNames?.[S1] === '민준' && lumi.activityInstanceId === ACT && lumi.roomCode === '714347' && /6등·9등/.test(lumi.result.selectionReason))
+    pass('세션 lumi.result', '발표자·이름·경기 id·등수 이유가 적히고 활동·방 코드는 그대로다')
   else fail('세션 lumi.result', JSON.stringify(lumi))
   const ladder = sess?.ladders?.[GAME]
   if (ladder?.phase === 'done' && JSON.stringify(ladder.winnerUids) === JSON.stringify([S1, S2]) && ladder.gameId === GAME) pass('세션 ladders', '기존 발표자 구조(winnerUids)에도 같은 발표자가 있다')
   else fail('세션 ladders', JSON.stringify(ladder))
   const res = await read(`classes/${CID}/lumiResults/${ACT}__m-1`)
-  if (res && res.selectedCount === 2 && res.requestedCount === 2 && res.players?.length === 3 && res.roomCode === '714347') pass('lumiResults', '전체 결과 문서(참가자 3 · 선정 2)')
+  if (res && res.selectedCount === 2 && res.requestedCount === 2 && res.players?.length === 3 && res.roomCode === '714347' && JSON.stringify(res.rules?.ranks) === '[6,9]' && res.rules?.timeLimit === 60) pass('lumiResults', '전체 결과 문서(참가자 3 · 선정 2 · 등수 6·9 · 제한 60초)')
   else fail('lumiResults', JSON.stringify(res))
   const pick = await read(`classes/${CID}/picks/${GAME}-lumi-m-1`)
   if (pick && pick.runBy === 'lumi-run' && JSON.stringify(pick.winnerUids) === JSON.stringify([S1, S2]) && pick.candidateUids?.length === 3) pass('picks', '뽑기 기록이 남는다')

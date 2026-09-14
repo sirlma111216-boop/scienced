@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { GameDef, LessonId } from '@/content/types'
 import { useAuth } from '@/lib/auth'
-import { activeLumi, fetchTicket, lumiConfigured, lumiMode, serverWsUrl, storageKey } from '@/lib/lumi'
+import { activeLumi, fetchTicket, lumiConfigured, lumiMap, serverWsUrl, storageKey, studentRules } from '@/lib/lumi'
 import type { SessionState } from '@/lib/types'
-import { Badge, Caption, ColorBlock, Notice } from '@/components/ui'
+import { Badge, Button, Caption, ColorBlock, Notice } from '@/components/ui'
 import { LumiFrame } from './LumiFrame'
 
 /**
@@ -11,8 +11,9 @@ import { LumiFrame } from './LumiFrame'
  *
  * 학생 계정에는 학생 참가 화면과 자기 게임 화면만 보인다. 방 만들기·규칙 변경·강제 종료·재경기는 없다.
  *   · 방이 없으면 「선생님이 게임을 준비하고 있어요」.
- *   · 강사가 방을 만들면 세션 구독으로 방 코드가 오고, 이 계정의 티켓을 받아 한 번만 저절로 참가한다.
- *     닉네임·코드를 다시 입력하지 않는다 — 티켓에 든 이름이 캐릭터 위와 결과에 그대로 쓰인다.
+ *   · 강사가 방을 만들면 세션 구독으로 방 코드가 오고, 이 계정의 티켓을 받는다. 학생은 「참가」 한 번만 누른다 —
+ *     닉네임·코드·QR·주소는 없다. 티켓에 든 이름이 캐릭터 위와 결과에 그대로 쓰인다.
+ *   · 몇 등이 발표자가 될지는 어디에도 적지 않는다(config 에도 등수를 넣지 않는다). 결과 때 게임 서버가 적은 이유로만 드러난다.
  *   · 결과는 서버가 확인해 세션에 적은 것만 그린다. 내가 뽑혔는지 눈에 띄게.
  */
 export function LumiStudent({
@@ -32,6 +33,8 @@ export function LumiStudent({
   const lumi = activeLumi(session?.lumi)
   const [ticket, setTicket] = useState<{ act: string; ticket: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /* 「참가」를 누른 활동 — 활동이 바뀌면 다시 눌러야 한다 (지난 방에 저절로 들어가지 않게) */
+  const [joinedAct, setJoinedAct] = useState<string | null>(null)
 
   /* 방이 열리면 이 활동의 티켓을 받는다 — 활동이 바뀌면 새 티켓. 지난 계정·지난 활동의 자격은 쓰지 않는다. */
   useEffect(() => {
@@ -64,7 +67,7 @@ export function LumiStudent({
           {result ? (iAmSelected ? '이번 발표자는 나예요' : '이번 발표자가 정해졌어요') : game.lead.split('\n')[0]}
         </h2>
         <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.85 }}>
-          {lumiMode(game) === 'race' ? '먼저 도착한 사람이 이번 발표자입니다.' : '뒤처진 사람이 이번 발표자입니다.'} {game.hint}
+          제한 시간은 {game.lumi?.timeLimit ?? 60}초 — 그 전에 모두 들어오면 바로 끝납니다. {game.hint}
         </p>
 
         {/* 결과 — 서버가 확인한 것 */}
@@ -72,9 +75,7 @@ export function LumiStudent({
           <div className="card" style={{ marginTop: 16 }} aria-live="polite">
             <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
               <Caption>이번 발표자</Caption>
-              <Badge>
-                {result.requestedCount}명 목표{result.selectedCount !== result.requestedCount ? ` · 실제 ${result.selectedCount}명` : ''}
-              </Badge>
+              <Badge>{result.selectedCount === 0 ? '선정 없음' : `${result.selectedCount}명`}</Badge>
             </div>
             {selected.length === 0 ? (
               <p className="text-body-sm" style={{ margin: '8px 0 0' }}>
@@ -121,6 +122,16 @@ export function LumiStudent({
               게임에 들어가지 못했습니다 — {error}. 화면을 새로고침해 보세요.
             </p>
           </Notice>
+        ) : ticket && user && joinedAct !== lumi.activityInstanceId ? (
+          <div className="card" style={{ marginTop: 16 }}>
+            <p className="text-body" style={{ margin: 0 }}>
+              방이 열렸어요. 참가를 누르면 내 이름으로 들어갑니다.
+            </p>
+            <div style={{ marginTop: 10 }}>
+              <Button onClick={() => setJoinedAct(lumi.activityInstanceId)}>게임 참가</Button>
+            </div>
+            <Caption>휴대폰은 가로로 돌려 주세요. 참가 코드·QR 은 없어요.</Caption>
+          </div>
         ) : ticket && user ? (
           <div style={{ marginTop: 16 }}>
             <LumiFrame
@@ -136,8 +147,13 @@ export function LumiStudent({
                 roomCode: lumi.roomCode,
                 autoJoin: true,
                 integrationTicket: ticket.ticket,
-                rules: { mode: lumiMode(game), count: lumi.requestedCount, text: '이번 발표자' },
+                map: lumiMap(game),
+                rules: studentRules(game),
                 serverUrl: serverWsUrl(),
+              }}
+              onError={(m) => {
+                console.warn('[lumi]', m)
+                setError(m)
               }}
             />
             <Caption style={{ marginTop: 6 }}>← → 이동 · 스페이스 점프. 휴대폰은 가로로 돌리고 아래 버튼을 두 손가락으로 누릅니다.</Caption>

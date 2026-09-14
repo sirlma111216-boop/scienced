@@ -1085,7 +1085,7 @@ export const lesson03: Lesson = {
           options: ['질문 ①', '질문 ②', '질문 ③', '질문 ④', '질문 ⑤'],
         },
       ],
-      gameId: '03-lumi-race',
+      gameId: '03-lumi',
       wallPrompt: '내가 진단한 설명모형과, 다음에 던질 질문 한 개',
     },
 
@@ -1612,7 +1612,7 @@ export const lesson04: Lesson = {
           required: true,
         },
       ],
-      gameId: '04-lumi-last',
+      gameId: '04-lumi',
       wallPrompt: '내가 도움을 줄일 근거로 삼은 증거',
     },
 

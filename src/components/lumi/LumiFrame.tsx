@@ -20,6 +20,7 @@ export function LumiFrame({
   onLobby,
   onStart,
   onResult,
+  onError,
 }: {
   config: Record<string, unknown>
   /** 이 값이 바뀔 때만 다시 mount 한다 (예: 활동 id + 역할 + 방 코드) */
@@ -33,14 +34,16 @@ export function LumiFrame({
   onLobby?: (s: LumiSnapshot) => void
   onStart?: (s: LumiSnapshot) => void
   onResult?: (r: LumiGameResult) => void
+  /** 게임 서버가 거절한 이유(티켓 만료·방 없음 등) — 화면에 적어 「여는 중」에서 조용히 멈추지 않게 한다 */
+  onError?: (message: string) => void
 }) {
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   const configRef = useRef(config)
   configRef.current = config
   const createOnMountRef = useRef(createOnMount)
   createOnMountRef.current = createOnMount
-  const handlers = useRef({ onAvailable, onReady, onLobby, onStart, onResult })
-  handlers.current = { onAvailable, onReady, onLobby, onStart, onResult }
+  const handlers = useRef({ onAvailable, onReady, onLobby, onStart, onResult, onError })
+  handlers.current = { onAvailable, onReady, onLobby, onStart, onResult, onError }
 
   useEffect(() => {
     const frame = frameRef.current
@@ -64,6 +67,7 @@ export function LumiFrame({
       if (m.type === 'lumi:lobby') handlers.current.onLobby?.(m.value as LumiSnapshot)
       if (m.type === 'lumi:start') handlers.current.onStart?.(m.value as LumiSnapshot)
       if (m.type === 'lumi:result') handlers.current.onResult?.(m.value as LumiGameResult)
+      if (m.type === 'lumi:error') handlers.current.onError?.(String(m.value ?? ''))
     }
     window.addEventListener('message', onMessage)
     frame.src = embedUrl()

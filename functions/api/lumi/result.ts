@@ -26,7 +26,7 @@ interface Envelope {
     matchId: string
     activityId: string
     map: number
-    rules: { mode: string; duration: number; lives: number; count: number; text: string }
+    rules: { mode: string; duration: number; lives: number; count: number; text: string; ranks?: number[]; timeLimit?: number }
     players: Array<{ id: string; name: string; status: string; rank: number | null; finishTime: number | null; progress: number; connected: boolean; bot: boolean }>
     selectedIds: string[]
     selectionReason: string
@@ -102,7 +102,8 @@ export const onRequestPost: PagesFunction<Env & { LUMI_SHARED_SECRET?: string; F
       selectedNames: M(Object.fromEntries(r.players.filter((p) => r.selectedIds.includes(p.id)).map((p) => [p.id, S(p.name)]))),
       requestedCount: I(requested),
       selectedCount: I(r.selectedIds.length),
-      rules: M({ mode: S(r.rules.mode), duration: I(r.rules.duration), lives: I(r.rules.lives), count: I(r.rules.count), text: S(r.rules.text ?? '') }),
+      /* 등수 방식의 발표 등수는 결과에만 있다 — 여기(강사만 읽는 결과 문서)에 남긴다 */
+      rules: M({ mode: S(r.rules.mode), duration: I(r.rules.duration), lives: I(r.rules.lives), count: I(r.rules.count), text: S(r.rules.text ?? ''), ranks: A((r.rules.ranks ?? []).map(I)), timeLimit: I(r.rules.timeLimit ?? 0) }),
       map: I(r.map),
       players: A(r.players.map((p) => M({ id: S(p.id), name: S(p.name), status: S(p.status), rank: p.rank === null ? { nullValue: null } : I(p.rank), progress: I(p.progress), connected: B(p.connected) }))),
       selectionReason: S(r.selectionReason),

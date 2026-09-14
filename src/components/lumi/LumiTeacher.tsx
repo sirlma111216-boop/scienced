@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { GameDef, LessonId } from '@/content/types'
 import { useAuth } from '@/lib/auth'
-import { LUMI_MAX_PLAYERS, activeLumi, fetchTicket, lumiConfigured, lumiMode, newActivityInstanceId, serverWsUrl, storageKey, type LumiGameResult, type LumiSnapshot } from '@/lib/lumi'
+import { LUMI_MAX_PLAYERS, activeLumi, fetchTicket, lumiConfigured, lumiCount, lumiMap, newActivityInstanceId, serverWsUrl, storageKey, teacherRules, type LumiGameResult, type LumiSnapshot } from '@/lib/lumi'
 import type { Enrollment, LumiActivity, SessionState } from '@/lib/types'
 import { Badge, Button, Caption, Notice } from '@/components/ui'
 import { useNames } from '@/components/console/shared'
@@ -11,6 +11,8 @@ import { LumiFrame } from './LumiFrame'
  * 강사 — 루미 런으로 발표자 선정 (3·4강).
  *
  * 강사 계정에는 교사 방 만들기와 교사용 운영 화면만 보인다. 학생 참가 탭이나 자기 자신을 학생으로 넣는 화면은 없다.
+ *   ★ 발표할 등수(game.lumi.ranks)는 여기 어디에도 적지 않는다. 게임 서버가 결과에 적어 보낸 selectionReason 으로만 드러난다.
+ *     강사가 하는 일은 둘 — 다 들어왔는지 보고, 「다 함께 시작」을 누른다. 발표자 수 칸·규칙 칸은 없다.
  *   ① 「게임 방 만들기」 — 활동 실행 id 를 만들고 티켓을 받아 iframe 을 연다. 방은 그 클릭으로 게임이 만든다.
  *   ② 게임이 로비에 들어가면(lumi:ready) 방 코드를 세션(sessions/{lid}.lumi)에 적는다 → 학생 화면이 저절로 들어간다.
  *   ③ 대상 학생 N명 / 게임 연결 M명 / 미참가 를 따로 센다. 30명을 넘으면 알린다.
@@ -35,7 +37,6 @@ export function LumiTeacher({
   const { repo, user } = useAuth()
   const { nameOf } = useNames()
   const lumi = activeLumi(session?.lumi)
-  const [count, setCount] = useState(game.winnerCount)
   const [ticket, setTicket] = useState<{ act: string; ticket: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -77,7 +78,7 @@ export function LumiTeacher({
         stepId,
         roomCode: null,
         status: 'open',
-        requestedCount: count,
+        requestedCount: lumiCount(game),
         round: (session?.lumi?.round ?? 0) + 1,
         createdBy: user.uid,
         createdAt: Date.now(),
@@ -120,12 +121,12 @@ export function LumiTeacher({
     <div>
       <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
         <Badge>{game.tab}</Badge>
-        <Badge>{lumiMode(game) === 'race' ? '먼저 도착한 N명' : '뒤처진 N명'}</Badge>
+        <Badge>제한 시간 {game.lumi?.timeLimit ?? 60}초</Badge>
         {lumi ? <Badge solid>{lumi.status === 'open' ? (lumi.roomCode ? `방 ${lumi.roomCode}` : '방 만드는 중') : '결과 확정'}</Badge> : <Badge>아직 방 없음</Badge>}
-        {gameVersion ? <Caption>게임 v{gameVersion.version}{gameVersion.capabilities.includes('lesson-entry') ? '' : ' · ⚠ 연동 기능 없음(옛 배포)'}</Caption> : null}
+        {gameVersion ? <Caption>게임 v{gameVersion.version}{!gameVersion.capabilities.includes('lesson-entry') ? ' · ⚠ 연동 기능 없음(옛 배포)' : !gameVersion.capabilities.includes('ranks-mode') ? ' · ⚠ 옛 배포 — 등수 방식·제한 시간이 없어 방을 못 만듭니다. 게임을 다시 배포하세요' : ''}</Caption> : null}
       </div>
       <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.8 }}>
-        학생은 자기 계정·닉네임으로 저절로 들어옵니다. 시작은 교사만 합니다. 동점은 공동 선정이라 N명을 요청해도 더 뽑힐 수 있습니다.
+        몇 등이 발표자가 될지는 결과 때 알려드립니다. 학생은 「참가」를 누르면 자기 계정·닉네임으로 들어옵니다. 다 들어왔으면 아래 게임 화면의 「다 함께 시작」을 누르세요 — 3초 뒤 출발하고, 모두 들어오거나 제한 시간이 되면 끝납니다.
       </p>
 
       {/* 대상 · 연결 · 미참가 — 서로 다른 상태다 */}
@@ -141,12 +142,7 @@ export function LumiTeacher({
         </p>
       ) : null}
 
-      {/* 선정 인원 — 방을 만들 때 게임에 넘긴다. 만든 뒤에는 게임의 설정 칸에서 바꾼다. */}
       <div className="flex flex-wrap items-center gap-xs" style={{ marginTop: 12 }}>
-        <label htmlFor="lumi-count" className="text-body-sm" style={{ fontWeight: 480 }}>
-          발표자 수
-        </label>
-        <input id="lumi-count" type="number" min={1} max={LUMI_MAX_PLAYERS} className="field" style={{ width: 80 }} value={count} disabled={Boolean(lumi?.roomCode)} onChange={(e) => setCount(Math.max(1, Math.min(LUMI_MAX_PLAYERS, Number(e.target.value) || 1)))} />
         {lumi?.status === 'open' ? (
           <Button variant="secondary" onClick={() => void markLost()} disabled={busy}>
             방을 잃었어요 — 닫기
@@ -170,9 +166,7 @@ export function LumiTeacher({
         <div className="card" style={{ marginTop: 12 }}>
           <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
             <Caption>이번 발표자</Caption>
-            <Badge solid>
-              선정 목표 {confirmed.requestedCount}명{confirmed.selectedCount !== confirmed.requestedCount ? ` · ${confirmed.selectedCount === 0 ? '선정 없음' : `공동 선정으로 실제 ${confirmed.selectedCount}명`}` : ''}
-            </Badge>
+            <Badge solid>{confirmed.selectedCount === 0 ? '선정 없음' : `${confirmed.selectedCount}명`}</Badge>
             <Badge>{confirmed.endReason === 'teacher' ? '교사가 종료' : confirmed.endReason === 'timeout' ? '시간 종료' : '정상 종료'}</Badge>
           </div>
           {confirmed.selectedIds.length === 0 ? (
@@ -193,7 +187,7 @@ export function LumiTeacher({
           <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.75 }}>
             {confirmed.selectionReason} · {confirmed.tieHandling}
           </p>
-          <Caption>발표 횟수에 반영됐고, 학생 화면에도 같은 발표자가 뜹니다. 재경기는 아래 게임 화면의 「같은 방에서 재경기」로 — 새 경기 id 로 저장됩니다.</Caption>
+          <Caption>발표 횟수에 반영됐고, 학생 화면에도 같은 발표자와 같은 이유가 뜹니다. 재경기는 아래 게임 화면의 「같은 방에서 재경기」로 — 새 경기 id 로 저장됩니다.</Caption>
         </div>
       ) : null}
 
@@ -211,8 +205,8 @@ export function LumiTeacher({
               storageKey: storageKey(lumi.activityInstanceId, user?.uid ?? 'teacher', 'teacher'),
               roomCode: lumi.roomCode ?? undefined,
               integrationTicket: ticket?.ticket,
-              map: 1,
-              rules: { mode: lumiMode(game), duration: 60, lives: 0, count: lumi.requestedCount, text: '이번 발표자' },
+              map: lumiMap(game),
+              rules: teacherRules(game),
               serverUrl: serverWsUrl(),
               joinBaseUrl: `${window.location.origin}/lesson/${lessonId}`,
             }}
@@ -228,6 +222,10 @@ export function LumiTeacher({
             onLobby={(s) => setSnapshot(s)}
             onStart={(s) => setSnapshot(s)}
             onResult={(r) => setPendingResult(r)}
+            onError={(m) => {
+              console.warn('[lumi]', m)
+              setNote(`게임 서버 — ${m}`)
+            }}
           />
           {!lumi.roomCode ? <Caption style={{ marginTop: 6 }}>방을 여는 중입니다. 코드가 뜨면 학생 화면이 저절로 들어옵니다.</Caption> : null}
         </div>

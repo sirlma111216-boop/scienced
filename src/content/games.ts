@@ -52,16 +52,19 @@ export const GAMES: GameDef[] = [
   },
   /*
    * 3·4강 — 루미 런 (횡스크롤 멀티플레이 게임, 별도 배포).
-   * 강사가 방을 열고, 학생은 자기 계정·닉네임으로 저절로 들어가 각자 캐릭터를 조작한다.
+   * 강사가 방을 열고 「다 함께 시작」만 누른다. 학생은 「참가」를 누르면 자기 계정·닉네임으로 들어가 각자 캐릭터를 조작한다.
+   * 발표자는 미리 정해 둔 등수(lumi.ranks)다 — 학생 화면·강사 콘솔 어디에도 적지 않고 결과 때만 드러난다.
+   * 제한 시간 1분. 그 전에 모두 들어오면 끝. 그 등수까지 완주가 안 됐으면 게임 서버가 접속 중인 미완주자 중 무작위로 채운다(끊긴 사람 제외).
    * 선정은 게임 서버가 확정하고 서명해서 보낸 결과로만 발표자를 정한다 (functions/api/lumi/result.ts).
-   * 동점은 공동 선정 — N명을 요청해도 실제 선정이 더 많을 수 있다. 자르지 않는다.
+   * 동점(같은 틱 도착)은 공동 선정 — 실제 선정이 더 많을 수 있다. 자르지 않는다.
    */
   {
-    id: '03-lumi-race',
+    id: '03-lumi',
     lessonId: '03',
-    mode: 'lumi-race',
-    tab: '루미 런 · 먼저 도착',
-    lead: '루미와 함께 달립니다. 먼저 도착한 사람이 이번 발표자입니다.\n선생님이 방을 열면 저절로 들어갑니다.',
+    mode: 'lumi-garden',
+    tab: '루미 런 · 공중정원',
+    lead: '루미와 함께 달립니다. 몇 등이 발표자가 될지는 결과 때 알려드립니다.\n제한 시간은 60초입니다.',
+    lumi: { map: 2, ranks: [6, 9], timeLimit: 60, course: 30 },
     hint: '휴대폰은 가로로. ← → 이동, 스페이스(또는 점프 버튼)로 점프.',
     choiceField: 'diagnosis',
     reasonField: 'followUpQuestion',
@@ -73,11 +76,12 @@ export const GAMES: GameDef[] = [
     winnerCount: 2,
   },
   {
-    id: '04-lumi-last',
+    id: '04-lumi',
     lessonId: '04',
-    mode: 'lumi-last',
-    tab: '루미 런 · 꼴찌 선정',
-    lead: '루미와 함께 달립니다. 이번에는 뒤처진 사람이 발표자입니다.\n선생님이 방을 열면 저절로 들어갑니다.',
+    mode: 'lumi-cave',
+    tab: '루미 런 · 수정동굴',
+    lead: '루미와 함께 달립니다. 몇 등이 발표자가 될지는 결과 때 알려드립니다.\n제한 시간은 60초입니다.',
+    lumi: { map: 4, ranks: [1, 3], timeLimit: 60, course: 30 },
     hint: '휴대폰은 가로로. ← → 이동, 스페이스(또는 점프 버튼)로 점프.',
     choiceField: 'hintB',
     reasonField: 'reason',

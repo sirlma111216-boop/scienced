@@ -41,8 +41,8 @@ export type GameId = `${LessonId}-${string}`
 export type PickerMode =
   | 'ladder'          // 1강 · 사다리타기 (기존 구현 그대로)
   | 'sealed-envelope' // 2강 · 발표자 선정 봉투
-  | 'lumi-race'       // 3강 · 루미 런 — 먼저 도착한 사람이 발표자 (Render 게임 서버, 강의 앱 티켓으로 참가)
-  | 'lumi-last'       // 4강 · 루미 런 — 꼴찌 선정
+  | 'lumi-garden'     // 3강 · 루미 런 공중정원 — 정해 둔 등수(6·9등)가 발표, 결과 때까지 비밀 (Render 게임 서버, 강의 앱 티켓으로 참가)
+  | 'lumi-cave'       // 4강 · 루미 런 수정동굴 — 1·3등
   | 'survival'        // 5강 · 설명 생존
   | 'map-pin'         // 6강 · 교육과정 지도 핀
   | 'triple-spinner'  // 7강 · 목표·증거·활동 스피너
@@ -87,6 +87,21 @@ export interface GameDef {
   /** 가중치를 학생 화면에 공개한다 (14강은 그것이 그날의 학습 내용이다) */
   revealWeights: boolean
   winnerCount: number
+  /** 루미 런 게임(lumi-*)의 고정 규칙 — 학생·강사 화면에는 ranks 를 절대 적지 않는다 */
+  lumi?: LumiRules
+}
+
+/**
+ * 루미 런 규칙 (3·4강).
+ *   ranks     발표할 등수(완주 순서). 결과 때만 공개된다. 그 등수까지 완주가 안 됐으면 게임 서버가 접속 중인 미완주자 중 무작위로 채운다.
+ *   timeLimit 출발 뒤 제한 시간(초). 그 전에 모두 완주하면 바로 끝난다.
+ *   course    코스 길이(초 단위 이름). 1분 안에 대부분이 완주해야 등수가 채워지므로 30초 코스를 쓴다.
+ */
+export interface LumiRules {
+  map: 1 | 2 | 3 | 4 | 5
+  ranks: number[]
+  timeLimit: number
+  course: 30 | 45 | 60 | 90
 }
 
 /** 개념 카드 한 장 — 여섯 층을 모두 통과한다. */
