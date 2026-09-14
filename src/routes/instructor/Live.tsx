@@ -4,10 +4,12 @@ import { getLesson } from '@/content/lessons'
 import { GAMES_BY_LESSON } from '@/content/games'
 import { useAuth } from '@/lib/auth'
 import { buildLessonView, classSessionLength, type TierOverrides } from '@/lib/tiers'
+import { roundForLesson } from '@/lib/groups'
 import type {
   AiProposal,
   AppUser,
   Enrollment,
+  GroupRound,
   Participation,
   Post,
   ResponseDoc,
@@ -41,6 +43,7 @@ export function InstructorLive() {
   const [participation, setParticipation] = useState<Participation[]>([])
   const [docs, setDocs] = useState<ResponseDoc[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [groupRounds, setGroupRounds] = useState<GroupRound[]>([])
   const [posts, setPosts] = useState<Post[]>([])
   const [proposals, setProposals] = useState<AiProposal[]>([])
   /*
@@ -110,11 +113,13 @@ export function InstructorLive() {
     const b = repo.watchParticipation(classId, setParticipation)
     const c = repo.watchAiProposals(classId, setProposals)
     const d = repo.watchEnrollments(classId, setEnrollments)
+    const e = repo.watchGroupRounds(classId, setGroupRounds)
     return () => {
       a()
       b()
       c()
       d()
+      e()
     }
   }, [repo, classId])
 
@@ -448,6 +453,7 @@ export function InstructorLive() {
                 state={session?.ladders?.[game.id] ?? null}
                 users={users}
                 participation={participation}
+                groupRound={roundForLesson(lesson.id, groupRounds)}
               />
             </div>
           ) : null}

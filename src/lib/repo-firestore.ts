@@ -9,6 +9,7 @@ import {
   type Firestore,
   getDoc,
   getDocs,
+  increment,
   onSnapshot,
   runTransaction,
   serverTimestamp,
@@ -19,6 +20,7 @@ import {
 import { LESSONS } from '@/content/lessons'
 import type { GameId, LessonId } from '@/content/types'
 import type { Repo } from './repo'
+import { pairKey } from '@shared/groups-core'
 import type {
   AiLog,
   AiProposal,
@@ -26,9 +28,12 @@ import type {
   ClassDoc,
   Enrollment,
   Group,
+  GroupInput,
+  GroupRound,
   GroupShare,
   LadderState,
   LessonState,
+  PairHistoryDoc,
   Participation,
   PickRecord,
   Post,
@@ -176,6 +181,10 @@ export function createFirestoreRepo(db: Firestore): Repo {
         'picks',
         'participation',
         'aiProposals',
+        /* 모둠 나누기 (6차) — 동석 기록·회차·게임 선택도 이 클래스의 것이다 */
+        'pairHistory',
+        'groupRounds',
+        'groupInputs',
       ].map((name) => cc(db, classId, name))
 
       for (const lesson of LESSONS) {
@@ -593,6 +602,109 @@ export function createFirestoreRepo(db: Firestore): Repo {
     },
     async bumpParticipation(classId, uid, patch) {
       await setDoc(cd(db, classId, 'participation', uid), { uid, ...patch }, { merge: true })
+    },
+
+    /* ── 모둠 나누기 (6차) ── */
+    watchPairHistory(classId, cb) {
+      return onSnapshot(
+        cc(db, classId, 'pairHistory'),
+        (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as PairHistoryDoc), pairKey: s.id }))),
+        (err) => {
+          // 강사만 읽는다. 막히면 왜인지 남긴다 — 빈 격자와 못 읽음은 다르다.
+          console.warn('[pairHistory] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
+      )
+    },
+    watchGroupRounds(classId, cb) {
+      return onSnapshot(
+        cc(db, classId, 'groupRounds'),
+        (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as GroupRound), id: s.id }))),
+        (err) => {
+          console.warn('[groupRounds] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
+      )
+    },
+    async confirmGroupRound(classId, round) {
+      /*
+       * 한 번에 쓴다. 회차 문서 · 짝마다 동석 기록(+1) · 모둠원의 현재 모둠.
+       * 짝 기록은 increment 로 올린다 — 읽고 더해 쓰면 두 강사 화면이 겹칠 때 한 번을 잃는다.
+       */
+      const batch = writeBatch(db)
+      batch.set(cd(db, classId, 'groupRounds', round.id), round)
+      for (const g of round.groups) {
+        for (let i = 0; i < g.memberUids.length; i++) {
+          for (let j = i + 1; j < g.memberUids.length; j++) {
+            const key = pairKey(g.memberUids[i], g.memberUids[j])
+            batch.set(
+              cd(db, classId, 'pairHistory', key),
+              { pairKey: key, count: increment(1), lastRound: round.round },
+              { merge: true },
+            )
+          }
+        }
+        for (const uid of g.memberUids) {
+          batch.set(
+            cd(db, classId, 'enrollments', uid),
+            { currentGroupId: g.id, currentRoundId: round.id },
+            { merge: true },
+          )
+        }
+      }
+      for (const uid of round.absentUids) {
+        batch.set(cd(db, classId, 'enrollments', uid), { currentGroupId: null, currentRoundId: round.id }, { merge: true })
+      }
+      await batch.commit()
+    },
+    async addLateJoiner(classId, roundId, uid, groupId) {
+      await runTransaction(db, async (tx) => {
+        const ref = cd(db, classId, 'groupRounds', roundId)
+        const snap = await tx.get(ref)
+        if (!snap.exists()) throw new Error('회차가 없습니다.')
+        const round = snap.data() as GroupRound
+        const groups = round.groups.map((g) => ({
+          ...g,
+          memberUids: g.memberUids.filter((u) => u !== uid),
+        }))
+        const target = groups.find((g) => g.id === groupId)
+        if (!target) throw new Error('그 모둠이 없습니다.')
+        target.memberUids = [...target.memberUids, uid]
+        tx.update(ref, {
+          groups,
+          absentUids: round.absentUids.filter((u) => u !== uid),
+          lateJoins: [...(round.lateJoins ?? []), { uid, groupId, at: Date.now() }],
+        })
+        for (const other of target.memberUids) {
+          if (other === uid) continue
+          const key = pairKey(uid, other)
+          tx.set(cd(db, classId, 'pairHistory', key), { pairKey: key, count: increment(1), lastRound: round.round }, { merge: true })
+        }
+        tx.set(cd(db, classId, 'enrollments', uid), { currentGroupId: groupId, currentRoundId: roundId }, { merge: true })
+      })
+    },
+    watchGroupInputs(classId, lessonId, cb) {
+      return onSnapshot(
+        query(cc(db, classId, 'groupInputs'), where('lessonId', '==', lessonId)),
+        (snap) => cb(snap.docs.map((s) => s.data() as GroupInput)),
+        (err) => {
+          console.warn('[groupInputs] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
+      )
+    },
+    watchMyGroupInput(classId, lessonId, uid, cb) {
+      return onSnapshot(
+        cd(db, classId, 'groupInputs', `${lessonId}_${uid}`),
+        (snap) => cb(snap.exists() ? (snap.data() as GroupInput) : null),
+        (err) => {
+          console.warn('[groupInputs] 내 것을 읽지 못했다:', err.code, err.message)
+          cb(null)
+        },
+      )
+    },
+    async setGroupInput(classId, input) {
+      await setDoc(cd(db, classId, 'groupInputs', `${input.lessonId}_${input.uid}`), input)
     },
 
     /* ── AI 제안 ── */

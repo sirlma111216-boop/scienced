@@ -523,6 +523,15 @@ export function InstructorClasses() {
                         {/* 「열기」로는 무엇이 열리는지 알 수 없었다. 가는 곳을 그대로 적는다. */}
                         수강생 명단
                       </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          void selectClass(c.id)
+                          navigate(`/instructor/class/${c.id}/groups`)
+                        }}
+                      >
+                        모둠 나누기
+                      </Button>
                       {c.status === 'active' ? (
                         <>
                           <Button

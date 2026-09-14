@@ -53,7 +53,7 @@ for (const g of GAMES) {
     }
   }
   if (g.winnerCount < 1) fail('게임 설정', `${g.id} 의 winnerCount 가 ${g.winnerCount} 다`)
-  if (!['all', 'byResponseType', 'splitOpinion'].includes(g.candidateRule)) {
+  if (!['all', 'byResponseType', 'splitOpinion', 'groupRepresentative'].includes(g.candidateRule)) {
     fail('후보 규칙', `${g.id} 의 candidateRule 이 ${g.candidateRule} 다`)
   }
 }

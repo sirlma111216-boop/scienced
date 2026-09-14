@@ -59,6 +59,9 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await db.doc(`classes/${CID}/enrollments/${STUDENT}`).set({ uid: STUDENT, status: 'active' })
   await db.doc(`classes/${CID}/roster/${STUDENT}`).set({ uid: STUDENT, rosterName: '홍길동' })
   await db.doc(`classes/${CID}/participation/${STUDENT}`).set({ uid: STUDENT, presentCount: 2 })
+  await db.doc(`classes/${CID}/pairHistory/a|b`).set({ pairKey: 'a|b', count: 1, lastRound: 1 })
+  await db.doc(`classes/${CID}/groupRounds/${CID}-01`).set({ id: `${CID}-01`, round: 1, lessonId: '01', groups: [] })
+  await db.doc(`classes/${CID}/groupInputs/01_${STUDENT}`).set({ uid: STUDENT, lessonId: '01', choice: 'fun' })
   await db.doc(`classes/${CID}/sessions/01`).set({ lessonId: '01', stepOpen: true })
   await db
     .doc(`classes/${CID}/lessons/01/steps/step-recall/responses/${STUDENT}`)
@@ -97,6 +100,9 @@ await env.withSecurityRulesDisabled(async (ctx) => {
     gone('수강 등록', `classes/${CID}/enrollments/${STUDENT}`),
     gone('실명 명단', `classes/${CID}/roster/${STUDENT}`),
     gone('참여 기록', `classes/${CID}/participation/${STUDENT}`),
+    gone('동석 기록', `classes/${CID}/pairHistory/a|b`),
+    gone('모둠 회차', `classes/${CID}/groupRounds/${CID}-01`),
+    gone('게임 선택', `classes/${CID}/groupInputs/01_${STUDENT}`),
     gone('진행 상태', `classes/${CID}/sessions/01`),
     gone('학생 응답', `classes/${CID}/lessons/01/steps/step-recall/responses/${STUDENT}`),
     gone('의견 광장 글', `classes/${CID}/lessons/01/steps/step-recall/posts/p1`),
@@ -104,7 +110,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   ])
 
   if (checks.every(Boolean)) {
-    pass('클래스 지우기', '클래스 문서와 하위 자료 9종이 전부 사라졌다 — 실명·응답·의견 포함')
+    pass('클래스 지우기', '클래스 문서와 하위 자료 12종이 전부 사라졌다 — 실명·응답·의견 포함')
   }
 })
 

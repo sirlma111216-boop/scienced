@@ -2,13 +2,17 @@ import type { LessonId } from '@/content/types'
 import type { TierOverrides } from './tiers'
 import { LESSONS } from '@/content/lessons'
 import type { Repo } from './repo'
+import { pairKey } from '@shared/groups-core'
 import type {
   AiProposal,
   AppUser,
   ClassDoc,
   Enrollment,
   Group,
+  GroupInput,
+  GroupRound,
   GroupShare,
+  PairHistoryDoc,
   Participation,
   PickRecord,
   Post,
@@ -89,6 +93,9 @@ const kTiers = (c: string, l: string) => `c.${c}.tiers.${l}`
 const kEnrollments = (c: string) => `c.${c}.enrollments`
 const kRoster = (c: string) => `c.${c}.roster`
 const kProposals = (c: string) => `c.${c}.aiProposals`
+const kPairHistory = (c: string) => `c.${c}.pairHistory`
+const kGroupRounds = (c: string) => `c.${c}.groupRounds`
+const kGroupInputs = (c: string, l: string) => `c.${c}.groupInputs.${l}`
 
 function newId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -499,6 +506,79 @@ export function createLocalRepo(): Repo {
       if (i >= 0) list[i] = next
       else list.push(next)
       write(kParticipation(classId), list)
+    },
+
+    /* ── 모둠 나누기 (6차) ── */
+    watchPairHistory(classId, cb) {
+      return subscribe(() => cb(read<PairHistoryDoc[]>(kPairHistory(classId), [])))
+    },
+    watchGroupRounds(classId, cb) {
+      return subscribe(() => cb(read<GroupRound[]>(kGroupRounds(classId), [])))
+    },
+    async confirmGroupRound(classId, round) {
+      const rounds = read<GroupRound[]>(kGroupRounds(classId), []).filter((r) => r.id !== round.id)
+      write(kGroupRounds(classId), [...rounds, round])
+      const hist = read<PairHistoryDoc[]>(kPairHistory(classId), [])
+      const byKey = new Map(hist.map((h) => [h.pairKey, h]))
+      for (const g of round.groups) {
+        for (let i = 0; i < g.memberUids.length; i++)
+          for (let j = i + 1; j < g.memberUids.length; j++) {
+            const key = pairKey(g.memberUids[i], g.memberUids[j])
+            const prev = byKey.get(key)
+            byKey.set(key, { pairKey: key, count: (prev?.count ?? 0) + 1, lastRound: round.round })
+          }
+      }
+      write(kPairHistory(classId), [...byKey.values()])
+      const enrollments = read<Enrollment[]>(kEnrollments(classId), [])
+      const groupOf = new Map<string, string>()
+      for (const g of round.groups) for (const u of g.memberUids) groupOf.set(u, g.id)
+      write(
+        kEnrollments(classId),
+        enrollments.map((e) =>
+          groupOf.has(e.uid)
+            ? { ...e, currentGroupId: groupOf.get(e.uid)!, currentRoundId: round.id }
+            : round.absentUids.includes(e.uid)
+              ? { ...e, currentGroupId: null, currentRoundId: round.id }
+              : e,
+        ),
+      )
+    },
+    async addLateJoiner(classId, roundId, uid, groupId) {
+      const rounds = read<GroupRound[]>(kGroupRounds(classId), [])
+      const round = rounds.find((r) => r.id === roundId)
+      if (!round) throw new Error('회차가 없습니다.')
+      const groups = round.groups.map((g) => ({ ...g, memberUids: g.memberUids.filter((u) => u !== uid) }))
+      const target = groups.find((g) => g.id === groupId)
+      if (!target) throw new Error('그 모둠이 없습니다.')
+      target.memberUids = [...target.memberUids, uid]
+      const next: GroupRound = {
+        ...round,
+        groups,
+        absentUids: round.absentUids.filter((u) => u !== uid),
+        lateJoins: [...(round.lateJoins ?? []), { uid, groupId, at: Date.now() }],
+      }
+      write(kGroupRounds(classId), rounds.map((r) => (r.id === roundId ? next : r)))
+      const hist = read<PairHistoryDoc[]>(kPairHistory(classId), [])
+      const byKey = new Map(hist.map((h) => [h.pairKey, h]))
+      for (const other of target.memberUids) {
+        if (other === uid) continue
+        const key = pairKey(uid, other)
+        const prev = byKey.get(key)
+        byKey.set(key, { pairKey: key, count: (prev?.count ?? 0) + 1, lastRound: round.round })
+      }
+      write(kPairHistory(classId), [...byKey.values()])
+      const enrollments = read<Enrollment[]>(kEnrollments(classId), [])
+      write(kEnrollments(classId), enrollments.map((e) => (e.uid === uid ? { ...e, currentGroupId: groupId, currentRoundId: roundId } : e)))
+    },
+    watchGroupInputs(classId, lessonId, cb) {
+      return subscribe(() => cb(read<GroupInput[]>(kGroupInputs(classId, lessonId), [])))
+    },
+    watchMyGroupInput(classId, lessonId, uid, cb) {
+      return subscribe(() => cb(read<GroupInput[]>(kGroupInputs(classId, lessonId), []).find((i) => i.uid === uid) ?? null))
+    },
+    async setGroupInput(classId, input) {
+      const list = read<GroupInput[]>(kGroupInputs(classId, input.lessonId), []).filter((i) => i.uid !== input.uid)
+      write(kGroupInputs(classId, input.lessonId), [...list, input])
     },
 
     /* ── AI 제안 ── */

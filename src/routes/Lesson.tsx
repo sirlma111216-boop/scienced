@@ -36,6 +36,9 @@ import { ShareBar } from '@/components/wall/Wall'
 import { Rich } from '@/components/theory/Rich'
 import { TheoryPage } from '@/components/theory/TheoryPage'
 import { TheoryProvider } from '@/components/theory/TheoryContext'
+import { GroupGame } from '@/components/groups/GroupGame'
+import { formationLessons, gameForLesson, roundForLesson } from '@/lib/groups'
+import type { Enrollment, GroupRound } from '@/lib/types'
 import { Badge, Button, Caption, ColorBlock, Notice, ScrollX } from '@/components/ui'
 
 /**
@@ -64,6 +67,13 @@ export function Lesson() {
   /** 개념 카드 단계의 내 응답. 「잠깐 확인」을 담는다. */
   const [conceptDoc, setConceptDoc] = useState<ResponseDoc | null>(null)
   const [participation, setParticipation] = useState<Participation[]>([])
+  /** 모둠 나누기 회차 (6차). 이 차시에서 쓰는 모둠과 「처음 만나는 분」 판정에 쓴다. */
+  const [groupRounds, setGroupRounds] = useState<GroupRound[]>([])
+  /*
+   * 닉네임의 출처는 등록 문서다. users 는 규칙상 본인과 강사만 읽는다 —
+   * 학생 화면에서 모둠원 이름을 users 로 찾으면 전부 「이름 없음」이 된다. 실제로 그랬다.
+   */
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   /*
    * 이론 배경 화면 (5차 K.2). 단계가 아니라 참조 자료다 — 번호도 잠금도 없고 50분 판에서도 남는다.
    * 그래서 stepIndex 와 따로 든다. 켜져 있으면 단계 화면 대신 이것을 그린다.
@@ -111,9 +121,13 @@ export function Lesson() {
     if (!repo || !classId) return
     const a = repo.watchUsers(setUsers)
     const b = repo.watchParticipation(classId, setParticipation)
+    const c = repo.watchGroupRounds(classId, setGroupRounds)
+    const d = repo.watchEnrollments(classId, setEnrollments)
     return () => {
       a()
       b()
+      c()
+      d()
     }
   }, [repo, classId])
 
@@ -161,8 +175,12 @@ export function Lesson() {
   }, [conceptDoc])
 
   const nicknames = useMemo(
-    () => Object.fromEntries(users.map((u) => [u.uid, u.nickname || '이름 없음'])),
-    [users],
+    () =>
+      Object.fromEntries([
+        ...users.map((u) => [u.uid, u.nickname || '이름 없음']),
+        ...enrollments.filter((e) => e.nickname).map((e) => [e.uid, e.nickname]),
+      ]) as Record<string, string>,
+    [users, enrollments],
   )
 
   // 14·18강은 가중치를 학생 화면에 그대로 공개한다. 규칙 자체가 그날의 학습 내용이다.
@@ -208,6 +226,16 @@ export function Lesson() {
     { id: 'theory', label: '이론 배경', shortLabel: '이론 배경', fixed: true },
   ]
   const theoryEntries = lesson.theory?.entries ?? []
+  /*
+   * 모둠 나누기 (6차). 홀수 차시 시작에 나눈 모둠을 두 차시 동안 쓴다.
+   *   groupGame   이 차시가 나누는 회차이면 그 게임 — 첫 단계 위에 그린다
+   *   activeRound 이 차시에서 쓰는 모둠 — 나누는 회차가 아니어도 지난 회차의 모둠이 이어진다
+   */
+  const isFormationLesson = formationLessons(currentClass).includes(lesson.id)
+  const groupGame = isFormationLesson ? gameForLesson(lesson.id) : null
+  const roundHere = groupRounds.find((r) => r.lessonId === lesson.id) ?? null
+  const activeRound = roundForLesson(lesson.id, groupRounds)
+  const myGroup = user ? (activeRound?.groups.find((g) => g.memberUids.includes(user.uid)) ?? null) : null
   function openEntry(entryId: string) {
     setFocusEntryId(entryId)
     setShowTheory(true)
@@ -296,6 +324,18 @@ export function Lesson() {
         />
       ) : null}
 
+      {/* 모둠 나누기 (6차) — 나누는 회차의 첫 단계 맨 위. 강사가 확정하면 결과와 내 모둠 카드로 바뀐다. */}
+      {!showTheory && stepIndex === 0 && groupGame && classId ? (
+        <GroupGame
+          classId={classId}
+          lessonId={lesson.id}
+          game={groupGame}
+          round={roundHere}
+          rounds={groupRounds}
+          nicknames={nicknames}
+        />
+      ) : null}
+
       {/* ① 오늘의 문 */}
       {!showTheory && stepIndex === 0 ? (
         <section style={{ marginBottom: 48 }}>
@@ -378,6 +418,15 @@ export function Lesson() {
           <MustSay lines={lesson.instructorScript} stepId={step.id} isInstructor={isInstructor} />
 
           <section>
+            {/* 현재 모둠 — 차시 화면 상단에 늘 보인다. 두 차시 동안 유지된다 (6차 P.3). */}
+            {myGroup && activeRound ? (
+              <p className="text-body-sm" style={{ margin: '0 0 10px', opacity: 0.85 }}>
+                <Badge solid>{myGroup.id}모둠</Badge>{' '}
+                <strong>{myGroup.name}</strong> ·{' '}
+                {myGroup.memberUids.map((u) => nicknames[u] ?? '이름 없음').join(' · ')}
+                <span className="caption" style={{ marginLeft: 8 }}>{Number(activeRound.lessonId)}강에 나눈 모둠</span>
+              </p>
+            ) : null}
             {/* 단계 제목 옆에 소요 시간을 붙이지 않는다 (3차 D). */}
             <h2 className="text-headline" style={{ margin: '0 0 8px' }}>
               {step.title}
@@ -547,6 +596,7 @@ export function Lesson() {
                               myValues={
                                 doc?.versions?.[doc.versions.length - 1]?.payload ?? null
                               }
+                              assigned={myGroup ? { id: myGroup.id, name: myGroup.name } : null}
                             />
                           </div>
                         ) : null}

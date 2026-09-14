@@ -36,6 +36,7 @@
     "verify:stimulus": "node --import ./scripts/_loader.mjs scripts/verify-stimulus.mjs",
     "verify:figures": "node --import ./scripts/_loader.mjs scripts/verify-figures.mjs",
     "verify:theory": "node --import ./scripts/_loader.mjs scripts/verify-theory.mjs",
+    "verify:groups": "node --import ./scripts/_loader.mjs scripts/verify-groups.mjs",
     "verify": "node scripts/verify-all.mjs"
   },
   "dependencies": {

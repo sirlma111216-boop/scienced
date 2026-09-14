@@ -7,7 +7,10 @@ import type {
   ClassDoc,
   Enrollment,
   Group,
+  GroupInput,
+  GroupRound,
   GroupShare,
+  PairHistoryDoc,
   LadderState,
   LessonState,
   Participation,
@@ -263,6 +266,22 @@ export interface Repo {
   setGroups(classId: string, groups: Group[]): Promise<void>
   watchParticipation(classId: string, cb: (p: Participation[]) => void): () => void
   bumpParticipation(classId: string, uid: string, patch: Partial<Participation>): Promise<void>
+
+  /* ── 모둠 나누기 (6차) ── */
+  /** 동석 기록 — 강사만. 학생은 회차 문서에서 직접 센다. */
+  watchPairHistory(classId: string, cb: (docs: PairHistoryDoc[]) => void): () => void
+  watchGroupRounds(classId: string, cb: (rounds: GroupRound[]) => void): () => void
+  /**
+   * 회차 확정 — 회차 문서 · 동석 기록 · 등록의 현재 모둠을 한 번에 쓴다.
+   * 셋이 따로 가면 화면마다 다른 모둠을 보게 된다.
+   */
+  confirmGroupRound(classId: string, round: GroupRound): Promise<void>
+  /** 늦게 온 학생을 이미 확정된 회차의 한 모둠에 넣는다. 배정을 다시 돌리지 않는다. */
+  addLateJoiner(classId: string, roundId: string, uid: string, groupId: string): Promise<void>
+  /** 게임에서 고른 것. 강사는 그 차시 전체를, 학생은 자기 것만 본다. */
+  watchGroupInputs(classId: string, lessonId: LessonId, cb: (list: GroupInput[]) => void): () => void
+  watchMyGroupInput(classId: string, lessonId: LessonId, uid: string, cb: (input: GroupInput | null) => void): () => void
+  setGroupInput(classId: string, input: GroupInput): Promise<void>
 
   /* ── AI 제안 (교사 검토 관문) ── */
   /**

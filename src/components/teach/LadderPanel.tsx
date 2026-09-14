@@ -10,7 +10,7 @@ import {
   weightedDraw,
   winnersFromLadder,
 } from '@/lib/ladder'
-import type { AppUser, LadderState, Participation } from '@/lib/types'
+import type { AppUser, GroupRound, LadderState, Participation } from '@/lib/types'
 import { Badge, Button, Caption, Card, ScrollX } from '@/components/ui'
 import { PickerVisual } from '@/components/activity/PickerVisual'
 
@@ -46,6 +46,7 @@ export function LadderPanel({
   state,
   users,
   participation,
+  groupRound = null,
 }: {
   classId: string
   lessonId: LessonId
@@ -54,16 +55,33 @@ export function LadderPanel({
   state: LadderState | null
   users: AppUser[]
   participation: Participation[]
+  /** 6차 모둠 나누기의 이 차시 모둠. candidateRule 이 groupRepresentative 면 모둠마다 한 명만 후보다. */
+  groupRound?: GroupRound | null
 }) {
   const { user, repo } = useAuth()
   const [excluded, setExcluded] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
 
   const students = useMemo(() => users.filter((u) => u.role === 'student'), [users])
-  const candidates = useMemo(
-    () => students.filter((s) => !excluded.includes(s.uid)),
-    [students, excluded],
-  )
+  const candidates = useMemo(() => {
+    const present = students.filter((s) => !excluded.includes(s.uid))
+    /*
+     * 모둠 대표 (2차 10절 · 6차 N.7). 모둠마다 한 명 — 발표 횟수가 가장 적은 사람이 대표 후보가 된다.
+     * 그러면 사다리는 「어느 모둠이 발표하는가」를 뽑는 셈이 된다.
+     */
+    if (game.candidateRule === 'groupRepresentative' && groupRound) {
+      const count = Object.fromEntries(participation.map((p) => [p.uid, p.presentCount]))
+      const reps: AppUser[] = []
+      for (const g of groupRound.groups) {
+        const members = present.filter((s) => g.memberUids.includes(s.uid))
+        if (members.length === 0) continue
+        members.sort((a, b) => (count[a.uid] ?? 0) - (count[b.uid] ?? 0))
+        reps.push(members[0])
+      }
+      if (reps.length > 0) return reps
+    }
+    return present
+  }, [students, excluded, game.candidateRule, groupRound, participation])
 
   const nicknames = useMemo(
     () => Object.fromEntries(users.map((u) => [u.uid, u.nickname || '이름 없음'])),

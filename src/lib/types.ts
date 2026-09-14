@@ -55,6 +55,11 @@ export interface ClassDoc {
   /** archived 이면 읽기 전용. 학생도 강사도 새 글을 쓸 수 없다. */
   status: ClassStatus
   createdAt: number
+  /* ── 모둠 나누기 (6차) ── */
+  /** 모둠 수. 강사가 정한다. 없으면 GROUP_DEFAULTS 를 쓴다. */
+  groupCount?: number
+  /** 모둠을 새로 나누는 회차. 기본 01·03·05·07·09·11. 13차시 이후는 11차시 모둠을 이어 쓴다. */
+  groupFormationLessons?: LessonId[]
 }
 
 /** 차시 공개 여부는 클래스마다 따로다. 새 클래스는 01만 열려 있다. */
@@ -84,6 +89,68 @@ export interface Enrollment {
   joinedAt: number
   lastSeenAt: number
   status: 'active' | 'ended'
+  /** 지금 속한 모둠 (6차). 회차를 확정할 때 강사 쪽에서 채운다. */
+  currentGroupId?: string | null
+  currentRoundId?: string | null
+}
+
+/*
+ * ── 모둠 나누기 (6차 지시서 작업 N) ──
+ *
+ * pairHistory  두 사람이 몇 번, 마지막으로 언제 같은 모둠이었나. 강사만 읽는다.
+ * groupRounds  회차 하나의 결과. 학생도 읽는다 — 「처음 만나는 분」 배지가 여기서 나온다.
+ * groupInputs  게임에서 학생이 고른 것. 본인이 쓰고, 강사가 읽는다.
+ */
+export interface PairHistoryDoc {
+  /** 두 uid 를 정렬해 | 로 이은 것 */
+  pairKey: string
+  count: number
+  lastRound: number
+}
+
+export interface GroupRoundGroup {
+  /** '1' '2' … — 의견 광장의 「N모둠」 표시와 같은 자다 */
+  id: string
+  /** 그 차시 내용에서 가져온 이름 */
+  name: string
+  memberUids: string[]
+  /** 배분형 게임에서 이 모둠이 받은 카드 묶음 id */
+  cardSetId?: string
+}
+
+export interface GroupRound {
+  id: string
+  round: number
+  lessonId: LessonId
+  gameId: string
+  groups: GroupRoundGroup[]
+  absentUids: string[]
+  seed: string
+  /** 이번 회차의 중복 — 과거 동석 횟수 합 */
+  cost: number
+  createdBy: string
+  createdAt: number
+  manualEdits: Array<{ uid: string; fromGroup: string; toGroup: string; at: number }>
+  /**
+   * 남은 회차의 계획. 다음 회차가 여기서 출발한다.
+   * Firestore 는 배열 속 배열을 담지 못해 회차 → 모둠 → 사람을 map 으로 한 겹 싼다. lib/groups 의 encodePlan/decodePlan.
+   */
+  plannedNext: Array<{ groups: Array<{ members: string[] }> }>
+  /** 이번 결과가 계획의 그 장과 같았는가 */
+  followedPlan: boolean
+  /** 늦게 합류한 사람 */
+  lateJoins: Array<{ uid: string; groupId: string; at: number }>
+}
+
+export interface GroupInput {
+  uid: string
+  lessonId: LessonId
+  gameId: string
+  /** 1지망 (낱말·발화·예상) */
+  choice: string
+  /** 2지망 — 동질 모둠 게임만 */
+  second?: string | null
+  updatedAt: number
 }
 
 /**

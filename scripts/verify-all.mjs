@@ -21,6 +21,7 @@ const CHECKS = [
   ['verify:stimulus', '자료 연결 · 여는 조건 · 지금 할 일 (4차 G·H)'],
   ['verify:figures', '그림 제작 명세 · 그림 속 글자 금지 (4차 J)'],
   ['verify:theory', '이론 배경 — 깨진 표기 · 확인 중 배지 · 카드 연결 · 팝오버 (5차 L)'],
+  ['verify:groups', '모둠 나누기 — 게임 6종 · 카드 수 · 모의 실행 · 접근성 (6차 P.4)'],
 ]
 
 let failed = 0

@@ -431,5 +431,98 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   })
 }
 
+/* ── ⑪ 모둠 나누기 (6차): 회차 확정 → 기록·현재 모둠, 늦게 합류, 게임 선택 ── */
+{
+  const teacherRepo = createFirestoreRepo(env.authenticatedContext(TEACHER).firestore())
+  const { assignGroups, applyRound, encodePlan, decodePlan } = await import('../shared/groups-core.ts')
+  const CID2 = 'c-w2'
+  const uids = ['g-a', 'g-b', 'g-c', 'g-d', 'g-e', 'g-f', 'g-g', 'g-h']
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await db.doc(`classes/${CID2}`).set({
+      id: CID2, ownerUid: TEACHER, status: 'active', enrollmentOpen: true,
+      requireJoinCode: false, displayName: '모둠 검사', courseTitle: '과학교육론', groupCount: 2,
+    })
+    for (const u of uids) await db.doc(`classes/${CID2}/enrollments/${u}`).set({ uid: u, status: 'active', nickname: u })
+  })
+
+  /* 학생이 게임에서 고른다 — 앱의 코드로 */
+  const sA = createFirestoreRepo(env.authenticatedContext('g-a').firestore())
+  await sA.setGroupInput(CID2, { uid: 'g-a', lessonId: '01', gameId: '01-words', choice: 'fun', second: null, updatedAt: Date.now() })
+  /* 남의 것을 쓰려 하면 막힌다 */
+  let stolen = false
+  try {
+    await sA.setGroupInput(CID2, { uid: 'g-b', lessonId: '01', gameId: '01-words', choice: 'fun', second: null, updatedAt: Date.now() })
+    stolen = true
+  } catch { /* 막혀야 한다 */ }
+  if (stolen) fail('게임 선택', '학생이 남의 선택을 썼다 — 규칙이 막아야 한다')
+
+  /* 두 회차를 앱의 계산 코드로 짜서 확정한다 */
+  let history = {}
+  const t0 = Date.now()
+  const r1 = assignGroups({ uids, groupCount: 2, history, round: 1, roundsAhead: 2, seed: 'test:1' })
+  const round1 = {
+    id: `${CID2}-01`, round: 1, lessonId: '01', gameId: '01-words',
+    groups: r1.groups.map((m, i) => ({ id: String(i + 1), name: `${i + 1}모둠`, memberUids: m })),
+    absentUids: [], seed: r1.seed, cost: r1.repeats, createdBy: TEACHER, createdAt: Date.now(),
+    manualEdits: [], plannedNext: encodePlan(r1.plannedNext), followedPlan: r1.followedPlan, lateJoins: [],
+  }
+  await teacherRepo.confirmGroupRound(CID2, round1)
+  history = applyRound(history, r1.groups, 1)
+  const r2 = assignGroups({ uids, groupCount: 2, history, round: 2, roundsAhead: 1, seed: 'test:2', plannedRemaining: decodePlan(round1.plannedNext), planStale: !r1.followedPlan })
+  const round2 = { ...round1, id: `${CID2}-03`, round: 2, lessonId: '03', gameId: '03-cases', groups: r2.groups.map((m, i) => ({ id: String(i + 1), name: `${i + 1}모둠`, memberUids: m })), seed: r2.seed, cost: r2.repeats, plannedNext: encodePlan(r2.plannedNext), followedPlan: r2.followedPlan }
+  await teacherRepo.confirmGroupRound(CID2, round2)
+  const ms = Date.now() - t0
+  console.log(`  모둠 확정 2회: ${ms}ms (에뮬레이터 기준)`)
+  if (ms > 15000) fail('모둠 확정 속도', `${ms}ms 걸렸다 — 수업 중에 쓸 수 없다`)
+
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    /* 동석 기록 — 짝마다 정확히 몇 번인지. 2회차 짝은 count 1 씩, 두 번 만난 짝은 2 */
+    const hist = await db.collection(`classes/${CID2}/pairHistory`).get()
+    const byKey = Object.fromEntries(hist.docs.map((d) => [d.id, d.data()]))
+    const expected = applyRound(history, r2.groups, 2)
+    let bad = 0
+    for (const [k, rec] of Object.entries(expected)) if (byKey[k]?.count !== rec.count || byKey[k]?.lastRound !== rec.lastRound) bad += 1
+    if (Object.keys(byKey).length !== Object.keys(expected).length) bad += 1
+    if (bad > 0) fail('동석 기록', `pairHistory 가 계산과 ${bad}곳 다르다 — increment 나 lastRound 가 틀렸다`)
+    else pass('동석 기록', `짝 ${Object.keys(expected).length}개의 count·lastRound 가 앱의 계산과 정확히 같다`)
+
+    /* 현재 모둠 — 등록 문서에 2회차 모둠이 적혀 있다 */
+    const enr = await db.doc(`classes/${CID2}/enrollments/g-a`).get()
+    const gA = round2.groups.find((g) => g.memberUids.includes('g-a'))
+    if (enr.data()?.currentGroupId !== gA.id || enr.data()?.currentRoundId !== round2.id) {
+      fail('현재 모둠', `등록의 currentGroupId 가 ${enr.data()?.currentGroupId} — 2회차 ${gA.id} 이어야 한다`)
+    } else pass('현재 모둠', '회차를 확정하면 등록 문서의 현재 모둠이 그 회차로 바뀐다')
+  })
+
+  /* 늦게 합류 — 새 사람을 비용이 가장 적게 느는 모둠에. 배정을 다시 돌리지 않는다. */
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`classes/${CID2}/enrollments/g-late`).set({ uid: 'g-late', status: 'active', nickname: 'late' })
+  })
+  await teacherRepo.addLateJoiner(CID2, round2.id, 'g-late', '2')
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    const snap = await db.doc(`classes/${CID2}/groupRounds/${round2.id}`).get()
+    const g2 = snap.data().groups.find((g) => g.id === '2')
+    const others = round2.groups.find((g) => g.id === '2').memberUids
+    const okMember = g2.memberUids.includes('g-late') && others.every((u) => g2.memberUids.includes(u))
+    const late = snap.data().lateJoins?.[0]
+    const pair = await db.doc(`classes/${CID2}/pairHistory/${['g-late', others[0]].sort().join('|')}`).get()
+    if (!okMember || late?.uid !== 'g-late' || pair.data()?.count !== 1) {
+      fail('지각 합류', '늦게 온 사람이 모둠에 들어가고 기록에 남아야 한다 — 회차 문서·lateJoins·pairHistory 중 하나가 틀렸다')
+    } else pass('지각 합류', '늦게 온 사람이 지정한 모둠에 들어가고, 기록(lateJoins·동석)이 남는다')
+  })
+
+  /* 학생은 자기 등록의 모둠 자리를 못 옮긴다 */
+  let moved = false
+  try {
+    await sA.updateEnrollment(CID2, 'g-a', { currentGroupId: '9' })
+    moved = true
+  } catch { /* 막혀야 한다 */ }
+  if (moved) fail('모둠 자리 잠금', '학생이 자기 등록의 currentGroupId 를 바꿨다 — 규칙이 막아야 한다')
+  else pass('모둠 자리 잠금', '학생은 자기 등록의 모둠 자리를 옮기지 못한다')
+}
+
 await env.cleanup()
 report('test:writes')

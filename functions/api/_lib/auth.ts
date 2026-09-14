@@ -134,3 +134,25 @@ export function rateLimited(key: string, perMin: number): boolean {
   hits.set(key, list)
   return false
 }
+
+/**
+ * 강사 판정 — instructors/{uid} 문서가 있는가.
+ * 호출자의 ID 토큰으로 Firestore REST 를 부른다. 규칙이 본인 문서만 읽게 하므로
+ * 강사가 아니면 403 이 온다. 서버가 서비스 계정을 쓰지 않아도 된다.
+ */
+export async function isInstructorUid(
+  projectId: string | undefined,
+  uid: string,
+  authHeader: string | null,
+): Promise<boolean> {
+  if (!projectId) return true // 로컬 개발 — 프로젝트가 없으면 판정할 수 없다
+  try {
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/instructors/${uid}`,
+      { headers: authHeader ? { authorization: authHeader } : {} },
+    )
+    return res.ok
+  } catch {
+    return false
+  }
+}

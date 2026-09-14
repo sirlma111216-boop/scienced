@@ -36,6 +36,7 @@ export function GroupPanel({
   step,
   config,
   myValues,
+  assigned = null,
 }: {
   classId: string
   lessonId: LessonId
@@ -43,6 +44,11 @@ export function GroupPanel({
   config: GroupBuildConfig
   /** 내가 방금 제출한 값. 모둠에 들어갈 때 이것을 함께 올린다. */
   myValues: Record<string, unknown> | null
+  /**
+   * 6차 모둠 나누기로 이미 정해진 내 모둠. 있으면 번호를 고르지 않는다 —
+   * 이 차시 시작에 나눈 모둠이 그대로 경매 모둠이다. 이름도 그 모둠 이름을 쓴다.
+   */
+  assigned?: { id: string; name: string } | null
 }) {
   const { user, repo } = useAuth()
   const [shares, setShares] = useState<GroupShare[]>([])
@@ -79,6 +85,23 @@ export function GroupPanel({
 
   const myAlloc = (myValues?.[config.allocationKey] ?? {}) as Record<string, number>
   const myOpinion = String(myValues?.[config.opinionKey] ?? '').trim()
+
+  /* 정해진 모둠이 있으면 제출한 뒤 저절로 그 자리에 들어간다. 번호를 다시 고르게 하지 않는다. */
+  useEffect(() => {
+    if (!assigned || !repo || !uid || !myOpinion) return
+    if (mine?.groupId === assigned.id) return
+    void repo
+      .setGroupShare(classId, lessonId, step.id, {
+        uid,
+        nickname: user?.nickname || '이름 없음',
+        groupId: assigned.id,
+        allocation: myAlloc,
+        opinion: myOpinion,
+        updatedAt: Date.now(),
+      })
+      .catch((e) => console.error('[모둠] 정해진 모둠에 들어가지 못했다:', e))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assigned?.id, myOpinion, mine?.groupId, repo, uid])
 
   async function join(groupId: string) {
     if (!repo || !uid) return
@@ -149,7 +172,13 @@ export function GroupPanel({
         고르는 순간 우리 모둠의 평균과 각자가 쓴 문장이 아래에 모입니다.
       </p>
 
-      {/* 번호 고르기 */}
+      {/* 번호 고르기 — 정해진 모둠이 있으면 고르지 않는다 */}
+      {assigned ? (
+        <p className="text-body-sm" style={{ marginTop: 16 }}>
+          <Badge solid>{assigned.id}모둠</Badge>{' '}
+          <strong>{assigned.name}</strong> — 이 차시 시작에 나눈 모둠입니다. 제출하면 저절로 이 모둠에 들어갑니다.
+        </p>
+      ) : (
       <div style={{ marginTop: 16 }}>
         <p className="text-body-sm" style={{ fontWeight: 480, marginBottom: 8 }}>
           우리 모둠 번호
@@ -188,6 +217,7 @@ export function GroupPanel({
           </div>
         ) : null}
       </div>
+      )}
 
       {error ? (
         <p role="alert" className="text-body-sm" style={{ fontWeight: 480, marginTop: 12 }}>

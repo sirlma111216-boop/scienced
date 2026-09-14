@@ -18,6 +18,7 @@ import { InstructorAnalytics } from '@/routes/instructor/Analytics'
 import { InstructorAiReview } from '@/routes/instructor/AiReview'
 import { InstructorClasses } from '@/routes/instructor/Classes'
 import { InstructorClassStudents } from '@/routes/instructor/ClassStudents'
+import { InstructorClassGroups } from '@/routes/instructor/ClassGroups'
 
 /**
  * 라우트 보호 (지시서 4.5).
@@ -147,6 +148,14 @@ export function App() {
             element={
               <Guard instructorOnly classOptional>
                 <InstructorClasses />
+              </Guard>
+            }
+          />
+          <Route
+            path="/instructor/class/:classId/groups"
+            element={
+              <Guard instructorOnly classOptional>
+                <InstructorClassGroups />
               </Guard>
             }
           />

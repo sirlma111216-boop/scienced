@@ -63,6 +63,7 @@ export type CandidateRule =
   | 'all'             // 응답을 제출한 전원
   | 'byResponseType'  // 응답 유형 묶음마다
   | 'splitOpinion'    // 반응이 갈린 글의 작성자
+  | 'groupRepresentative' // 모둠마다 한 명 — 6차 모둠 나누기의 모둠을 쓴다
 
 export interface GameDef {
   id: GameId
