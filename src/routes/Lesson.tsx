@@ -22,7 +22,7 @@ import type {
   SessionState,
 } from '@/lib/types'
 import { AfterClass } from '@/components/response/AfterClass'
-import { AppShell, InstructorMovedBanner } from '@/components/layout/AppShell'
+import { AppShell, InstructorMovedBanner, InstructorNoticeCard } from '@/components/layout/AppShell'
 import { AiAssistPanel } from '@/components/ai/AiAssistPanel'
 import { ConceptCard } from '@/components/concept/ConceptCard'
 import { LadderGame } from '@/components/activity/LadderGame'
@@ -31,7 +31,6 @@ import { LockedCard, StimulusView } from '@/components/stimulus/StimulusView'
 import { ModuleHost } from '@/components/activity/ModuleHost'
 import { DistributionView } from '@/components/response/DistributionView'
 import { ResponseCollector } from '@/components/response/ResponseCollector'
-import { MustSay } from '@/components/teach/MustSay'
 import { ShareBar } from '@/components/wall/Wall'
 import { Rich } from '@/components/theory/Rich'
 import { TheoryPage } from '@/components/theory/TheoryPage'
@@ -63,6 +62,9 @@ export function Lesson() {
   const [published, setPublished] = useState<LessonId[]>([])
   const [users, setUsers] = useState<AppUser[]>([])
   const [dismissedAt, setDismissedAt] = useState<string | null>(null)
+  /* 강사의 분기 안내·알림 카드 — 닫은 시각을 기억해 같은 카드를 다시 띄우지 않는다 (7차 R.1 · R.4) */
+  const [noticeDismissed, setNoticeDismissed] = useState(0)
+  const [nudgeDismissed, setNudgeDismissed] = useState(0)
   const [allDocs, setAllDocs] = useState<ResponseDoc[]>([])
   /** 개념 카드 단계의 내 응답. 「잠깐 확인」을 담는다. */
   const [conceptDoc, setConceptDoc] = useState<ResponseDoc | null>(null)
@@ -313,6 +315,15 @@ export function Lesson() {
         />
       ) : null}
 
+      {/* 분기 — 콘솔의 「설명 추가 / 짝 토론 / 재응답 요청」. 강제로 옮기지 않는다, 카드일 뿐이다. */}
+      {session?.notice && session.notice.at > noticeDismissed && !isInstructor ? (
+        <InstructorNoticeCard kind={session.notice.kind} onDismiss={() => setNoticeDismissed(session.notice!.at)} />
+      ) : null}
+      {/* 나에게 온 알림 — 미제출 알림 · 고른 학생에게 재응답 요청 */}
+      {user && session?.nudges?.[user.uid] && session.nudges[user.uid].at > nudgeDismissed && !isInstructor ? (
+        <InstructorNoticeCard kind={session.nudges[user.uid].kind === 'submit' ? 'submit' : 'reask'} personal onDismiss={() => setNudgeDismissed(session.nudges![user.uid].at)} />
+      ) : null}
+
       {showMoved && instructorStep ? (
         <InstructorMovedBanner
           label={instructorStep.title}
@@ -415,8 +426,6 @@ export function Lesson() {
 
       {!showTheory && step && stepView ? (
         <>
-          <MustSay lines={lesson.instructorScript} stepId={step.id} isInstructor={isInstructor} />
-
           <section>
             {/* 현재 모둠 — 차시 화면 상단에 늘 보인다. 두 차시 동안 유지된다 (6차 P.3). */}
             {myGroup && activeRound ? (

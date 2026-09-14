@@ -4,10 +4,10 @@ import type { LessonId } from '@/content/types'
 import { getLesson } from '@/content/lessons'
 import { DEFAULT_CLASS_SIZE } from '@/content/group-games'
 import { useAuth } from '@/lib/auth'
-import { feasibility, formationLessons, gameForLesson, groupCountOf, historyFromDocs, pairCount, planSchedule } from '@/lib/groups'
+import { feasibility, formationLessons, gameForLesson, groupCountOf, historyFromDocs, planSchedule } from '@/lib/groups'
 import type { Enrollment, GroupRound, PairHistoryDoc } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
-import { FormationPanel } from '@/components/groups/FormationPanel'
+import { FormationPanel, PairGrid } from '@/components/groups/FormationPanel'
 import { Badge, Button, Caption, Card, Notice, ScrollX } from '@/components/ui'
 
 /**
@@ -197,55 +197,5 @@ export function InstructorClassGroups() {
         <PairGrid students={students} hist={hist} />
       </div>
     </AppShell>
-  )
-}
-
-/** 동석 격자. 색만으로 구분하지 않는다 — 숫자를 함께 둔다. */
-function PairGrid({ students, hist }: { students: Enrollment[]; hist: Record<string, { count: number; lastRound: number }> }) {
-  if (students.length === 0) return <p className="text-body-sm" style={{ opacity: 0.7 }}>수강생이 없습니다.</p>
-  const short = (s: string) => (s.length > 4 ? `${s.slice(0, 4)}…` : s)
-  return (
-    <ScrollX>
-      <table className="font-mono" style={{ borderCollapse: 'collapse', fontSize: 11 }} aria-label="동석 기록 격자">
-        <thead>
-          <tr>
-            <th style={{ padding: 2 }} />
-            {students.map((s) => (
-              <th key={s.uid} scope="col" style={{ padding: 2, writingMode: 'vertical-rl', textAlign: 'left', fontWeight: 400, maxHeight: 64 }}>
-                {short(s.nickname || '?')}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {students.map((a) => (
-            <tr key={a.uid}>
-              <th scope="row" style={{ padding: '2px 6px 2px 0', textAlign: 'right', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                {short(a.nickname || '?')}
-              </th>
-              {students.map((b) => {
-                if (a.uid === b.uid) return <td key={b.uid} style={{ background: '#f1f1f1', width: 18, height: 18 }} />
-                const c = pairCount(hist, a.uid, b.uid)
-                return (
-                  <td
-                    key={b.uid}
-                    title={`${a.nickname} · ${b.nickname} — ${c}번`}
-                    style={{
-                      width: 18,
-                      height: 18,
-                      textAlign: 'center',
-                      boxShadow: 'inset 0 0 0 1px #eee',
-                      background: c === 0 ? '#fff' : c === 1 ? '#e8f4ec' : '#f6d9d9',
-                    }}
-                  >
-                    {c === 0 ? '' : c}
-                  </td>
-                )
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </ScrollX>
   )
 }

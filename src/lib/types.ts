@@ -283,6 +283,16 @@ export interface SessionState {
   pinnedPostRef: { stepId: string; postId: string } | null
   /** 강사가 어느 단계로 옮겼는지. 학생 화면을 강제로 옮기지 않고 안내만 띄운다. */
   instructorAt: string | null
+  /**
+   * 분기 (7차 R.1). 콘솔의 「설명 추가 / 짝 토론 / 재응답 요청」을 누르면 학생 화면에 안내 카드가 뜬다.
+   * 강제로 옮기지 않는다 — 카드일 뿐이다. at 이 바뀌면 새 카드다.
+   */
+  notice?: { kind: 'explain' | 'pair' | 'reask'; stepId: string; at: number } | null
+  /**
+   * 한 사람에게 보내는 알림 (7차 R.4 미제출 알림 · R.2 고른 학생에게 재응답 요청).
+   * uid → 마지막 알림. 학생 화면은 자기 것만 본다.
+   */
+  nudges?: Record<string, { kind: 'submit' | 'reask'; stepId: string; at: number }>
   updatedAt: number
 }
 

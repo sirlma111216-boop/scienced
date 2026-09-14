@@ -8,15 +8,16 @@
  *
  *   결과는 docs/7차-콘솔-대조표.md 로 쓴다. 강의자가 확인한 뒤에야 콘솔을 고친다.
  *
- * ★ 이 스크립트는 「지금 콘솔이 무엇을 그리는가」를 소스에서 읽지 않는다 — 아래 CONSOLE_NOW 에
- *   손으로 적었다(2026-09-14 Live.tsx 기준). 콘솔을 등록표에서 그리도록 바꾸면(R-2) 이 표는
- *   등록표 자체가 되고, verify:console 이 양방향으로 검사한다.
+ * ★ 2026-09-14 R-2 이후 콘솔은 등록표(src/lib/console-registry.ts)에서 그린다. 그래서 「지금 콘솔」 열은
+ *   등록표를 그대로 읽는다 — 손으로 적은 옛 표(대조 시점의 Live.tsx)는 git 기록에 있다.
+ *   verify:console 이 양방향으로 검사한다.
  */
 import { writeFileSync } from 'node:fs'
 
 const { LESSONS } = await import('../src/content/lessons/index.ts')
 const { buildLessonView } = await import('../src/lib/tiers.ts')
 const { DEFAULT_FORMATION_LESSONS } = await import('../src/content/group-games.ts')
+const { CONTROLS, CONTROL_LABEL } = await import('../src/lib/console-registry.ts')
 
 /* ── Q.2 등록표: 블록 종류 → 콘솔에 있어야 할 조작부 ── */
 export const REGISTRY = {
@@ -36,32 +37,49 @@ export const REGISTRY = {
   deferred: ['「수업 후 이어서」 제출 현황'],
 }
 
-/* ── 지금 콘솔(Live.tsx, 2026-09-14)이 그리는 조작부 ── */
-const CONSOLE_NOW = {
-  'stimulus·afterReveal': ['자료 공개 / 되돌리기'],
-  stimulus: [],
-  input: ['제출 현황', '응답 목록', '유형 묶기(aiTasks 에 cluster-responses 가 있는 단계만)'],
-  choice: ['제출 현황', '분포(단계의 첫 선택형 칸만)'],
-  sorter: [],
-  canvas: [],
-  module: ['제출 현황', '응답 목록'],
-  opinionWall: ['고정', '숨김', '갈린 글 표시'],
-  ladder: ['후보 확인', '제외', '실행', '재추첨', '수동 지정', '비상 추첨', '시드·가중치·발표 횟수'],
-  groupGame: ['실행', '미리보기', '재배정', '수동 이동', '확정', '고정 규칙', '지각 합류', '모둠 수'],
-  groupBuild: [],
-  concepts: [],
-  gateOpen: ['열기 / 닫기'],
-  deferred: [],
+/* ── 지금 콘솔 — 등록표(console-registry)에서 그대로 ── */
+const KIND_OF = {
+  'stimulus·afterReveal': 'stimulusReveal',
+  stimulus: 'stimulus',
+  input: 'input',
+  choice: 'choice',
+  sorter: 'sorter',
+  canvas: 'canvas',
+  module: 'module',
+  opinionWall: 'opinionWall',
+  ladder: 'ladder',
+  groupGame: 'groupGame',
+  groupBuild: 'groupBuild',
+  concepts: 'concepts',
+  gateOpen: 'gateOpen',
+  deferred: 'deferred',
+}
+const LABEL_ALIAS = {
+  '자료 공개 / 되돌리기': '자료 공개 / 되돌리기',
+  '선택지별 명단': '선택지별 명단',
+  '개인·모둠별 배분 나란히 보기': '개인·모둠별 나란히 보기',
+  '썸네일 격자': '썸네일 격자',
+  '크게 보기': '썸네일 격자',
+  '후보 확인': '발표자 뽑기', '제외': '발표자 뽑기', '실행': '발표자 뽑기', '재추첨': '발표자 뽑기', '수동 지정': '발표자 뽑기',
+  '미리보기': '모둠 나누기', '재배정': '모둠 나누기', '수동 이동': '모둠 나누기', '확정': '모둠 나누기', '동석 기록': '모둠 나누기',
+}
+const CONSOLE_NOW = Object.fromEntries(
+  Object.entries(KIND_OF).map(([k, kind]) => [k, (CONTROLS[kind] ?? []).map((c) => CONTROL_LABEL[c])]),
+)
+/* 등록표의 이름과 Q.2 표의 이름이 다른 것은 별칭으로 맞춘다 (ladder·groupGame 은 조작부 하나가 여러 동작을 품는다) */
+const has = (have, need) => have.some((h) => h.startsWith(need) || h === LABEL_ALIAS[need] || (need === '실행' && kindHasControl(have, need)))
+function kindHasControl(have, need) {
+  return have.includes('발표자 뽑기') || have.includes('모둠 나누기')
 }
 
 /* 콘솔에만 있고 학생 블록에 대응하지 않는 것 */
 const CONSOLE_ONLY = [
-  ['강사 대본 (MustSay · instructorScript)', '삭제', 'R.5 — 강의자가 내용을 보고 직접 진행한다'],
-  ['「분포를 보고 할 수 있는 것」 읽기 목록 (teacherNextMoves)', '변경', 'R.1 분기 단추(설명 추가 / 짝 토론 / 재응답 요청)로 — 누르면 학생 화면에 안내 카드'],
-  ['「이 화면에 없는 것」 남색 블록', '삭제', '조작부가 아니다. 자리만 차지한다'],
-  ['「고쳐 쓴 답」 별도 목록', '유지', 'R.2 개인 화면(v1·v2 나란히)으로 흡수한다'],
-  ['타이머 (시작·해제)', '유지', '학생 화면에 남은 시간이 뜬다. 기본값은 비워 둔다 (3차 D.3)'],
-  ['제출률 80% 안내문', '유지', '명단 열로 옮긴다'],
+  ['강사 대본 (MustSay · instructorScript)', '삭제함', 'R.5 — 2026-09-14 콘솔·학생 화면에서 뺐다. 필드는 남는다'],
+  ['「분포를 보고 할 수 있는 것」 읽기 목록 (teacherNextMoves)', '바꿈', 'R.1 분기 단추(설명 추가 / 짝 토론 / 재응답 요청) — 누르면 학생 화면에 안내 카드'],
+  ['「이 화면에 없는 것」 남색 블록', '삭제함', '조작부가 아니다'],
+  ['「고쳐 쓴 답」 별도 목록', '흡수', 'R.2 개인 화면(v1·v2 나란히)'],
+  ['타이머 (시작·해제)', '유지', '진행 바. 기본값은 비워 둔다 (3차 D.3)'],
+  ['제출률 80% 안내문', '유지', '명단 열'],
 ]
 
 const fieldKind = (f) => {
@@ -75,7 +93,7 @@ const moduleKind = (m) => (m === 'nodeCanvas' ? 'canvas' : m === 'cardSorter' ? 
 function verdict(kind, extra = '') {
   const need = REGISTRY[kind] ?? []
   const have = CONSOLE_NOW[kind] ?? []
-  const missing = need.filter((n) => !have.some((h) => h.startsWith(n)))
+  const missing = need.filter((n) => !has(have, n))
   if (need.length === 0) return { need: '없음', have: have.join(' · ') || '없음', verdict: '유지' }
   return {
     need: need.join(' · '),
@@ -133,7 +151,9 @@ for (const r of rows) {
 const md = []
 md.push('# 7차 — 진행 콘솔 대조표 (작업 Q.1)')
 md.push('')
-md.push(`\`npm run audit:console\` 이 만든다. 기준: 2026-09-14 \`src/routes/instructor/Live.tsx\`. 강의자가 확인하기 전에는 아무것도 지우지 않는다.`)
+md.push(
+  `\`npm run audit:console\` 이 만든다. 「콘솔에 있음?」 열은 등록표(\`src/lib/console-registry.ts\`)를 읽는다 — 콘솔은 그 등록표에서 그려지므로 이 표가 곧 콘솔이다. 처음 대조(2026-09-14, 유지 116 · 추가 318 — 옛 Live.tsx 기준)는 git 기록 \`04f3cf5\` 에 있다.`,
+)
 md.push('')
 md.push('## 요약')
 md.push('')

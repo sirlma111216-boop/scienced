@@ -12,13 +12,14 @@ import {
   groupSizes,
   historyWithoutRound,
   nameGroups,
+  pairCount,
   placeLateJoiner,
   roundNumberOf,
   runAssignment,
 } from '@/lib/groups'
 import type { PairRecord } from '@shared/groups-core'
 import type { ClassDoc, Enrollment, GroupInput, GroupRound, GroupRoundGroup } from '@/lib/types'
-import { Badge, Button, Caption, Card } from '@/components/ui'
+import { Badge, Button, Caption, Card, ScrollX } from '@/components/ui'
 
 /**
  * 한 차시의 모둠 나누기 — 실행 → 미리보기 → 확정 (6차 지시서 P.2).
@@ -53,6 +54,7 @@ export function FormationPanel({
   students,
   hist,
   rounds,
+  showPairs = false,
 }: {
   classId: string
   lessonId: LessonId
@@ -60,6 +62,8 @@ export function FormationPanel({
   students: Enrollment[]
   hist: Record<string, PairRecord>
   rounds: GroupRound[]
+  /** 동석 격자를 아래에 함께 그린다 (콘솔의 덮개 화면 — 7차 R.3) */
+  showPairs?: boolean
 }) {
   const { repo, user } = useAuth()
   const [inputs, setInputs] = useState<GroupInput[]>([])
@@ -385,15 +389,27 @@ export function FormationPanel({
             <span className="font-mono text-caption" style={{ opacity: 0.7 }}>시드 {preview.seed}</span>
           </div>
           <div className="flex flex-wrap gap-md" style={{ marginTop: 12 }}>
-            {preview.groups.map((g) => (
+            {preview.groups.map((g) => {
+              /* 동석 기록을 미리보기에 함께 — 처음 만나는 짝이 눈에 띄게 (7차 R.3) */
+              const pairs: Array<[string, string]> = []
+              for (let i = 0; i < g.memberUids.length; i++) for (let j = i + 1; j < g.memberUids.length; j++) pairs.push([g.memberUids[i], g.memberUids[j]])
+              const fresh = pairs.filter(([a, b]) => pairCount(hist, a, b) === 0).length
+              const metOf = (uid: string) => g.memberUids.filter((o) => o !== uid && pairCount(hist, uid, o) > 0).length
+              return (
               <div key={g.id} className="rounded-md" style={{ padding: 12, boxShadow: 'inset 0 0 0 1px #e6e6e6', flex: '1 1 200px' }}>
                 <p className="text-body-sm" style={{ margin: 0, fontWeight: 600 }}>
                   {g.id}. {g.name} <span style={{ opacity: 0.6 }}>· {g.memberUids.length}명</span>
                 </p>
+                <p className="text-caption" style={{ margin: '2px 0 0', opacity: 0.75 }}>
+                  처음 만나는 짝 {fresh} / {pairs.length}
+                </p>
                 <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
                   {g.memberUids.map((uid) => (
                     <li key={uid} className="flex items-center gap-xs" style={{ marginBottom: 4 }}>
-                      <span className="text-body-sm" style={{ flex: 1 }}>{nameOf[uid] ?? uid}</span>
+                      <span className="text-body-sm" style={{ flex: 1 }}>
+                        {nameOf[uid] ?? uid}
+                        {g.memberUids.length > 1 && metOf(uid) === 0 ? <span className="caption" style={{ marginLeft: 6 }}>전부 처음</span> : null}
+                      </span>
                       {/* 드래그가 아니다. 키보드로도 옮긴다. */}
                       <select
                         className="field"
@@ -410,7 +426,8 @@ export function FormationPanel({
                   ))}
                 </ul>
               </div>
-            ))}
+              )
+            })}
           </div>
           {preview.manualEdits.length > 0 ? (
             <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.75 }}>
@@ -443,7 +460,67 @@ export function FormationPanel({
           </div>
         </div>
       ) : null}
+
+      {/* 동석 격자 — 콘솔 덮개 화면에서는 여기에 함께 (7차 R.3) */}
+      {showPairs ? (
+        <div style={{ marginTop: 24 }}>
+          <Caption>동석 기록 — 누가 누구와 몇 번. 빈칸이 아직 한 번도 안 만난 짝</Caption>
+          <div style={{ marginTop: 8 }}>
+            <PairGrid students={students} hist={hist} />
+          </div>
+        </div>
+      ) : null}
     </Card>
+  )
+}
+
+/** 동석 격자. 색만으로 구분하지 않는다 — 숫자를 함께 둔다. */
+export function PairGrid({ students, hist }: { students: Enrollment[]; hist: Record<string, { count: number; lastRound: number }> }) {
+  if (students.length === 0) return <p className="text-body-sm" style={{ opacity: 0.7 }}>수강생이 없습니다.</p>
+  const short = (s: string) => (s.length > 4 ? `${s.slice(0, 4)}…` : s)
+  return (
+    <ScrollX>
+      <table className="font-mono" style={{ borderCollapse: 'collapse', fontSize: 11 }} aria-label="동석 기록 격자">
+        <thead>
+          <tr>
+            <th style={{ padding: 2 }} />
+            {students.map((s) => (
+              <th key={s.uid} scope="col" style={{ padding: 2, writingMode: 'vertical-rl', textAlign: 'left', fontWeight: 400, maxHeight: 64 }}>
+                {short(s.nickname || '?')}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {students.map((a) => (
+            <tr key={a.uid}>
+              <th scope="row" style={{ padding: '2px 6px 2px 0', textAlign: 'right', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                {short(a.nickname || '?')}
+              </th>
+              {students.map((b) => {
+                if (a.uid === b.uid) return <td key={b.uid} style={{ background: '#f1f1f1', width: 18, height: 18 }} />
+                const c = pairCount(hist, a.uid, b.uid)
+                return (
+                  <td
+                    key={b.uid}
+                    title={`${a.nickname} · ${b.nickname} — ${c}번`}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      textAlign: 'center',
+                      boxShadow: 'inset 0 0 0 1px #eee',
+                      background: c === 0 ? '#fff' : c === 1 ? '#e8f4ec' : '#f6d9d9',
+                    }}
+                  >
+                    {c === 0 ? '' : c}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollX>
   )
 }
 
