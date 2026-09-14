@@ -21,6 +21,10 @@ export function InstructorStudents() {
   const [csv, setCsv] = useState('')
   const [log, setLog] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /* 학번으로 진단·되살리기 — 명단(users 문서)에 없는 계정도 다룬다 */
+  const [repairId, setRepairId] = useState('')
+  const [repairLog, setRepairLog] = useState<string | null>(null)
+  const [repairBusy, setRepairBusy] = useState(false)
 
   useEffect(() => {
     if (!repo) return
@@ -89,6 +93,25 @@ export function InstructorStudents() {
     }
   }
 
+  async function repairStudent(repair: boolean) {
+    const studentId = repairId.trim()
+    if (!/^\d{4,}$/.test(studentId)) {
+      setRepairLog('학번을 숫자로 적어 주세요.')
+      return
+    }
+    if (repair && !confirm(`${studentId} 계정을 되살립니다 — users 문서를 채우고 비밀번호를 학번으로 되돌립니다. 응답은 건드리지 않습니다. 계속할까요?`)) return
+    setRepairBusy(true)
+    try {
+      const data = await apiPost<{ ok: boolean; found?: boolean; report?: string; actions?: string[]; message?: string }>('/api/admin/students/repair', { studentId, repair })
+      const parts = [data.report ?? '', ...(data.actions ?? []).map((a) => `✓ ${a}`), data.message ?? ''].filter(Boolean)
+      setRepairLog(parts.join('\n') || (data.ok ? '완료' : '실패'))
+    } catch (err) {
+      setRepairLog(`진단하지 못했습니다 — ${(err as Error).message}`)
+    } finally {
+      setRepairBusy(false)
+    }
+  }
+
   async function resetPassword(studentId: string) {
     if (!confirm(`${studentId} 의 비밀번호를 학번으로 되돌립니다. 계속할까요?`)) return
     const data = await apiPost('/api/admin/students/reset-password', { studentId })
@@ -145,6 +168,42 @@ export function InstructorStudents() {
           </p>
         ) : null}
       </Card>
+
+      {/*
+        학번으로 진단·되살리기.
+        아래 명단은 users 문서로 만든다 — 문서가 없거나 반쪽인 계정은 명단에 없어 「비밀번호 초기화」도 못 누른다.
+        「계정은 있다는데 로그인도 등록도 안 되는」 학생이 실제로 있었다. 학번만 알면 여기서 본다.
+      */}
+      <div style={{ marginTop: 32 }}>
+        <Card>
+          <h2 className="text-card-title" style={{ margin: '0 0 12px' }}>
+            학번으로 진단 · 되살리기
+          </h2>
+          <Caption>명단에 안 보이는 계정도 봅니다 — Auth 계정 · users 문서 · 클래스별 등록 상태</Caption>
+          <div className="flex flex-wrap items-center gap-xs" style={{ marginTop: 8 }}>
+            <input
+              className="field"
+              inputMode="numeric"
+              placeholder="학번"
+              aria-label="진단할 학번"
+              value={repairId}
+              onChange={(e) => setRepairId(e.target.value)}
+              style={{ width: 180 }}
+            />
+            <Button variant="secondary" disabled={repairBusy} onClick={() => void repairStudent(false)}>
+              {repairBusy ? '보는 중…' : '진단'}
+            </Button>
+            <Button disabled={repairBusy} onClick={() => void repairStudent(true)}>
+              되살리기 — 문서 채우고 비밀번호 초기화
+            </Button>
+          </div>
+          {repairLog ? (
+            <pre className="text-body-sm" role="status" style={{ marginTop: 12, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+              {repairLog}
+            </pre>
+          ) : null}
+        </Card>
+      </div>
 
       <div style={{ marginTop: 32 }}>
         <Card>
