@@ -614,6 +614,7 @@ export function Lesson() {
                                 doc?.versions?.[doc.versions.length - 1]?.payload ?? null
                               }
                               assigned={myGroup ? { id: myGroup.id, name: myGroup.name } : null}
+                              roundLessonId={activeRound?.lessonId ?? null}
                             />
                           </div>
                         ) : null}

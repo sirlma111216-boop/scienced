@@ -37,6 +37,7 @@ export function GroupPanel({
   config,
   myValues,
   assigned = null,
+  roundLessonId = null,
 }: {
   classId: string
   lessonId: LessonId
@@ -49,8 +50,14 @@ export function GroupPanel({
    * 이 차시 시작에 나눈 모둠이 그대로 경매 모둠이다. 이름도 그 모둠 이름을 쓴다.
    */
   assigned?: { id: string; name: string } | null
+  /**
+   * 이 차시가 쓰는 모둠 회차가 나눠진 차시 (1·3·5·7·9·11강). 있으면 번호 고르기를 그리지 않는다 —
+   * 그 모둠이 다음 차시까지 그대로 이어지기 때문이다. 나에게 자리가 없어도 「모둠을 만드세요」라고 하지 않는다.
+   */
+  roundLessonId?: string | null
 }) {
-  const { user, repo } = useAuth()
+  const roundExists = roundLessonId !== null
+  const { user, repo, isInstructor } = useAuth()
   const [shares, setShares] = useState<GroupShare[]>([])
   const [agreed, setAgreed] = useState('')
   const [posting, setPosting] = useState(false)
@@ -179,8 +186,21 @@ export function GroupPanel({
             <Badge solid>{assigned.id}모둠</Badge> {assigned.name}
           </h3>
           <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.78 }}>
-            이 차시 시작에 나눈 모둠입니다. 제출하면 저절로 이 모둠에 들어가고,
+            {roundLessonId && roundLessonId !== lessonId ? `${Number(roundLessonId)}강에서 나눈 모둠을 그대로 씁니다.` : '이 차시 시작에 나눈 모둠입니다.'} 제출하면 저절로 이 모둠에 들어가고,
             {hasAllocation ? ' 모둠의 평균과 각자가 쓴 문장이 아래에 모입니다.' : ' 각자가 쓴 글이 아래에 모입니다.'}
+          </p>
+        </>
+      ) : roundExists ? (
+        <>
+          {/* 모둠은 나눠졌는데 이 계정은 그 안에 없다 — 강사 미리보기이거나, 결석해서 자리가 없는 학생이다 */}
+          <Caption>우리 모둠</Caption>
+          <h3 id="group-build-heading" className="text-card-title" style={{ margin: '8px 0 0' }}>
+            {Number(roundLessonId)}강에서 나눈 모둠을 그대로 씁니다
+          </h3>
+          <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.78 }}>
+            {isInstructor
+              ? '학생은 제출하면 저절로 자기 모둠에 들어갑니다. 강사 계정에는 모둠이 없어 여기까지만 보입니다.'
+              : '이 계정은 그 모둠에 자리가 없습니다. 강사에게 말하면 넣어 줍니다 — 넣어 주면 제출한 글이 그 모둠에 모입니다.'}
           </p>
         </>
       ) : (
@@ -196,8 +216,8 @@ export function GroupPanel({
         </>
       )}
 
-      {/* 번호 고르기 — 정해진 모둠이 있으면 고르지 않는다 */}
-      {assigned ? null : (
+      {/* 번호 고르기 — 정해진 모둠이 있으면(이 차시든 앞 차시든) 고르지 않는다 */}
+      {assigned || roundExists ? null : (
       <div style={{ marginTop: 16 }}>
         <p className="text-body-sm" style={{ fontWeight: 480, marginBottom: 8 }}>
           우리 모둠 번호
@@ -245,11 +265,13 @@ export function GroupPanel({
       ) : null}
 
       {!myGroup ? (
+        roundExists && !assigned ? null : (
         <p className="text-body-sm" style={{ marginTop: 16, opacity: 0.66 }}>
           {assigned
             ? hasAllocation ? '제출하면 모둠원의 배분이 보입니다.' : '제출하면 모둠원의 글이 보입니다.'
             : hasAllocation ? '번호를 고르기 전에는 모둠원의 배분이 보이지 않습니다.' : '번호를 고르기 전에는 모둠원의 글이 보이지 않습니다.'}
         </p>
+        )
       ) : (
         <>
           {/* 우리 모둠 평균 */}
