@@ -119,4 +119,21 @@ for (const l of LESSONS) {
 }
 pass('게임 배치', '차시마다 정확히 한 단계에 등록된 게임이 붙어 있다')
 
+/*
+ * ── 자리 수 = 이 클래스의 수강생 수 ──
+ * 수강생이 두 명인 반에 자리 16개가 열린 적이 있다 — 후보를 전역 학생 계정에서 만들었기 때문이다.
+ * 열여덟 게임이 모두 LadderPanel 하나를 쓰므로, 그 하나가 등록 명단(enrollments)에서 후보를 만들어야 한다.
+ */
+{
+  const { readFile } = await import('node:fs/promises')
+  const panel = await readFile('src/components/teach/LadderPanel.tsx', 'utf8')
+  if (panel.includes("users.filter((u) => u.role === 'student')")) {
+    fail('자리 수', 'LadderPanel 이 전역 학생 계정으로 후보를 만든다 — 이 클래스의 등록(enrollments)에서 만들어야 한다')
+  } else if (!/enrollments/.test(panel) || !panel.includes('Math.max(2, candidates.length)')) {
+    fail('자리 수', 'LadderPanel 의 자리 수가 후보 수(등록 명단)에서 나오지 않는다')
+  } else {
+    pass('자리 수', '발표자 뽑기의 후보와 자리 수는 이 클래스의 등록 명단에서 나온다 — 18개 게임 공통')
+  }
+}
+
 report('verify:games')

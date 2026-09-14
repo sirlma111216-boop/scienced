@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { GameDef, LessonId } from '@/content/types'
 import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -119,12 +119,26 @@ export function LadderPanel({
     [state?.seats, nicknames],
   )
 
+  /* 자리 수 = 후보 수. 후보가 한 명이어도 사다리는 두 칸이 있어야 그려진다. */
+  const expectedColumns = Math.max(2, candidates.length)
+  /*
+   * ★ 저장된 판의 자리 수가 지금 후보 수와 다르면(예전 코드가 전역 학생 계정 수로 16칸을 열어 둔 것,
+   *   또는 열어 둔 뒤 수강생이 바뀐 것) 그 판은 틀린 판이다. 아무도 자리를 잡기 전이면 바로 다시 연다.
+   *   누군가 잡았으면 강사가 단추로 다시 연다 — 잡은 자리가 사라지므로 자동으로 하지 않는다.
+   */
+  const staleSeats = Boolean(state && state.phase === 'seating' && state.columns !== expectedColumns)
+  const seatsTaken = Object.keys(state?.seats ?? {}).length
+  useEffect(() => {
+    if (!staleSeats || seatsTaken > 0 || busy || candidates.length === 0) return
+    void open(state!.round)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staleSeats, seatsTaken, candidates.length])
+
   async function open(round = 1) {
     if (!repo) return
     setBusy(true)
     const seed = await requestSeed(game.id, round)
-    /* 자리 수 = 후보 수. 후보가 한 명이어도 사다리는 두 칸이 있어야 그려진다. */
-    const columns = Math.max(2, candidates.length)
+    const columns = expectedColumns
     await repo.setLadder(classId, lessonId, game.id, {
       gameId: game.id,
       phase: 'seating',
@@ -237,6 +251,17 @@ export function LadderPanel({
       <p className="text-body-sm" style={{ opacity: 0.72 }}>
         {game.presenterAsk}
       </p>
+      <p className="text-body-sm" style={{ margin: '8px 0 0' }}>
+        자리 {expectedColumns}개 = 후보 {candidates.length}명 (이 클래스의 수강생{excluded.length > 0 ? ` · 제외 ${excluded.length}명` : ''})
+      </p>
+      {staleSeats && seatsTaken > 0 ? (
+        <div role="alert" className="rounded-md bg-cream text-ink" style={{ padding: '10px 12px', marginTop: 8 }}>
+          <p className="text-body-sm" style={{ margin: 0 }}>
+            열려 있는 판은 자리가 {state!.columns}개인데 후보는 {candidates.length}명입니다. 이미 {seatsTaken}명이 자리를 잡아 자동으로 고치지 않았습니다 —
+            아래 「판 다시 열기」를 누르면 자리 {expectedColumns}개로 새로 엽니다.
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-xs" style={{ marginTop: 16 }}>
         <Button disabled={busy} onClick={() => void open(1)}>
