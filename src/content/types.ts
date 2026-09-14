@@ -385,6 +385,11 @@ export interface GroupBuildConfig {
   headlineKey?: string
   /** 모둠원 글 목록의 제목. 없으면 「모둠원이 쓴 이유」 */
   membersLabel?: string
+  /**
+   * 의견 아래에 함께 모아 보여 줄 칸의 key 들 (예: 2강의 「새 증거를 보고 무엇이 달라졌는가」).
+   * 나중에 열리는 칸이라도 제출할 때마다 모둠 화면에 반영된다.
+   */
+  extraKeys?: string[]
   /** 고를 수 있는 모둠 번호 개수 */
   groupCount: number
   /** 모둠 대표가 올리는 한 문장 */

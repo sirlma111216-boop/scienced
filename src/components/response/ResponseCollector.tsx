@@ -136,6 +136,16 @@ export function ResponseCollector({
    */
   const gatedFields = step.fields.filter((f) => f.gate)
   const plainFields = step.fields.filter((f) => !f.gate)
+  /*
+   * 여는 조건이 붙은 칸은 두 종류다.
+   *   afterReveal          강사가 자료를 공개하면 열리는 칸 — 내 답의 일부다. 본문 칸 바로 아래에 둔다.
+   *                        ★ 모둠 패널·공유 아래에 두었더니 「새 증거를 보고 무엇이 달라졌는가」가
+   *                          모둠 합의 문장보다 아래에 생뚱맞게 있었다 (2강 3단계).
+   *   afterInstructorOpen  2차 응답 — 공유하고 서로 의견을 읽은 뒤에 쓰는 칸. 공유 아래에 둔다.
+   *                        위에 두면 읽기 전에 답부터 고치게 된다 (형성평가의 흐름).
+   */
+  const earlyGated = gatedFields.filter((f) => f.gate!.type === 'afterReveal')
+  const lateGated = gatedFields.filter((f) => f.gate!.type !== 'afterReveal')
 
   /** 지금 열려 있는 칸만. 잠긴 칸은 그리지도, 검사하지도 않는다. */
   function open(f: { gate?: { type: string; of: string } }): boolean {
@@ -284,18 +294,34 @@ export function ResponseCollector({
             onChange={(v) => set(f.key, v)}
           />
         ))}
+        {/* 자료 공개로 열리는 칸 — 내 답의 일부. 본문 칸 바로 아래 */}
+        {earlyGated.map((f) =>
+          open(f) ? (
+            <FieldRenderer
+              key={f.key}
+              def={f}
+              value={values[f.key]}
+              error={errors[f.key] || null}
+              /* 열린 칸은 1차 제출 여부와 상관없이 쓸 수 있다 */
+              disabled={false}
+              onChange={(v) => set(f.key, v)}
+            />
+          ) : (
+            <LockedCard key={f.key} title={f.label} message={f.gate!.lockedMessage} />
+          ),
+        )}
       </div>
 
       {/*
-        여는 조건이 붙은 칸이 있으면 그 앞에 공유를 둔다 (형성평가의 흐름).
+        2차 응답 칸이 있으면 그 앞에 공유를 둔다 (형성평가의 흐름).
         ① 고르고 제출 → ② 공유하고 서로 의견 → ③ 다시 고르기.
         2차 칸을 공유보다 위에 두면 읽기 전에 답부터 고치게 된다.
       */}
-      {gatedFields.length > 0 ? children?.(submitted, doc) : null}
+      {lateGated.length > 0 ? children?.(submitted, doc) : null}
 
-      {gatedFields.length > 0 ? (
+      {lateGated.length > 0 ? (
         <div className="flex flex-col gap-xl" aria-disabled={locked}>
-          {gatedFields.map((f) =>
+          {lateGated.map((f) =>
             open(f) ? (
               <FieldRenderer
                 key={f.key}
@@ -367,8 +393,8 @@ export function ResponseCollector({
           강사의 학습 분석이 「확신은 올랐는데 이유는 그대로」를 여기서 읽는다.
       */}
 
-      {/* 제출한 사람에게만 열린다. 잠긴 칸이 있는 단계에서는 위에서 이미 그렸다. */}
-      {gatedFields.length === 0 ? children?.(submitted, doc) : null}
+      {/* 제출한 사람에게만 열린다. 2차 칸이 있는 단계에서는 위에서 이미 그렸다. */}
+      {lateGated.length === 0 ? children?.(submitted, doc) : null}
     </div>
   )
 }

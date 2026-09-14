@@ -539,6 +539,11 @@ function BlockBody(p: {
                         <li key={s.uid} className="text-body-sm" style={{ padding: '4px 0', boxShadow: 'inset 0 -1px 0 #f1f1f1' }}>
                           <strong>{nameOf(s.uid)}</strong>
                           {s.headline ? ` · ${s.headline}` : ''} — {s.opinion}
+                          {Object.entries(s.extra ?? {}).map(([k, v]) => (
+                            <span key={k} style={{ display: 'block', opacity: 0.8 }}>
+                              {p.step.fields.find((f) => f.key === k)?.label ?? k} · {v}
+                            </span>
+                          ))}
                         </li>
                       ))}
                   </ul>

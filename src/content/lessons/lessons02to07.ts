@@ -624,6 +624,8 @@ export const lesson02: Lesson = {
     moduleGroupBuild: {
       opinionKey: 'neededEvidence',
       headlineKey: 'claim',
+      /* 새 증거를 보고 고쳐 낸 답도 모둠 화면에 모인다 — 제출할 때마다 */
+      extraKeys: ['afterNewEvidence'],
       membersLabel: '모둠원이 적은 주장과 필요한 자료',
       groupCount: 8,
       agreedLabel: '모둠이 합의한 한 문장 — 이 주장을 판단하려면 무엇이 있어야 하는가',

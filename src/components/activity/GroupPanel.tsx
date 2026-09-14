@@ -95,24 +95,48 @@ export function GroupPanel({
   const myAlloc = (config.allocationKey ? (myValues?.[config.allocationKey] ?? {}) : {}) as Record<string, number>
   const myOpinion = String(myValues?.[config.opinionKey] ?? '').trim()
   const myHeadline = config.headlineKey ? String(myValues?.[config.headlineKey] ?? '').trim() : ''
+  const myExtra = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const k of config.extraKeys ?? []) {
+      const v = String(myValues?.[k] ?? '').trim()
+      if (v) out[k] = v
+    }
+    return out
+  }, [config.extraKeys, myValues])
+  const extraLabel = (k: string) => step.fields.find((f) => f.key === k)?.label ?? k
 
-  /* 정해진 모둠이 있으면 제출한 뒤 저절로 그 자리에 들어간다. 번호를 다시 고르게 하지 않는다. */
+  /*
+   * 내 자리를 최신 답과 맞춘다.
+   *   · 정해진 모둠이 있으면 제출한 뒤 저절로 그 자리에 들어간다. 번호를 다시 고르게 하지 않는다.
+   *   · 이미 자리에 있으면, 새 버전(v2·v3…)이나 나중에 열린 칸의 글이 바뀔 때마다 자리의 글도 바꾼다.
+   *     ★ 예전에는 처음 들어갈 때 한 번만 올려서, 새 증거를 보고 고쳐 낸 답이 모둠 화면에 전혀 반영되지 않았다.
+   */
   useEffect(() => {
-    if (!assigned || !repo || !uid || !myOpinion) return
-    if (mine?.groupId === assigned.id) return
+    if (!repo || !uid || !myOpinion) return
+    const targetGroup = mine?.groupId ?? assigned?.id ?? null
+    if (!targetGroup) return
+    const same =
+      mine &&
+      mine.groupId === targetGroup &&
+      mine.opinion === myOpinion &&
+      (mine.headline ?? '') === myHeadline &&
+      JSON.stringify(mine.extra ?? {}) === JSON.stringify(myExtra) &&
+      JSON.stringify(mine.allocation ?? {}) === JSON.stringify(myAlloc)
+    if (same) return
     void repo
       .setGroupShare(classId, lessonId, step.id, {
         uid,
         nickname: user?.nickname || '이름 없음',
-        groupId: assigned.id,
+        groupId: targetGroup,
         allocation: myAlloc,
         opinion: myOpinion,
         headline: myHeadline,
+        extra: myExtra,
         updatedAt: Date.now(),
       })
-      .catch((e) => console.error('[모둠] 정해진 모둠에 들어가지 못했다:', e))
+      .catch((e) => console.error('[모둠] 자리의 글을 맞추지 못했다:', e))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assigned?.id, myOpinion, mine?.groupId, repo, uid])
+  }, [assigned?.id, myOpinion, myHeadline, myExtra, myAlloc, mine?.groupId, mine?.opinion, mine?.headline, mine?.extra, repo, uid])
 
   async function join(groupId: string) {
     if (!repo || !uid) return
@@ -129,6 +153,7 @@ export function GroupPanel({
         allocation: myAlloc,
         opinion: myOpinion,
         headline: myHeadline,
+        extra: myExtra,
         updatedAt: Date.now(),
       })
     } catch (e) {
@@ -380,6 +405,14 @@ export function GroupPanel({
                   <p className="text-body" style={{ margin: '4px 0 0', whiteSpace: 'pre-line' }}>
                     {m.opinion}
                   </p>
+                  {Object.entries(m.extra ?? {}).map(([k, v]) => (
+                    <div key={k} style={{ marginTop: 8 }}>
+                      <span className="caption">{extraLabel(k)}</span>
+                      <p className="text-body" style={{ margin: '2px 0 0', whiteSpace: 'pre-line' }}>
+                        {v}
+                      </p>
+                    </div>
+                  ))}
                 </li>
               ))}
             </ul>

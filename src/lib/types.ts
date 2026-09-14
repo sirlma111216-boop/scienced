@@ -317,6 +317,8 @@ export interface GroupShare {
   opinion: string
   /** 의견 위에 함께 보이는 한 줄 (GroupBuildConfig.headlineKey). 없는 활동은 비운다. */
   headline?: string
+  /** 의견 아래에 함께 보이는 칸들 (GroupBuildConfig.extraKeys). key → 글 */
+  extra?: Record<string, string>
   updatedAt: number
 }
 
