@@ -398,6 +398,11 @@ export interface GroupBuildConfig {
   opinionKey: string
   /** 의견 위에 한 줄로 함께 보여 줄 칸의 key (예: 2강의 「기사가 주장하는 것」) */
   headlineKey?: string
+  /**
+   * 의견 위에 라벨을 붙여 여러 줄로 보여 줄 칸들 (예: 4강의 장면 A·B·C 에서 고른 힌트 수준).
+   * 선택형 칸의 답을 모둠원끼리 나란히 놓고 「왜 다르게 골랐는가」를 토의하게 할 때 쓴다. headlineKey 와 함께 쓰지 않는다.
+   */
+  headlineLines?: Array<{ key: string; label: string }>
   /** 모둠원 글 목록의 제목. 없으면 「모둠원이 쓴 이유」 */
   membersLabel?: string
   /**

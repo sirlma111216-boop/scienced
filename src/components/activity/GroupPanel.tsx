@@ -94,7 +94,15 @@ export function GroupPanel({
 
   const myAlloc = (config.allocationKey ? (myValues?.[config.allocationKey] ?? {}) : {}) as Record<string, number>
   const myOpinion = String(myValues?.[config.opinionKey] ?? '').trim()
-  const myHeadline = config.headlineKey ? String(myValues?.[config.headlineKey] ?? '').trim() : ''
+  const myHeadline = config.headlineKey
+    ? String(myValues?.[config.headlineKey] ?? '').trim()
+    : (config.headlineLines ?? [])
+        .map(({ key, label }) => {
+          const v = String(myValues?.[key] ?? '').trim()
+          return v ? `${label} · ${v}` : ''
+        })
+        .filter(Boolean)
+        .join('\n')
   const myExtra = useMemo(() => {
     const out: Record<string, string> = {}
     for (const k of config.extraKeys ?? []) {
@@ -398,7 +406,7 @@ export function GroupPanel({
                     {m.uid === uid ? <span className="font-mono text-caption ml-xs">나</span> : null}
                   </span>
                   {m.headline ? (
-                    <p className="text-body" style={{ margin: '4px 0 0', fontWeight: 480 }}>
+                    <p className="text-body" style={{ margin: '4px 0 0', fontWeight: 480, whiteSpace: 'pre-line' }}>
                       {m.headline}
                     </p>
                   ) : null}
