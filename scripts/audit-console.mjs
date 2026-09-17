@@ -15,7 +15,6 @@
 import { writeFileSync } from 'node:fs'
 
 const { LESSONS } = await import('../src/content/lessons/index.ts')
-const { buildLessonView } = await import('../src/lib/tiers.ts')
 const { DEFAULT_FORMATION_LESSONS } = await import('../src/content/group-games.ts')
 const { CONTROLS, CONTROL_LABEL } = await import('../src/lib/console-registry.ts')
 
@@ -23,18 +22,16 @@ const { CONTROLS, CONTROL_LABEL } = await import('../src/lib/console-registry.ts
 export const REGISTRY = {
   'stimulus·afterReveal': ['자료 공개 / 되돌리기'],
   stimulus: [],
-  input: ['제출 현황', '응답 목록', '유형 묶기', '재응답 요청'],
-  choice: ['제출 현황', '분포', '선택지별 명단', '재응답 요청'],
+  input: ['제출 현황', '응답 목록', '유형 묶기'],
+  choice: ['제출 현황', '분포', '선택지별 명단'],
   sorter: ['개인·모둠별 배분 나란히 보기'],
   canvas: ['썸네일 격자', '크게 보기'],
   module: ['제출 현황', '응답 목록'],
-  opinionWall: ['고정', '숨김', '유형 묶기', '갈린 글 표시'],
+  opinionWall: ['올라온 글 목록'],
   ladder: ['후보 확인', '제외', '실행', '재추첨', '수동 지정'],
   groupGame: ['실행', '미리보기', '재배정', '수동 이동', '확정', '동석 기록'],
   groupBuild: ['개인·모둠별 배분 나란히 보기'],
   concepts: [],
-  gateOpen: ['열기 / 닫기'],
-  deferred: ['「수업 후 이어서」 제출 현황'],
 }
 
 /* ── 지금 콘솔 — 등록표(console-registry)에서 그대로 ── */
@@ -51,8 +48,6 @@ const KIND_OF = {
   groupGame: 'groupGame',
   groupBuild: 'groupBuild',
   concepts: 'concepts',
-  gateOpen: 'gateOpen',
-  deferred: 'deferred',
 }
 const LABEL_ALIAS = {
   '자료 공개 / 되돌리기': '자료 공개 / 되돌리기',
@@ -105,7 +100,6 @@ function verdict(kind, extra = '') {
 const rows = []
 const formation = DEFAULT_FORMATION_LESSONS
 for (const l of LESSONS) {
-  const short = buildLessonView(l, 'short')
   for (const s of l.steps) {
     const push = (block, kind, gate, extra = '') => {
       const v = verdict(kind, extra)
@@ -123,19 +117,10 @@ for (const l of LESSONS) {
       const kind = fieldKind(f)
       const extra = kind === 'choice' && s.fields.filter((x) => fieldKind(x) === 'choice').indexOf(f) > 0 ? ' (두 번째 선택형 칸은 분포도 없다)' : ''
       push(`칸 「${f.label}」 (${f.kind})`, kind, g, extra)
-      if (g === 'afterInstructorOpen') push(`  └ 여는 조건 ${f.gate.of}`, 'gateOpen', g)
     }
     if (s.groupBuild) push('즉석 모둠 (groupBuild)', 'groupBuild', '—')
     if (s.wall?.enabled) push('의견 광장', 'opinionWall', '—')
     if (s.picker?.enabled) push(`발표자 뽑기 (${s.picker.gameId})`, 'ladder', '—')
-  }
-  /* 50분 판에서 내려간 블록 */
-  const deferredSteps = short.deferredSteps.map((v) => v.step.shortTitle)
-  const deferredParts = short.steps.filter((v) => v.deferredFields.length + v.deferredConcepts.length + v.deferredMaterial.length > 0).map((v) => v.step.shortTitle)
-  const all = [...deferredSteps, ...deferredParts]
-  if (all.length > 0) {
-    const v = verdict('deferred')
-    rows.push([l.id, '50분 판', `「수업 후 이어서」 ${all.join(' · ')}`, 'deferred', '—', v.need, v.have, v.verdict])
   }
 }
 

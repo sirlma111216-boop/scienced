@@ -40,13 +40,13 @@ export interface ClassDoc {
   startTime: string
   endTime: string
   credits: number
-  /** 만든 뒤에도 바꿀 수 있다. 바꾸면 흐름이 즉시 달라지고, 이미 낸 응답은 그대로 남는다. */
-  sessionLength: SessionLength
+  /** 8차: 판을 없앴다. 옛 클래스 문서에 남아 있을 뿐 아무것도 읽지 않는다. */
+  sessionLength?: SessionLength
   /**
    * 50분 판에서 흐름을 빠진 블록을 「수업 후 이어서」로 보여 줄 것인가.
    * 끄면 그 블록이 아예 보이지 않는다. 기본은 켬 — 두 반의 산출물을 같게 두기 위해서다.
    */
-  extendedAsHomework: boolean
+  extendedAsHomework?: boolean
   displayName: string
   /** 칠판에 적어 주는 6자리 코드 */
   joinCode: string
@@ -283,16 +283,6 @@ export interface SessionState {
   pinnedPostRef: { stepId: string; postId: string } | null
   /** 강사가 어느 단계로 옮겼는지. 학생 화면을 강제로 옮기지 않고 안내만 띄운다. */
   instructorAt: string | null
-  /**
-   * 분기 (7차 R.1). 콘솔의 「설명 추가 / 짝 토론 / 재응답 요청」을 누르면 학생 화면에 안내 카드가 뜬다.
-   * 강제로 옮기지 않는다 — 카드일 뿐이다. at 이 바뀌면 새 카드다.
-   */
-  notice?: { kind: 'explain' | 'pair' | 'reask'; stepId: string; at: number } | null
-  /**
-   * 한 사람에게 보내는 알림 (7차 R.4 미제출 알림 · R.2 고른 학생에게 재응답 요청).
-   * uid → 마지막 알림. 학생 화면은 자기 것만 본다.
-   */
-  nudges?: Record<string, { kind: 'submit' | 'reask'; stepId: string; at: number }>
   /**
    * 루미 런 (3·4강 발표자 선정 게임) — 이 차시의 활동 실행 하나.
    * 강사가 방을 만들면 여기에 적고, 학생은 이 구독으로 방을 알아 저절로 들어간다.

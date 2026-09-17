@@ -451,12 +451,7 @@ export const lesson01: Lesson = {
         },
       ],
       aiTasks: [],
-      wall: {
-        enabled: true,
-        prompt: '내가 기억하는 장면과, 그 수업에서 나에게 남은 것',
-        anonymous: false,
-        opensAfterSubmit: true,
-      },
+      wall: null,
       picker: null,
     },
 
@@ -729,7 +724,7 @@ export const lesson01: Lesson = {
 
     {
       id: 'step-wrapup',
-      doNow: '아래 세 칸을 채우고 오늘 수업을 마치세요.',
+      doNow: '아래 한 칸을 채우고 오늘 수업을 마치세요.',
       order: 5,
       type: 'wrapup',
       title: WRAPUP_LABEL,
@@ -737,9 +732,7 @@ export const lesson01: Lesson = {
       /* 50분 판에서는 「수업 후 이어서」로 내려간다 (3차 F.5). */
       tier: 'extended',
       durationMinutes: 5,
-      lead:
-        '수업을 마치기 전에 세 칸만 채웁니다.\n' +
-        '바뀐 생각이 없어도 괜찮습니다. 대신 무엇이 그대로였는지 적어 주세요.',
+      lead: '수업을 마치기 전에 한 칸만 채웁니다.',
       fields: [
         {
           key: 'artifact',
@@ -748,17 +741,6 @@ export const lesson01: Lesson = {
           help: '“학생이 ___를 ___로 나타낸 것” 형태면 충분합니다.',
           required: true,
         },
-        {
-          key: 'changed',
-          kind: 'longtext',
-          label: '이번 수업에서 바뀐 생각 한 줄',
-          required: true,
-          sentenceStarters: [
-            '나는 처음에 ___라고 생각했으나 ___ 때문에 ___로 수정했다',
-            '이번에도 ___는 그대로였다. 왜냐하면 ___이기 때문이다',
-          ],
-        },
-
       ],
       aiTasks: ['wrapup-self-check'],
       wall: null,

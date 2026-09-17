@@ -46,7 +46,7 @@ export function LockedCard({ title, message }: { title: string; message: string 
     >
       <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
         {/* 자물쇠는 그림만으로 두지 않는다. 「잠김」이라는 글자를 함께 둔다. */}
-        <Badge>🔒 잠김</Badge>
+        <Badge>잠김</Badge>
         <span className="text-body-sm" style={{ fontWeight: 480 }}>
           {title}
         </span>

@@ -32,7 +32,6 @@ import type {
   GroupRound,
   GroupShare,
   LadderState,
-  LessonState,
   PairHistoryDoc,
   Participation,
   PickRecord,
@@ -229,22 +228,6 @@ export function createFirestoreRepo(db: Firestore): Repo {
         () => cb([]),
       )
     },
-    watchLessonTiers(classId, lessonId, cb) {
-      return onSnapshot(
-        cd(db, classId, 'lessonState', lessonId),
-        (snap) => cb((snap.data() as LessonState | undefined)?.tierOverrides ?? {}),
-        () => cb({}),
-      )
-    },
-    async setLessonTier(classId, lessonId, key, tier) {
-      // merge 로 그 열쇠 하나만 건드린다. 다른 강사가 같은 순간 다른 블록을 바꿔도 덮이지 않는다.
-      await setDoc(
-        cd(db, classId, 'lessonState', lessonId),
-        { lessonId, tierOverrides: { [key]: tier ?? deleteField() } },
-        { merge: true },
-      )
-    },
-
     async setLessonPublished(classId, lessonId, published) {
       await setDoc(
         cd(db, classId, 'lessonState', lessonId),
@@ -442,56 +425,6 @@ export function createFirestoreRepo(db: Firestore): Repo {
       }
     },
 
-    async toggleReaction(classId, lessonId, stepId, postId, uid, reaction) {
-      const ref = cd(db, classId, ...stepPath(lessonId, stepId), 'posts', postId)
-      const snap = await getDoc(ref)
-      if (!snap.exists()) return
-      const p = snap.data() as Post
-      const already = (p.reactions?.[reaction] ?? []).includes(uid)
-      // 다른 사람 글은 reactions 필드만 바꿀 수 있다 (규칙: changedKeys().hasOnly(['reactions'])).
-      const next: Record<string, string[]> = {}
-      for (const [k, v] of Object.entries(p.reactions ?? {})) {
-        next[k] = v.filter((u) => u !== uid)
-      }
-      if (!already) next[reaction] = [...(next[reaction] ?? []), uid]
-      await updateDoc(ref, { reactions: next })
-    },
-
-    async addComment(classId, lessonId, stepId, postId, comment) {
-      const ref = cd(db, classId, ...stepPath(lessonId, stepId), 'posts', postId)
-      const snap = await getDoc(ref)
-      if (!snap.exists()) return
-      const p = snap.data() as Post
-      // comments 필드만 바꾼다.
-      await updateDoc(ref, {
-        comments: [
-          ...(p.comments ?? []),
-          {
-            id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-            ...comment,
-            createdAt: Date.now(),
-          },
-        ],
-      })
-    },
-
-    async pinPost(classId, lessonId, stepId, postId, pinned) {
-      await updateDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'posts', postId), {
-        isPinned: pinned,
-      })
-    },
-
-    async hidePost(classId, lessonId, stepId, postId, hidden, reason) {
-      await updateDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'posts', postId), {
-        isHidden: hidden,
-        hiddenReason: hidden ? reason : null,
-      })
-    },
-
-    async deletePost(classId, lessonId, stepId, postId) {
-      // 삭제는 작성자와 강사만. 규칙이 판정한다.
-      await deleteDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'posts', postId))
-    },
 
     /* ── 차시 진행 상태 ── */
     watchSession(classId, lessonId, cb) {

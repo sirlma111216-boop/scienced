@@ -1,5 +1,4 @@
-import type { GameId, LessonId, Tier } from '@/content/types'
-import type { TierOverrides } from './tiers'
+import type { GameId, LessonId } from '@/content/types'
 import type {
   AiLog,
   AiProposal,
@@ -64,22 +63,6 @@ export interface Repo {
   watchLessonState(classId: string, cb: (published: LessonId[]) => void): () => void
   setLessonPublished(classId: string, lessonId: LessonId, published: boolean): Promise<void>
 
-  /*
-   * 핵심/심화 판단을 이 클래스에서만 바꾼다 (3차 F.6).
-   * 교재의 기본 태그를 고치는 것이 아니다 — 다른 학기가 따라 바뀌면 안 된다.
-   * 열쇠는 tierKey() 가 만든다. tier 를 null 로 주면 덮어쓰기를 지우고 기본값으로 돌아간다.
-   */
-  watchLessonTiers(
-    classId: string,
-    lessonId: LessonId,
-    cb: (overrides: TierOverrides) => void,
-  ): () => void
-  setLessonTier(
-    classId: string,
-    lessonId: LessonId,
-    key: string,
-    tier: Tier | null,
-  ): Promise<void>
 
   /* ── 수강 등록 ── */
   watchEnrollments(classId: string, cb: (list: Enrollment[]) => void): () => void
@@ -193,46 +176,6 @@ export interface Repo {
     lessonId: LessonId,
     stepId: string,
     post: { uid: string; nickname: string; groupId: string | null; content: string },
-  ): Promise<void>
-  /** 한 사람이 한 글에 하나만. 같은 걸 다시 누르면 취소된다. */
-  toggleReaction(
-    classId: string,
-    lessonId: LessonId,
-    stepId: string,
-    postId: string,
-    uid: string,
-    reaction: string,
-  ): Promise<void>
-  addComment(
-    classId: string,
-    lessonId: LessonId,
-    stepId: string,
-    postId: string,
-    comment: { uid: string; nickname: string; text: string },
-  ): Promise<void>
-  /** 강사만. 발표 모드 대형 화면에 띄운다. */
-  pinPost(
-    classId: string,
-    lessonId: LessonId,
-    stepId: string,
-    postId: string,
-    pinned: boolean,
-  ): Promise<void>
-  /** 강사는 숨김만. 삭제는 작성자만. 기록을 보존한다. */
-  hidePost(
-    classId: string,
-    lessonId: LessonId,
-    stepId: string,
-    postId: string,
-    hidden: boolean,
-    reason: string,
-  ): Promise<void>
-  deletePost(
-    classId: string,
-    lessonId: LessonId,
-    stepId: string,
-    postId: string,
-    uid: string,
   ): Promise<void>
 
   /* ── 차시 진행 상태 (지금 어느 단계인지·투표가 열렸는지) ── */

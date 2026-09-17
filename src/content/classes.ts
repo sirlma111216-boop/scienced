@@ -39,26 +39,6 @@ export const DAYS = [
 
 export type DayKey = (typeof DAYS)[number]['key']
 
-/**
- * 강의 길이 (3차 E).
- *
- * 같은 진도를 50분 두 교시로 나가는 반이 있다. 전환 시간을 빼면 한 차시에
- * 실제로 쓸 수 있는 것은 40분 남짓이라, 심화 블록을 흐름에서 빼고
- * 「수업 후 이어서」로 내린다. 뺀 것은 사라지지 않는다.
- */
-export const SESSION_LENGTHS = [
-  { key: 'full' as const, label: '1시간 강의', short: '1시간' },
-  // wording-ok: 클래스가 어느 판으로 도는지를 가리키는 설정값이다. 단계 소요 시간이 아니다.
-  { key: 'short' as const, label: '50분 강의', short: '50분' },
-]
-
-export const sessionLengthLabel = (s: string) =>
-  SESSION_LENGTHS.find((x) => x.key === s)?.label ?? s
-
-/** 목록·배지처럼 좁은 자리에 쓰는 표기. */
-export const sessionLengthShort = (s: string) =>
-  SESSION_LENGTHS.find((x) => x.key === s)?.short ?? s
-
 /** 같은 학기에 여러 강의를 열 수 있으므로 기본값을 비워 둔다. 강사가 반드시 적는다. */
 export const COURSE_TITLE_SUGGESTIONS = ['과학교육론', '과학교과교수법']
 
@@ -152,7 +132,6 @@ export interface ClassFormValues {
   startTime: string
   endTime: string
   credits: number
-  sessionLength: 'full' | 'short'
   displayName: string
 }
 
@@ -167,8 +146,6 @@ export function emptyClassForm(): ClassFormValues {
     startTime: '13:00',
     endTime: '15:45',
     credits: 3,
-    // 기본값은 1시간 강의. 짧은 판은 고르는 것이지 흘러드는 것이 아니다.
-    sessionLength: 'full' as const,
   }
   return { ...base, displayName: buildDisplayName(base) }
 }
@@ -186,9 +163,6 @@ export function validateClassForm(v: ClassFormValues): Record<string, string> {
     errors.endTime = '종료 시각이 시작 시각보다 뒤여야 합니다.'
   }
   if (!(v.credits > 0)) errors.credits = '학점을 확인해 주세요.'
-  if (!SESSION_LENGTHS.some((s) => s.key === v.sessionLength)) {
-    errors.sessionLength = '강의 길이를 골라 주세요.'
-  }
   if (!v.displayName.trim()) errors.displayName = '표시 이름을 적어 주세요.'
   return errors
 }

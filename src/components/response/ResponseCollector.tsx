@@ -7,12 +7,12 @@ import { LockedCard } from '@/components/stimulus/StimulusView'
 import { FieldRenderer } from './fields'
 
 /**
- * 답과 이유를 받는다.
+ * 답을 받는다 — 한 번만 (8차 원칙 2).
  *
- * 지키는 것:
  *  - 입력 중 자동 저장. 새로고침해도 쓰던 것이 남는다.
- *  - 제출 전에는 다른 사람 응답이 보이지 않는다 (컨텍스트 15.2).
- *  - 제출은 버전으로 쌓인다. 최초 답을 지우지 않는다.
+ *  - 제출 전에는 다른 사람 응답이 보이지 않는다.
+ *  - 제출하면 칸이 잠긴다. 「고쳐 쓰기」·2차 응답·「무엇을 왜 바꿨는가」는 없다.
+ *    이미 쌓인 버전은 지우지 않고 마지막 것을 읽기 전용으로 보인다.
  *  - 이유 칸이 비면 제출되지 않는다.
  */
 
@@ -27,7 +27,6 @@ export function ResponseCollector({
   step,
   onSubmitted,
   renderModule,
-  autosave = true,
   isGateOpen,
   children,
 }: {
@@ -35,27 +34,8 @@ export function ResponseCollector({
   lessonId: LessonId
   step: Step
   onSubmitted?: (payload: Record<string, unknown>) => void
-  /**
-   * 초안 자동 저장을 끈다.
-   *
-   * 「수업 후 이어서」는 같은 단계의 나머지 칸을 받는다 (3차 F.6).
-   * 그래서 한 단계에 수집기가 둘 붙을 수 있는데, 둘 다 초안을 쓰면 서로 덮어쓴다.
-   * 제출은 마지막 제출본을 불러와 통째로 다시 쓰므로 안전하다 — 초안만 끄면 된다.
-   */
-  autosave?: boolean
-  /**
-   * 칸을 여는 조건을 판정한다 (4차 H.4).
-   *
-   * 잠긴 칸은 입력 요소를 아예 그리지 않는다 — 회색 카드와 여는 조건만 남는다.
-   * 화면에 두고 disabled 로만 막으면 학생에게는 같은 질문이 두 번 있는 것으로 보이고,
-   * 실제로 그렇게 보였다. 필수 검사에서도 빠진다 — 열리지 않은 칸을 비웠다고 막으면 안 된다.
-   */
+  /** 칸을 여는 조건 판정 — 강사가 자료를 공개했는가 (afterReveal) */
   isGateOpen?: (gate: { type: string; of: string }) => boolean
-  /**
-   * 전용 모듈 화면. 모형 캔버스·데이터 스튜디오 같은 것.
-   * 여기서 만든 값은 일반 입력 칸과 함께 같은 응답 버전에 저장되므로
-   * VersionTimeline 에서 v1 → v2 비교가 그대로 된다.
-   */
   renderModule?: (
     value: unknown,
     onChange: (v: unknown) => void,
@@ -69,8 +49,7 @@ export function ResponseCollector({
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [savedAt, setSavedAt] = useState<number | null>(null)
-  const [revising, setRevising] = useState(false)
-  const [changedReason, setChangedReason] = useState('')
+  const [busy, setBusy] = useState(false)
   const timer = useRef<number | null>(null)
   const hydrated = useRef(false)
 
@@ -78,42 +57,34 @@ export function ResponseCollector({
 
   useEffect(() => {
     if (!repo || !uid) return
-    /*
-     * ★ 단계가 바뀌면 다시 불러온다.
-     *
-     * 이 표시를 되돌리지 않아서, 단계 알약으로 옮기면 앞 단계의 값이 그대로 남고
-     * 지금 단계에 제출해 둔 답은 영영 채워지지 않았다. 화면은 「제출했습니다」라고
-     * 하는데 칸은 비어 있었고, 「고쳐 쓰기」를 누르면 빈 답이 v2 로 올라갈 판이었다.
-     * 수집기는 단계마다 새로 만들어지지 않는다 — 자리가 같아 React 가 다시 쓴다.
-     */
+    /* 단계가 바뀌면 다시 불러온다 — 수집기는 자리가 같아 React 가 다시 쓴다 */
     hydrated.current = false
     setValues({})
     setErrors({})
-    setRevising(false)
-    setChangedReason('')
     setSavedAt(null)
     return repo.watchResponse(classId, lessonId, step.id, uid, (d) => {
       setDoc(d)
       if (hydrated.current) return
       hydrated.current = true
-      // 초안이 있으면 초안을, 없으면 마지막 제출본을 불러온다.
       const latest = d?.versions?.[d.versions.length - 1]
-      setValues(d?.draft?.payload ?? latest?.payload ?? {})
+      setValues(latest?.payload ?? d?.draft?.payload ?? {})
     })
   }, [repo, uid, classId, lessonId, step.id])
 
   const submitted = (doc?.latestV ?? 0) > 0
 
-  /** 입력이 멈추면 자동 저장한다. */
   const scheduleSave = useCallback(
     (next: Record<string, unknown>) => {
-      if (!repo || !uid || !autosave) return
+      if (!repo || !uid) return
       if (timer.current) window.clearTimeout(timer.current)
       timer.current = window.setTimeout(() => {
-        void repo.saveDraft(classId, lessonId, step.id, uid, next).then(() => setSavedAt(Date.now()))
+        repo
+          .saveDraft(classId, lessonId, step.id, uid, next)
+          .then(() => setSavedAt(Date.now()))
+          .catch((err) => console.warn('[응답] 초안을 저장하지 못했다:', err))
       }, AUTOSAVE_MS)
     },
-    [repo, uid, classId, lessonId, step.id, autosave],
+    [repo, uid, classId, lessonId, step.id],
   )
 
   useEffect(
@@ -129,23 +100,6 @@ export function ResponseCollector({
     setErrors((e) => ({ ...e, [key]: '' }))
     scheduleSave(next)
   }
-
-  /*
-   * 여는 조건이 붙은 칸을 따로 뽑는다.
-   * 그 칸들은 공유 아래에 온다 — 남의 의견을 읽은 뒤에 쓰는 칸이기 때문이다.
-   */
-  const gatedFields = step.fields.filter((f) => f.gate)
-  const plainFields = step.fields.filter((f) => !f.gate)
-  /*
-   * 여는 조건이 붙은 칸은 두 종류다.
-   *   afterReveal          강사가 자료를 공개하면 열리는 칸 — 내 답의 일부다. 본문 칸 바로 아래에 둔다.
-   *                        ★ 모둠 패널·공유 아래에 두었더니 「새 증거를 보고 무엇이 달라졌는가」가
-   *                          모둠 합의 문장보다 아래에 생뚱맞게 있었다 (2강 3단계).
-   *   afterInstructorOpen  2차 응답 — 공유하고 서로 의견을 읽은 뒤에 쓰는 칸. 공유 아래에 둔다.
-   *                        위에 두면 읽기 전에 답부터 고치게 된다 (형성평가의 흐름).
-   */
-  const earlyGated = gatedFields.filter((f) => f.gate!.type === 'afterReveal')
-  const lateGated = gatedFields.filter((f) => f.gate!.type !== 'afterReveal')
 
   /** 지금 열려 있는 칸만. 잠긴 칸은 그리지도, 검사하지도 않는다. */
   function open(f: { gate?: { type: string; of: string } }): boolean {
@@ -168,22 +122,29 @@ export function ResponseCollector({
         continue
       }
       if (f.kind === 'multi') {
-        if (!Array.isArray(v) || v.length === 0) next[f.key] = '하나 이상 골라 주세요.'
+        if (!Array.isArray(v) || v.length === 0) next[f.key] = '하나 이상 고르세요.'
+        continue
+      }
+      if (f.kind === 'rank' || f.kind === 'sort') {
+        if (f.kind === 'sort') {
+          const s = (v ?? {}) as Record<string, string>
+          const missing = (f.items ?? []).filter((it) => !s[it.id])
+          if (missing.length > 0) next[f.key] = `카드 ${missing.length}장을 아직 놓지 않았습니다.`
+        }
         continue
       }
       if (f.kind === 'quadrant') {
         const q = (v ?? {}) as Record<string, string>
         const empty = (f.quadrants ?? []).filter((x) => !q[x.id]?.trim())
         if (empty.length > 0) {
-          next[f.key] = `${empty.map((x) => x.label).join(', ')} 칸이 비었습니다. 없으면 “없음”이라고 적어 주세요.`
+          next[f.key] = `${empty.map((x) => x.label).join(', ')} 칸이 비었습니다. 없으면 “없음”이라고 적으세요.`
         }
         continue
       }
       if (typeof v !== 'string' || v.trim().length === 0) {
-        // 이유 칸은 특히 강하게 막는다. 선택만으로는 제출되지 않는다.
         next[f.key] = /reason|이유/.test(f.key + f.label)
           ? '이유를 한 줄이라도 적어야 제출됩니다.'
-          : '이 칸을 채워 주세요.'
+          : '이 칸을 채우세요.'
       }
     }
     setErrors(next)
@@ -194,55 +155,25 @@ export function ResponseCollector({
     return Object.keys(next).length === 0
   }
 
-  /*
-   * ★ 2차 응답이 저장되지 않던 자리.
-   *
-   * 1차를 제출하면 locked 가 되어 모든 칸이 잠긴다. 강사가 잠금을 풀어 2차 칸이
-   * 나타나도 그 칸까지 disabled 였고, 「고쳐 쓰기」를 눌러야 열렸다.
-   * 게다가 그렇게 열고 제출하면 「무엇을 왜 바꿨는가」를 또 물었다 —
-   * 폼 안에 같은 이름의 칸이 이미 있는데도.
-   *
-   * 2차 칸은 고쳐 쓰는 것이 아니라 새로 쓰는 것이다. 열리면 바로 쓸 수 있어야 하고,
-   * 그것만 채워 내는 제출에는 별도의 변경 사유를 요구하지 않는다.
-   */
-  const openGated = gatedFields.filter(open)
-  const hasOpenGated = openGated.length > 0
-
   async function submit() {
-    if (!repo || !uid) return
+    if (!repo || !uid || submitted) return
     if (!validate()) return
-    /* 2차 칸이 열려 있으면 그 칸들이 곧 「무엇을 왜 바꿨는가」다. 두 번 묻지 않는다. */
-    if (submitted && !hasOpenGated && !changedReason.trim()) {
-      setErrors((e) => ({ ...e, __changed: '무엇을 왜 바꿨는지(또는 왜 유지했는지) 적어 주세요.' }))
-      return
+    setBusy(true)
+    try {
+      await repo.submitResponse(classId, lessonId, step.id, uid, values, {
+        confidence: null,
+        changedReason: null,
+      })
+      onSubmitted?.(values)
+    } catch (err) {
+      console.error('[응답] 제출하지 못했다:', err)
+      setErrors((e) => ({ ...e, __submit: '제출하지 못했습니다. 잠시 뒤 다시 누르세요.' }))
+    } finally {
+      setBusy(false)
     }
-    await repo.submitResponse(classId, lessonId, step.id, uid, values, {
-      /* 확신도는 더 이상 받지 않는다. 옛 문서에 남은 값은 그대로 둔다. */
-      confidence: null,
-      changedReason: submitted ? changedReason.trim() : null,
-    })
-    setRevising(false)
-    setChangedReason('')
-    onSubmitted?.(values)
   }
 
-  const locked = submitted && !revising
-
-  /**
-   * 잠금을 풀고 첫 칸으로 데려간다.
-   * 버튼이 화면 아래에 있어서, 풀어도 어디가 열렸는지 보이지 않으면 여전히 막힌 것 같다.
-   */
-  function startRevising() {
-    setRevising(true)
-    window.setTimeout(() => {
-      const first = document.querySelector<HTMLElement>(
-        '.flex.flex-col.gap-xl textarea:not([disabled]), .flex.flex-col.gap-xl input:not([disabled])',
-      )
-      first?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      first?.focus()
-    }, 60)
-  }
-  const versionCount = doc?.versions?.length ?? 0
+  const locked = submitted
 
   const savedLabel = useMemo(() => {
     if (!savedAt) return null
@@ -254,147 +185,59 @@ export function ResponseCollector({
     ? renderModule(values[MODULE_KEY], (v) => set(MODULE_KEY, v), locked)
     : null
 
-  // 입력 칸도 모듈도 없으면 그릴 것이 없다 (개념 카드 단계 등).
   if (step.fields.length === 0 && !renderModule) return <>{children?.(true, doc)}</>
 
   return (
     <div className="flex flex-col gap-lg">
-      {/*
-        잠긴 이유와 푸는 법을 칸 바로 위에서 말한다.
-        제출하면 칸이 잠기는데, 화면이 그것을 말하지 않으면 눌러도 안 써지는 것만 보인다.
-        「수정이 안 된다」로 읽힌다 — 실제로 그렇게 막혔다.
-        푸는 버튼을 아래쪽에만 두지 않고 여기에도 둔다.
-      */}
-      {locked && !hasOpenGated ? (
+      {locked ? (
         <Notice tone="mint">
           <p className="text-body-sm" style={{ margin: 0 }}>
-            제출했습니다. 지금까지 <span className="font-mono">v{versionCount}</span>개 버전이
-            남아 있습니다. <strong>지금은 칸이 잠겨 있습니다.</strong> 고치려면 아래 버튼을
-            누르세요 — <strong>처음 답은 지워지지 않고</strong> 새 버전으로 쌓입니다.
+            제출했습니다. 낸 답은 그대로 남고, 다시 쓰지 않습니다.
           </p>
-          <div style={{ marginTop: 12 }}>
-            <Button variant="secondary" onClick={startRevising}>
-              고쳐 쓰기
-            </Button>
-          </div>
         </Notice>
       ) : null}
 
-      {/* 전용 모듈 화면이 있으면 입력 칸보다 먼저 온다 */}
       {moduleSlot ? <div>{moduleSlot}</div> : null}
 
       <div className="flex flex-col gap-xl" aria-disabled={locked}>
-        {plainFields.map((f) => (
-          <FieldRenderer
-            key={f.key}
-            def={f}
-            value={values[f.key]}
-            error={errors[f.key] || null}
-            disabled={locked}
-            onChange={(v) => set(f.key, v)}
-          />
-        ))}
-        {/* 자료 공개로 열리는 칸 — 내 답의 일부. 본문 칸 바로 아래 */}
-        {earlyGated.map((f) =>
-          open(f) ? (
+        {step.fields.map((f) =>
+          !f.gate || open(f) ? (
             <FieldRenderer
               key={f.key}
               def={f}
               value={values[f.key]}
               error={errors[f.key] || null}
-              /* 열린 칸은 1차 제출 여부와 상관없이 쓸 수 있다 */
-              disabled={false}
+              disabled={locked}
               onChange={(v) => set(f.key, v)}
             />
           ) : (
-            <LockedCard key={f.key} title={f.label} message={f.gate!.lockedMessage} />
+            <LockedCard key={f.key} title={f.label} message={f.gate.lockedMessage} />
           ),
         )}
       </div>
 
-      {/*
-        2차 응답 칸이 있으면 그 앞에 공유를 둔다 (형성평가의 흐름).
-        ① 고르고 제출 → ② 공유하고 서로 의견 → ③ 다시 고르기.
-        2차 칸을 공유보다 위에 두면 읽기 전에 답부터 고치게 된다.
-      */}
-      {lateGated.length > 0 ? children?.(submitted, doc) : null}
-
-      {lateGated.length > 0 ? (
-        <div className="flex flex-col gap-xl" aria-disabled={locked}>
-          {lateGated.map((f) =>
-            open(f) ? (
-              <FieldRenderer
-                key={f.key}
-                def={f}
-                value={values[f.key]}
-                error={errors[f.key] || null}
-                /* 열린 2차 칸은 1차 제출 여부와 상관없이 쓸 수 있다 */
-                disabled={false}
-                onChange={(v) => set(f.key, v)}
-              />
-            ) : (
-              <LockedCard key={f.key} title={f.label} message={f.gate!.lockedMessage} />
-            ),
-          )}
-        </div>
-      ) : null}
-
-      {submitted && revising && !hasOpenGated ? (
-        <div className="flex flex-col gap-xs">
-          <label htmlFor="changed-reason" className="text-body-sm" style={{ fontWeight: 480 }}>
-            무엇을 왜 바꿨는가 / 왜 유지했는가
-            <span className="font-mono text-caption ml-xs">필수</span>
-          </label>
-          <textarea
-            id="changed-reason"
-            className="field"
-            rows={2}
-            value={changedReason}
-            aria-invalid={errors.__changed ? true : undefined}
-            onChange={(e) => {
-              setChangedReason(e.target.value)
-              setErrors((x) => ({ ...x, __changed: '' }))
-            }}
-          />
-          {errors.__changed ? (
-            <p role="alert" className="text-body-sm" style={{ fontWeight: 480 }}>
-              ⚠ {errors.__changed}
+      {!locked ? (
+        <div className="flex flex-wrap items-center gap-md no-print">
+          <Button disabled={busy} onClick={() => void submit()}>
+            {busy ? '제출하는 중' : '제출하기'}
+          </Button>
+          {savedLabel ? (
+            <span className="caption" role="status" aria-live="polite">
+              {savedLabel}
+            </span>
+          ) : null}
+          <span className="text-body-sm" style={{ opacity: 0.66 }}>
+            제출하기 전에는 다른 사람의 답이 보이지 않습니다. 제출하면 다시 쓰지 않습니다.
+          </span>
+          {errors.__submit ? (
+            <p role="alert" className="text-body-sm" style={{ fontWeight: 480, margin: 0 }}>
+              {errors.__submit}
             </p>
           ) : null}
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-md no-print">
-        {locked && !hasOpenGated ? (
-          <Button variant="secondary" onClick={startRevising}>
-            고쳐 쓰기 — 새 버전으로 남습니다
-          </Button>
-        ) : (
-          <Button onClick={() => void submit()}>
-            {submitted ? `v${versionCount + 1}로 제출` : '제출하기'}
-          </Button>
-        )}
-        {savedLabel && !locked ? (
-          <span className="caption" role="status" aria-live="polite">
-            {savedLabel}
-          </span>
-        ) : null}
-        {!submitted ? (
-          <span className="text-body-sm" style={{ opacity: 0.66 }}>
-            제출하기 전에는 다른 사람의 답이 보이지 않습니다.
-          </span>
-        ) : null}
-      </div>
-
-      {/*
-        「내 생각의 변화」 비교표를 학생 화면에서 뺐다.
-        한 자리에서 v1·v2 를 연달아 쓰면 거의 같은 두 줄이 나란히 뜬다. 읽는 시간만 쓴다.
-        ★ 버전은 그대로 쌓인다 — 18강에서 1강의 답을 다시 꺼내고,
-          강사의 학습 분석이 「확신은 올랐는데 이유는 그대로」를 여기서 읽는다.
-      */}
-
-      {/* 제출한 사람에게만 열린다. 2차 칸이 있는 단계에서는 위에서 이미 그렸다. */}
-      {lateGated.length === 0 ? children?.(submitted, doc) : null}
+      {children?.(submitted, doc)}
     </div>
   )
 }

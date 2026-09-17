@@ -32,8 +32,6 @@ export function Portfolio() {
   }, [repo, user, classId])
 
   const entries = Object.entries(byStep)
-  const totalVersions = entries.reduce((s, [, d]) => s + (d.versions?.length ?? 0), 0)
-  const revised = entries.filter(([, d]) => (d.versions?.length ?? 0) > 1).length
 
   function download() {
     const data = { user: user?.nickname, exportedAt: new Date().toISOString(), responses: byStep }
@@ -53,13 +51,11 @@ export function Portfolio() {
         수업설계 포트폴리오
       </h1>
       <p className="text-subhead" style={{ marginTop: 16, maxWidth: 760 }}>
-        완성본만 모으지 않습니다. 처음 쓴 것, 무엇을 왜 바꿨는지, 지금의 생각이 함께 남습니다.
+        차시마다 낸 답이 그대로 남습니다.
       </p>
 
       <div className="flex flex-wrap gap-xs" style={{ marginTop: 24 }}>
         <Badge>제출한 단계 {entries.length}개</Badge>
-        <Badge>전체 버전 {totalVersions}개</Badge>
-        <Badge>고쳐 쓴 단계 {revised}개</Badge>
       </div>
 
       <div className="flex gap-xs no-print" style={{ marginTop: 24 }}>
@@ -102,17 +98,12 @@ export function Portfolio() {
                     >
                       <div className="flex items-center gap-xs">
                         <Caption>{step.title}</Caption>
-                        <Badge>v{doc.versions.length}</Badge>
                       </div>
-                      {doc.versions.length > 1 ? (
-                        <p className="text-body-sm" style={{ marginTop: 8 }}>
-                          <strong>바꾼 이유</strong> ·{' '}
-                          {doc.versions
-                            .filter((v) => v.changedReason)
-                            .map((v) => v.changedReason)
-                            .join(' / ') || '적지 않음'}
-                        </p>
-                      ) : null}
+                      <p className="text-body-sm" style={{ marginTop: 8, whiteSpace: 'pre-line' }}>
+                        {Object.values((doc.versions[doc.versions.length - 1]?.payload ?? {}) as Record<string, unknown>)
+                          .filter((v) => typeof v === 'string' && v.trim())
+                          .join('\n')}
+                      </p>
                     </div>
                   )
                 })}

@@ -31,8 +31,7 @@ export function Home() {
         {user?.nickname ? `${user.nickname} 님의 강의실` : '강의실'}
       </h1>
       <p className="text-subhead" style={{ marginTop: 16, maxWidth: 760 }}>
-        오늘 적는 답은 지워지지 않습니다. 생각이 바뀌면 새 버전으로 쌓이고, 마지막 시간에 처음
-        답과 나란히 놓고 비교합니다.
+        오늘 적는 답은 지워지지 않고 포트폴리오에 쌓입니다.
       </p>
 
       <section style={{ marginTop: 48 }}>

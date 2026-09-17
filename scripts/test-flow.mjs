@@ -224,12 +224,7 @@ const asStudent = env.authenticatedContext(STUDENT).firestore()
     }),
   )
   await assertSucceeds(asStudent.doc(`classes/${CID}/sessions/01`).get())
-  await assertSucceeds(
-    asTeacher
-      .doc(`classes/${CID}/lessonState/01`)
-      .set({ lessonId: '01', tierOverrides: { 'step:step-wrapup': 'core' } }, { merge: true }),
-  )
-  pass('⑨ 진행 제어', '강사가 진행 상태와 핵심/심화 판단을 쓰고, 학생이 그것을 읽는다')
+  pass('⑨ 진행 제어', '강사가 진행 상태를 쓰고, 학생이 그것을 읽는다')
 }
 
 /* ── ⑩ 남의 학기는 여전히 막혀 있다 ── */

@@ -1,7 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useRef, useState, type ReactNode } from 'react'
-import { buildShortName, sessionLengthShort } from '@/content/classes'
-import { classSessionLength } from '@/lib/tiers'
+import { buildShortName } from '@/content/classes'
 import { useAuth } from '@/lib/auth'
 import { Badge, Button, usePresent } from '@/components/ui'
 
@@ -202,9 +201,6 @@ export function AppShell({
                 style={{ fontSize: 13, minHeight: 36, padding: '4px 12px', whiteSpace: 'nowrap' }}
               >
                 {buildShortName(currentClass)}
-                {/* 어느 판으로 도는 클래스인지 강사가 늘 보여야 한다 (3차 E) */}
-                {' · '}
-                {sessionLengthShort(classSessionLength(currentClass))}
                 {currentClass.status === 'archived' ? ' · 보관' : ''}
                 <span aria-hidden> ▾</span>
               </button>
@@ -397,38 +393,3 @@ export function InstructorMovedBanner({
   )
 }
 
-/**
- * 강사의 분기 안내 카드 (7차 R.1) 와 개인 알림 (R.4).
- * 학생 화면을 강제로 옮기거나 열지 않는다 — 무엇을 하라는지 한 줄이 뜨고, 닫을 수 있다.
- */
-export function InstructorNoticeCard({
-  kind,
-  personal = false,
-  onDismiss,
-}: {
-  kind: 'explain' | 'pair' | 'reask' | 'submit'
-  /** 나에게만 온 알림인가 */
-  personal?: boolean
-  onDismiss: () => void
-}) {
-  const text =
-    kind === 'explain'
-      ? '강사가 설명을 덧붙입니다. 화면에서 잠시 눈을 떼고 들어 주세요.'
-      : kind === 'pair'
-        ? '옆 사람과 서로의 답을 견주어 이야기해 보세요. 어디서 갈리는지를 찾습니다.'
-        : kind === 'reask'
-          ? '다시 답해 주세요. 「고쳐 쓰기」로 답을 고치거나, 그대로 두고 이유를 적습니다.'
-          : '아직 제출하지 않았습니다. 지금 제출해 주세요 — 제출한 뒤에야 다른 사람의 답이 열립니다.'
-  return (
-    <div role="status" className="rounded-md bg-cream text-ink flex flex-wrap items-center gap-md no-print" style={{ padding: '12px 16px', marginBottom: 24 }}>
-      <span className="text-body-sm">
-        {personal ? <strong>강사가 보낸 알림 · </strong> : <strong>강사 안내 · </strong>}
-        {text}
-      </span>
-      <span className="flex-1" />
-      <Button variant="tertiary" onClick={onDismiss}>
-        확인
-      </Button>
-    </div>
-  )
-}

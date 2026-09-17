@@ -316,4 +316,34 @@ function theoryStrings(lesson) {
   }
 }
 
+/*
+ * ── 8차 A.2 · 9절 — 새 골격 차시의 글 규칙 ──
+ * 비유 · 구호 · 다짐 · 감탄 · 장식 기호 · 붙인 이름 · 교재 냄새 · 앞 차시 번호 · 어미 · 문장 길이.
+ * 규칙 본문은 scripts/_wording-rules.mjs 에 있다. layout 이 있는(8차 골격) 차시에만 실패로 걸리고,
+ * 옛 차시는 개수만 알린다 — F·G 에서 통째로 다시 쓰기 때문이다.
+ */
+{
+  const { checkText, studentStrings } = await import('./_wording-rules.mjs')
+  const { LESSONS } = await import('../src/content/lessons/index.ts')
+  let legacy = 0
+  let hits = 0
+  let checked = 0
+  for (const lesson of LESSONS) {
+    if (!('layout' in lesson)) {
+      legacy += 1
+      continue
+    }
+    checked += 1
+    for (const [where, text, theory] of studentStrings(lesson)) {
+      for (const problem of checkText(text, { theory, lessonOrder: lesson.order })) {
+        hits += 1
+        if (hits <= 60) fail('8차 글 규칙', `${lesson.id}강 ${where} — ${problem}`)
+      }
+    }
+  }
+  if (hits > 60) fail('8차 글 규칙', `… 그리고 ${hits - 60}곳 더`)
+  if (hits === 0) pass('8차 글 규칙', `새 골격 차시 ${checked}개에 비유·구호·다짐·감탄·장식 기호·교재 냄새·금지 어미·60자 초과 문장이 없다`)
+  if (legacy > 0) console.log(`  · 아직 옛 골격인 차시 ${legacy}개 — 8차 글 규칙을 적용하지 않았다`)
+}
+
 report('verify:wording')

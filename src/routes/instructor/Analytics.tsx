@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { LESSONS } from '@/content/lessons'
-import { REACTIONS } from '@/content/reactions'
 import { useAuth } from '@/lib/auth'
 import type { AppUser, Participation, Post, ResponseDoc } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
-import { Badge, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
+import { Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
 
 /**
  * 익명 학습 분석.
@@ -126,13 +125,6 @@ export function InstructorAnalytics() {
     }
 
     const posts = all.flatMap((r) => r.posts)
-    const split = posts.filter(
-      (p) => (p.reactions?.agreed ?? []).length > 0 && (p.reactions?.disagree ?? []).length > 0,
-    ).length
-    const unanswered = posts.filter(
-      (p) => Object.values(p.reactions ?? {}).every((u) => u.length === 0),
-    ).length
-    const revisedPosts = posts.filter((p) => p.latestV > 1).length
 
     return {
       submitted,
@@ -140,9 +132,6 @@ export function InstructorAnalytics() {
       revisedWithReason,
       revisedNoReasonChange,
       posts: posts.length,
-      split,
-      unanswered,
-      revisedPosts,
     }
   }, [all])
 
@@ -271,7 +260,7 @@ export function InstructorAnalytics() {
           <h2 className="text-card-title" style={{ margin: '0 0 4px' }}>
             의견 광장
           </h2>
-          <Caption>인기 순위를 만들지 않습니다. 갈린 글과 아직 아무도 읽지 않은 글을 봅니다.</Caption>
+          <Caption>인기 순위를 만들지 않습니다. 올라온 글의 수만 봅니다.</Caption>
           <div
             style={{
               display: 'grid',
@@ -281,10 +270,7 @@ export function InstructorAnalytics() {
             }}
           >
             {[
-              { k: '올라온 글', v: stats.posts },
-              { k: '반응이 갈린 글', v: stats.split, n: '다음 추첨의 후보 풀' },
-              { k: '아직 반응 없는 글', v: stats.unanswered, n: '기본 정렬에서 맨 앞에 옵니다' },
-              { k: '고쳐 쓴 글', v: stats.revisedPosts, n: '이전 버전도 남아 있습니다' },
+              { k: '올라온 글', v: stats.posts, n: '단계마다 한 사람 한 글' },
             ].map((s) => (
               <div key={s.k}>
                 <Caption>{s.k}</Caption>
@@ -294,21 +280,6 @@ export function InstructorAnalytics() {
                 {s.n ? <Caption style={{ marginTop: 2 }}>{s.n}</Caption> : null}
               </div>
             ))}
-          </div>
-          <div className="flex flex-wrap gap-xs" style={{ marginTop: 16 }}>
-            {REACTIONS.map((r) => {
-              const n = Object.values(rows)
-                .flatMap((x) => x.posts)
-                .reduce((s, p) => s + (p.reactions?.[r.key] ?? []).length, 0)
-              return (
-                <Badge key={r.key}>
-                  <span className="font-mono" aria-hidden style={{ marginRight: 4 }}>
-                    {r.mark}
-                  </span>
-                  {r.label} {n}
-                </Badge>
-              )
-            })}
           </div>
         </Card>
       </div>

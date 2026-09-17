@@ -479,7 +479,6 @@ export function GroupPanel({
                 <Notice tone="mint">
                   <p className="text-body-sm" style={{ margin: 0 }}>
                     올렸습니다. 아래 <strong>의견 광장</strong>에 「{myGroup}모둠」으로 떠 있습니다.
-                    다른 모둠 문장에 댓글을 달아 주세요.
                   </p>
                 </Notice>
               </div>

@@ -108,17 +108,12 @@ const all = [...sources.values()].join('\n')
   if (board && !/발표!/.test(board)) {
     fail('색만으로 구분 금지', '사다리 결과가 글자 없이 색으로만 표시된다')
   }
-  const live = sources.get('src\\routes\\instructor\\Live.tsx')
-    ?? sources.get('src/routes/instructor/Live.tsx') ?? ''
-  if (live && !/제출 ✓|미제출/.test(live)) {
+  const roster = sources.get('src\\components\\console\\Roster.tsx')
+    ?? sources.get('src/components/console/Roster.tsx') ?? ''
+  if (roster && !/미제출/.test(roster)) {
     fail('색만으로 구분 금지', '제출 현황이 색으로만 표시된다')
   }
-  const reactions = sources.get('src\\content\\reactions.ts')
-    ?? sources.get('src/content/reactions.ts') ?? ''
-  if (reactions && !/mark:/.test(reactions)) {
-    fail('색만으로 구분 금지', '반응에 글자 표식이 없다')
-  }
-  pass('색만으로 구분 금지', '사다리 결과·제출 현황·반응에 모두 글자 표식이 있다')
+  pass('색만으로 구분 금지', '사다리 결과·제출 현황에 모두 글자 표식이 있다')
 }
 
 /* 6. 터치 표적과 확대 */

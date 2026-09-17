@@ -117,7 +117,7 @@ export function InstructorClassGroups() {
             <Notice tone={feas.ok ? 'mint' : 'cream'}>
               <p className="text-body-sm" style={{ margin: 0 }}>
                 <strong>계산상</strong> 한 사람이 만나는 총 인원 {lessons.length}×{feas.size - 1} = {feas.meets} {feas.ok ? '≤' : '>'} 가능한 상대 {feas.possible} —{' '}
-                {feas.ok ? '✅ 중복 없이 나눌 수 있습니다' : `⚠️ 최소 ${feas.minRepeats}회 중복이 생깁니다 (한 사람 기준)`}
+                {feas.ok ? '중복 없이 나눌 수 있습니다' : `최소 ${feas.minRepeats}회 중복이 생깁니다 (한 사람 기준)`}
               </p>
               <p className="text-body-sm" style={{ margin: '6px 0 0' }}>
                 <strong>계획기 예상</strong>{' '}

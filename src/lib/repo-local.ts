@@ -1,5 +1,4 @@
 import type { LessonId } from '@/content/types'
-import type { TierOverrides } from './tiers'
 import { LESSONS } from '@/content/lessons'
 import type { Repo } from './repo'
 import { pairDeltas, pairKey } from '@shared/groups-core'
@@ -89,7 +88,6 @@ const kPicks = (c: string) => `c.${c}.picks`
 const kGroups = (c: string) => `c.${c}.groups`
 const kParticipation = (c: string) => `c.${c}.participation`
 const kPublished = (c: string) => `c.${c}.published`
-const kTiers = (c: string, l: string) => `c.${c}.tiers.${l}`
 const kEnrollments = (c: string) => `c.${c}.enrollments`
 const kRoster = (c: string) => `c.${c}.roster`
 const kProposals = (c: string) => `c.${c}.aiProposals`
@@ -97,9 +95,6 @@ const kPairHistory = (c: string) => `c.${c}.pairHistory`
 const kGroupRounds = (c: string) => `c.${c}.groupRounds`
 const kGroupInputs = (c: string, l: string) => `c.${c}.groupInputs.${l}`
 
-function newId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
 
 /** 새 클래스는 01만 열려 있다. */
 const seedPublished = (): LessonId[] => LESSONS.filter((l) => l.published).map((l) => l.id)
@@ -185,16 +180,6 @@ export function createLocalRepo(): Repo {
     /* ── 차시 공개 ── */
     watchLessonState(classId, cb) {
       return subscribe(() => cb(read<LessonId[]>(kPublished(classId), seedPublished())))
-    },
-    watchLessonTiers(classId, lessonId, cb) {
-      return subscribe(() => cb(read<TierOverrides>(kTiers(classId, lessonId), {})))
-    },
-    async setLessonTier(classId, lessonId, key, tier) {
-      const cur = read<TierOverrides>(kTiers(classId, lessonId), {})
-      const next = { ...cur }
-      if (tier === null) delete next[key]
-      else next[key] = tier
-      write(kTiers(classId, lessonId), next)
     },
 
     async setLessonPublished(classId, lessonId, published) {
@@ -354,56 +339,6 @@ export function createLocalRepo(): Repo {
       write(key, posts)
     },
 
-    async toggleReaction(classId, lessonId, stepId, postId, uid, reaction) {
-      const key = kPosts(classId, lessonId, stepId)
-      const posts = read<Post[]>(key, [])
-      const p = posts.find((x) => x.id === postId)
-      if (!p) return
-      const had = (p.reactions?.[reaction] ?? []).includes(uid)
-      // 한 사람이 한 글에 하나만. 다른 반응을 누르면 옮겨 간다.
-      for (const k of Object.keys(p.reactions)) {
-        p.reactions[k] = (p.reactions[k] ?? []).filter((u) => u !== uid)
-      }
-      if (!had) p.reactions[reaction] = [...(p.reactions[reaction] ?? []), uid]
-      write(key, posts)
-    },
-
-    async addComment(classId, lessonId, stepId, postId, comment) {
-      const key = kPosts(classId, lessonId, stepId)
-      const posts = read<Post[]>(key, [])
-      const p = posts.find((x) => x.id === postId)
-      if (!p) return
-      p.comments.push({ id: newId(), ...comment, createdAt: Date.now() })
-      write(key, posts)
-    },
-
-    async pinPost(classId, lessonId, stepId, postId, pinned) {
-      const key = kPosts(classId, lessonId, stepId)
-      const posts = read<Post[]>(key, [])
-      for (const p of posts) if (p.id === postId) p.isPinned = pinned
-      write(key, posts)
-    },
-
-    async hidePost(classId, lessonId, stepId, postId, hidden, reason) {
-      const key = kPosts(classId, lessonId, stepId)
-      const posts = read<Post[]>(key, [])
-      for (const p of posts) {
-        if (p.id !== postId) continue
-        p.isHidden = hidden
-        p.hiddenReason = hidden ? reason : null
-      }
-      write(key, posts)
-    },
-
-    async deletePost(classId, lessonId, stepId, postId, uid) {
-      const key = kPosts(classId, lessonId, stepId)
-      const posts = read<Post[]>(key, [])
-      // 삭제는 작성자만.
-      write(
-        key,
-        posts.filter((p) => !(p.id === postId && p.uid === uid)),
-      )
-    },
 
     /* ── 차시 진행 상태 ── */
     watchSession(classId, lessonId, cb) {

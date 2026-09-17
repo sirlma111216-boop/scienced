@@ -6,8 +6,7 @@ function tl(m: [number, number, number, number, number], moduleLabel: string): T
   return [
     { minutes: m[0], label: '오늘의 문 · 내 생각 먼저', stepId: 'step-open' },
     { minutes: m[1], label: '개념 카드', stepId: 'step-concepts' },
-    { minutes: m[2], label: moduleLabel, stepId: 'step-module' },
-    { minutes: m[3], label: '형성평가', stepId: 'step-formative' },
+    { minutes: m[2] + m[3], label: moduleLabel, stepId: 'step-module' },
     { minutes: m[4], label: WRAPUP_LABEL, stepId: 'step-wrapup' },
   ]
 }

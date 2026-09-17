@@ -8,16 +8,15 @@ import { Badge, Button, Caption, Notice, ScrollX } from '@/components/ui'
 import { latestOf, payloadOf, submitted, useNames } from './shared'
 
 /**
- * 응답 화면 — 블록 종류별 보기 (7차 R.2).
+ * 응답 화면 — 블록 종류별 보기 (7차 R.2 · 8차 A 과도기 판).
  *
  *   choice   막대 분포. 선택지를 누르면 그것을 고른 사람과 각자의 이유가 펼쳐진다
  *   input    응답 카드 목록. 제출순 / 아직 안 본 것 먼저
  *   sorter   개인과 모둠 배분을 나란히. 가장 갈린 항목 강조
  *   canvas   썸네일 격자. 누르면 크게
- *   wall     고정 · 숨김 · 갈린 글 · 유형 묶기
+ *   wall     올라온 글 목록 — 읽기만
  *
- * 공통: [크게 띄우기] [재응답 요청] [유형 묶기]. CSV 는 이번에 붙이지 않았다(강의자 결정).
- * 이름은 useNames 가 정한다 — 발표 모드면 닉네임만.
+ * 재응답 요청·고정·숨김·갈린 글 표시는 8차 A 에서 뺐다. 이름은 useNames 가 정한다.
  */
 
 export interface ViewProps {
@@ -25,14 +24,11 @@ export interface ViewProps {
   lessonId: LessonId
   block: ConsoleBlock
   docs: ResponseDoc[]
-  /** 이 차시의 수강생 uid (제출 현황의 분모) */
   studentUids: string[]
   onSpotlight: (uid: string, text: string) => void
-  onReask: (uids: string[] | 'all') => void
   onOpenStudent: (uid: string) => void
 }
 
-/* ── 공통: 제출 현황 한 줄 ── */
 export function SubmissionCount({ docs, studentUids }: { docs: ResponseDoc[]; studentUids: string[] }) {
   const done = docs.filter((d) => submitted(d) && studentUids.includes(d.uid)).length
   return (
@@ -42,28 +38,11 @@ export function SubmissionCount({ docs, studentUids }: { docs: ResponseDoc[]; st
   )
 }
 
-function ReaskBar({ onReask, selected }: { onReask: ViewProps['onReask']; selected?: string[] }) {
-  return (
-    <div className="flex flex-wrap items-center gap-xs" style={{ marginTop: 12 }}>
-      <Button variant="secondary" onClick={() => onReask('all')}>
-        재응답 요청 · 전체
-      </Button>
-      {selected && selected.length > 0 ? (
-        <Button variant="secondary" onClick={() => onReask(selected)}>
-          재응답 요청 · 고른 {selected.length}명
-        </Button>
-      ) : null}
-      <Caption>누르면 학생 화면에 「다시 답해 주세요」 카드가 뜹니다. 강제로 열지는 않습니다.</Caption>
-    </div>
-  )
-}
-
 /* ── 선택형 ── */
 function selectedOptions(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String)
   if (typeof value === 'string' && value) return [value]
   if (value && typeof value === 'object') {
-    /* rank: { id: 순위 } 또는 순서 배열 — 1순위만 센다 */
     const entries = Object.entries(value as Record<string, unknown>)
     const top = entries.sort((a, b) => Number(a[1]) - Number(b[1]))[0]
     return top ? [String(top[0])] : []
@@ -74,13 +53,12 @@ function selectedOptions(value: unknown): string[] {
 export function ChoiceView(p: ViewProps) {
   const { nameOf } = useNames()
   const [open, setOpen] = useState<string | null>(null)
-  const [picked, setPicked] = useState<Set<string>>(new Set())
   const f = p.block.field!
   const options = f.kind === 'rank' ? (f.items ?? []).map((i) => i.label) : (f.options ?? [])
   const optionId = (label: string) => (f.kind === 'rank' ? (f.items ?? []).find((i) => i.label === label)?.id ?? label : label)
 
   const rows = useMemo(() => {
-    const by = new Map<string, Array<{ uid: string; reason: string; at: number; v: number }>>()
+    const by = new Map<string, Array<{ uid: string; reason: string; at: number }>>()
     for (const o of options) by.set(optionId(o), [])
     for (const d of p.docs) {
       if (!submitted(d) || !p.studentUids.includes(d.uid)) continue
@@ -88,7 +66,7 @@ export function ChoiceView(p: ViewProps) {
       const pay = last.payload as Record<string, unknown>
       for (const o of selectedOptions(pay[f.key])) {
         if (!by.has(o)) by.set(o, [])
-        by.get(o)!.push({ uid: d.uid, reason: p.block.reasonKey ? String(pay[p.block.reasonKey] ?? '') : '', at: last.createdAt, v: last.v })
+        by.get(o)!.push({ uid: d.uid, reason: p.block.reasonKey ? String(pay[p.block.reasonKey] ?? '') : '', at: last.createdAt })
       }
     }
     return by
@@ -110,13 +88,7 @@ export function ChoiceView(p: ViewProps) {
           const isOpen = open === id
           return (
             <li key={id} style={{ marginBottom: 6 }}>
-              <button
-                type="button"
-                className="flex items-center gap-md"
-                aria-expanded={isOpen}
-                onClick={() => setOpen(isOpen ? null : id)}
-                style={{ width: '100%', textAlign: 'left', background: 'none', border: 0, padding: '8px 0', cursor: 'pointer' }}
-              >
+              <button type="button" className="flex items-center gap-md" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : id)} style={{ width: '100%', textAlign: 'left', background: 'none', border: 0, padding: '8px 0', cursor: 'pointer' }}>
                 <span className="text-body-sm" style={{ flex: '0 0 40%', fontWeight: isOpen ? 600 : 400 }}>
                   {label}
                 </span>
@@ -136,25 +108,9 @@ export function ChoiceView(p: ViewProps) {
                   ) : null}
                   {list.map((r) => (
                     <li key={r.uid} className="flex items-start gap-xs" style={{ padding: '6px 0', boxShadow: 'inset 0 -1px 0 #f1f1f1' }}>
-                      <label className="flex items-center gap-xxs" style={{ minWidth: 140 }}>
-                        <input
-                          type="checkbox"
-                          checked={picked.has(r.uid)}
-                          onChange={(e) =>
-                            setPicked((prev) => {
-                              const n = new Set(prev)
-                              if (e.target.checked) n.add(r.uid)
-                              else n.delete(r.uid)
-                              return n
-                            })
-                          }
-                          aria-label={`${nameOf(r.uid)} 고르기`}
-                        />
-                        <button type="button" className="text-link" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', fontSize: 15 }} onClick={() => p.onOpenStudent(r.uid)}>
-                          {nameOf(r.uid)}
-                        </button>
-                        {r.v > 1 ? <Badge>v{r.v}</Badge> : null}
-                      </label>
+                      <button type="button" className="text-link" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', fontSize: 15, minWidth: 120, textAlign: 'left' }} onClick={() => p.onOpenStudent(r.uid)}>
+                        {nameOf(r.uid)}
+                      </button>
                       <span className="text-body-sm" style={{ flex: 1, whiteSpace: 'pre-line' }}>
                         {r.reason || <span style={{ opacity: 0.5 }}>이유 없음</span>}
                       </span>
@@ -171,7 +127,6 @@ export function ChoiceView(p: ViewProps) {
           )
         })}
       </ul>
-      <ReaskBar onReask={p.onReask} selected={[...picked]} />
     </div>
   )
 }
@@ -212,7 +167,6 @@ export function ResponseCardsView(p: ViewProps & { proposals: AiProposal[]; step
   const { nameOf } = useNames()
   const [sort, setSort] = useState<'time' | 'unseen'>('time')
   const [cluster, setCluster] = useState(false)
-  const [picked, setPicked] = useState<Set<string>>(new Set())
   const [seen, setSeen] = useState<Set<string>>(() => readSeen())
   const key = p.block.field?.key ?? '__module'
 
@@ -221,7 +175,7 @@ export function ResponseCardsView(p: ViewProps & { proposals: AiProposal[]; step
       .filter((d) => submitted(d) && p.studentUids.includes(d.uid))
       .map((d) => {
         const last = latestOf(d)!
-        return { uid: d.uid, v: last.v, at: last.createdAt, text: textOf((last.payload as Record<string, unknown>)[key]), changed: last.changedReason }
+        return { uid: d.uid, v: last.v, at: last.createdAt, text: textOf((last.payload as Record<string, unknown>)[key]) }
       })
       .filter((c) => c.text.trim())
     const seenKey = (c: { uid: string; v: number }) => `${p.lessonId}:${p.block.stepId}:${key}:${c.uid}:${c.v}`
@@ -281,23 +235,9 @@ export function ResponseCardsView(p: ViewProps & { proposals: AiProposal[]; step
             return (
               <li key={c.uid} className="rounded-md" style={{ breakInside: 'avoid', padding: '10px 12px', marginBottom: 10, boxShadow: `inset 0 0 0 ${isSeen ? 1 : 2}px ${isSeen ? '#e6e6e6' : '#111'}` }} onMouseEnter={() => markSeen(c.seenKey)} onFocus={() => markSeen(c.seenKey)}>
                 <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-                  <input
-                    type="checkbox"
-                    checked={picked.has(c.uid)}
-                    onChange={(e) =>
-                      setPicked((prev) => {
-                        const n = new Set(prev)
-                        if (e.target.checked) n.add(c.uid)
-                        else n.delete(c.uid)
-                        return n
-                      })
-                    }
-                    aria-label={`${nameOf(c.uid)} 고르기`}
-                  />
                   <button type="button" className="text-link" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', fontSize: 15, fontWeight: 480 }} onClick={() => p.onOpenStudent(c.uid)}>
                     {nameOf(c.uid)}
                   </button>
-                  {c.v > 1 ? <Badge solid>v{c.v} 고쳐 씀</Badge> : null}
                   {!isSeen ? <Badge>새 글</Badge> : null}
                   <span style={{ flex: 1 }} />
                   <button type="button" className="btn-tertiary" style={{ minHeight: 28, fontSize: 12 }} onClick={() => p.onSpotlight(c.uid, c.text)}>
@@ -307,17 +247,11 @@ export function ResponseCardsView(p: ViewProps & { proposals: AiProposal[]; step
                 <p className="text-body-sm" style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}>
                   {c.text}
                 </p>
-                {c.changed ? (
-                  <p className="text-body-sm" style={{ margin: '6px 0 0', opacity: 0.75 }}>
-                    <strong>무엇을 왜 바꿨는가</strong> · {c.changed}
-                  </p>
-                ) : null}
               </li>
             )
           })}
         </ul>
       )}
-      {p.block.controls.includes('reask') ? <ReaskBar onReask={p.onReask} selected={[...picked]} /> : null}
     </div>
   )
 }
@@ -335,7 +269,6 @@ export function SorterView(p: ViewProps & { shares: GroupShare[]; groupNameOf: (
         .map((d) => ({ uid: d.uid, value: (payloadOf(d)[f?.key ?? '__module'] ?? {}) as Record<string, unknown> })),
     [p.docs, p.studentUids, f?.key],
   )
-  /* 가장 갈린 항목 — 배분이면 분산이 가장 큰 열 */
   const spread = useMemo(() => {
     if (isQuadrant) return null
     let best: { id: string; sd: number } | null = null
@@ -407,7 +340,7 @@ export function SorterView(p: ViewProps & { shares: GroupShare[]; groupNameOf: (
                 </th>
                 {cols.map((c) => (
                   <td key={c.id} className={isQuadrant ? 'text-body-sm' : 'font-mono'} style={{ padding: '6px 12px 6px 0', verticalAlign: 'top', maxWidth: isQuadrant ? 240 : undefined, whiteSpace: isQuadrant ? 'pre-line' : undefined }}>
-                    {isQuadrant ? String(r.value[c.id] ?? '') : (Number(r.value[c.id]) || 0)}
+                    {isQuadrant ? String(r.value[c.id] ?? '') : Number(r.value[c.id]) || 0}
                   </td>
                 ))}
               </tr>
@@ -422,7 +355,6 @@ export function SorterView(p: ViewProps & { shares: GroupShare[]; groupNameOf: (
           </tbody>
         </table>
       </ScrollX>
-      {p.block.controls.includes('reask') ? <ReaskBar onReask={p.onReask} /> : null}
     </div>
   )
 }
@@ -494,47 +426,27 @@ export function CanvasGridView(p: ViewProps & { onEnlarge: (uid: string, value: 
           ))}
         </ul>
       )}
-      {p.block.controls.includes('reask') ? <ReaskBar onReask={p.onReask} /> : null}
     </div>
   )
 }
 
-/* ── 의견 광장 ── */
-export function WallView(p: { classId: string; lessonId: LessonId; stepId: string; stepTitle: string; posts: Post[]; proposals: AiProposal[] }) {
-  const [cluster, setCluster] = useState(false)
-  const split = p.posts.filter((post) => {
-    const agree = (post.reactions?.agreed ?? []).length
-    const disagree = (post.reactions?.disagree ?? []).length
-    return agree > 0 && disagree > 0
-  })
-  /* 유형 묶기는 응답 문서를 받는다 — 글을 같은 모양으로 넘긴다. 누가 썼는지는 담지 않는다. */
-  const asDocs: ResponseDoc[] = p.posts.map((post) => {
-    const last = post.versions?.[post.versions.length - 1]
-    return { uid: post.uid, versions: [{ v: 1, payload: { opinion: last?.content ?? '' }, confidence: null, createdAt: last?.createdAt ?? 0, changedReason: null }], draft: null, latestV: 1, submittedAt: null }
-  })
+/* ── 의견 광장 — 읽기만 ── */
+export function WallView(p: { posts: Post[] }) {
+  const list = [...p.posts].sort((a, b) => b.createdAt - a.createdAt)
   return (
     <div>
       <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
         <Badge>{p.posts.length}개</Badge>
-        {split.length > 0 ? <Badge solid>반응이 갈린 글 {split.length}개</Badge> : null}
-        <Button variant="secondary" onClick={() => setCluster((v) => !v)} aria-pressed={cluster}>
-          유형 묶기
-        </Button>
-        <Caption>고정한 글은 학생 화면 맨 앞에 옵니다. 삭제는 작성자만 — 강사는 숨김만 씁니다.</Caption>
+        <Caption>최신순. 읽고 넘어갑니다.</Caption>
       </div>
-      {cluster ? (
-        <div style={{ marginTop: 12 }}>
-          <AiClusterPanel classId={p.classId} lessonId={p.lessonId} stepId={p.stepId} stepTitle={p.stepTitle} docs={asDocs} proposals={p.proposals} />
-        </div>
-      ) : null}
-      {p.posts.length === 0 ? (
+      {list.length === 0 ? (
         <p className="text-body-sm" style={{ marginTop: 12, opacity: 0.6 }}>
           아직 올라온 글이 없습니다.
         </p>
       ) : (
         <div style={{ columnWidth: 300, columnGap: 16, marginTop: 12 }}>
-          {[...split, ...p.posts.filter((x) => !split.includes(x))].map((post) => (
-            <WallCard key={post.id} classId={p.classId} lessonId={p.lessonId} stepId={p.stepId} post={post} />
+          {list.map((post) => (
+            <WallCard key={post.id} post={post} />
           ))}
         </div>
       )}
@@ -542,18 +454,18 @@ export function WallView(p: { classId: string; lessonId: LessonId; stepId: strin
   )
 }
 
-/* ── 자료 공개 · 열기 ── */
-export function GateView({ label, kind, on, onToggle }: { label: string; kind: 'reveal' | 'open'; on: boolean; onToggle: () => void }) {
+/* ── 자료 공개 ── */
+export function GateView({ label, on, onToggle }: { label: string; on: boolean; onToggle: () => void }) {
   return (
     <div>
       <Notice tone={on ? 'mint' : 'cream'}>
         <p className="text-body-sm" style={{ margin: 0 }}>
-          {kind === 'reveal' ? '자료' : '칸'} 「{label}」 — 지금 학생 화면에서 {on ? '열려 있습니다' : '잠겨 있습니다'}.
+          자료 「{label}」 — 지금 학생 화면에서 {on ? '열려 있습니다' : '잠겨 있습니다'}.
         </p>
       </Notice>
       <div style={{ marginTop: 12 }}>
         <Button variant={on ? 'secondary' : 'primary'} aria-pressed={on} onClick={onToggle}>
-          {on ? '↩ 되돌리기 (다시 잠그기)' : kind === 'reveal' ? '▸ 자료 공개' : '▸ 열기'}
+          {on ? '되돌리기 (다시 잠그기)' : '자료 공개'}
         </Button>
       </div>
     </div>

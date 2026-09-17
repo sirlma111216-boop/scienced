@@ -48,66 +48,20 @@ for (const l of LESSONS) {
 }
 pass('빈 필드', `${TEXT_FIELDS.length}개 텍스트 필드와 학습목표·교육과정 연결이 모두 채워져 있다`)
 
-// 3. 핵심 개념 4개 × 여섯 층
-const CONCEPT_LAYERS = [
-  ['plainOneLiner', '쉬운 한 문장'],
-  ['whyItMatters', '왜 필요한가'],
-  ['classroomScene', '교실 장면'],
-  ['formalDefinition', '정확한 정의'],
-  ['applyQuestion', '직접 써 보기'],
-]
-let conceptCount = 0
+// 3. 핵심 개념 — id 가 겹치지 않고 이름이 있다 (여섯 층 규칙은 8차 A 에서 뺐다)
 const conceptIds = new Set()
 for (const l of LESSONS) {
-  if (l.keyConcepts.length !== 4) {
-    fail('핵심 개념 4개', `${l.id}강 개념이 ${l.keyConcepts.length}개다`)
-  }
   for (const c of l.keyConcepts) {
-    conceptCount++
     if (conceptIds.has(c.id)) fail('개념 id', `${c.id} 가 중복된다`)
     conceptIds.add(c.id)
     if (!c.term || c.term.trim().length === 0) fail('개념 용어', `${l.id}강에 이름 없는 개념이 있다`)
-    for (const [key, label] of CONCEPT_LAYERS) {
-      if (typeof c[key] !== 'string' || c[key].trim().length < 10) {
-        fail('개념 여섯 층', `${l.id}강 「${c.term}」의 ‘${label}’ 층이 비었거나 너무 짧다`)
-      }
-    }
-    if (!Array.isArray(c.notToConfuseWith) || c.notToConfuseWith.length < 2) {
-      fail('개념 여섯 층', `${l.id}강 「${c.term}」의 ‘헷갈리지 말자’가 2개 미만이다`)
-    }
-    if (!c.check || !c.check.prompt || !Array.isArray(c.check.options) || c.check.options.length < 3) {
-      fail('잠깐 확인', `${l.id}강 「${c.term}」에 잠깐 확인 문항이 없다`)
-    }
   }
 }
-pass('핵심 개념', `${conceptCount}개 개념이 여섯 층 + 잠깐 확인을 모두 통과`)
-
-// 4. 강사 대본
-for (const l of LESSONS) {
-  if (l.instructorScript.length < 4) {
-    fail('강사 대본', `${l.id}강 대본이 ${l.instructorScript.length}줄이다 (4줄 이상 필요)`)
-  }
-  const stepIds = new Set(l.steps.map((s) => s.id))
-  for (const line of l.instructorScript) {
-    for (const f of ['stepId', 'cue', 'sayThis', 'whyNotSkip', 'watchFor']) {
-      if (!line[f] || String(line[f]).trim().length < 3) {
-        fail('강사 대본', `${l.id}강 대본에 ${f} 가 비어 있다`)
-      }
-    }
-    if (!stepIds.has(line.stepId)) {
-      fail('강사 대본', `${l.id}강 대본이 존재하지 않는 단계 ${line.stepId} 를 가리킨다`)
-    }
-  }
-}
-pass('강사 대본', '모든 차시에 4줄 이상, 각 줄에 언제·무슨 말·왜 빼면 안 되는지·무엇을 볼지가 있다')
+pass('핵심 개념', `${conceptIds.size}개 개념의 id 가 서로 다르다`)
 
 // 5. 단계와 타임라인
 for (const l of LESSONS) {
-  if (l.steps.length < 5) fail('단계', `${l.id}강 단계가 ${l.steps.length}개다 (5개 이상 필요)`)
-  const total = l.steps.reduce((s, st) => s + st.durationMinutes, 0)
-  if (total !== 50) fail('50분', `${l.id}강 단계 시간 합이 ${total}분이다`)
-  const tlTotal = l.timeline.reduce((s, t) => s + t.minutes, 0)
-  if (tlTotal !== 50) fail('50분', `${l.id}강 타임라인 합이 ${tlTotal}분이다`)
+  if (l.steps.length < 4) fail('단계', `${l.id}강 단계가 ${l.steps.length}개다 (4개 이상 필요)`)
 
   const ids = new Set()
   for (const s of l.steps) {
@@ -147,7 +101,7 @@ for (const l of LESSONS) {
     }
   }
 }
-pass('단계와 타임라인', '차시마다 5단계 이상, 합계 50분이 모두 맞다')
+pass('단계', '차시마다 4단계 이상이고 개념 연결이 맞다')
 pass(
   '짧은 이름',
   `모든 단계의 알약 이름이 ${SHORT_TITLE_MAX}자 이하 — 375px 에서 잘리지 않는다`,
@@ -181,45 +135,5 @@ for (const l of LESSONS) {
   if (!hasReason) fail('이유 수집', `${l.id}강에 이유를 받는 칸이 없다`)
 }
 pass('확신도와 이유', '확신도 칸이 어디에도 없고, 모든 차시가 이유를 받는다')
-
-/*
- * 개념 카드의 밀도.
- *
- * 여섯 층은 강의 중에 넘기는 화면이다. 그것만으로는 학생이 시험 공부를 할 수 없고
- * 강사가 문제를 낼 수도 없다. 그래서 두 가지를 더 요구한다 —
- *   mustKnow  강사가 강조하는 대목. 카드 어느 층에서도 늘 보인다.
- *   deepDive  강의에서 말로 하는 것을 글로 남긴 본문.
- *
- * 공개된 차시는 반드시 채워야 한다. 학생이 지금 읽는 화면이기 때문이다.
- * 아직 열지 않은 차시는 남은 개수만 알린다 — 진도에 맞춰 채운다.
- */
-{
-  let thin = 0
-  let pending = 0
-  for (const l of LESSONS) {
-    for (const c of l.keyConcepts) {
-      const hasMust = (c.mustKnow?.length ?? 0) >= 3
-      const hasDeep = (c.deepDive?.length ?? 0) >= 1
-      if (hasMust && hasDeep) continue
-      if (l.published) {
-        fail(
-          '개념 밀도',
-          `${l.id}강 「${c.term}」에 ${!hasMust ? '꼭 알아야 할 것(3줄 이상)' : '더 읽기'}이 없다 — 공개된 차시다`,
-        )
-        thin++
-      } else {
-        pending++
-      }
-    }
-  }
-  if (thin === 0) {
-    pass(
-      '개념 밀도',
-      pending === 0
-        ? '모든 개념 카드에 꼭 알아야 할 것과 더 읽기가 있다'
-        : `공개된 차시의 개념 카드는 모두 채워져 있다 (아직 열지 않은 차시 ${pending}장은 진도에 맞춰 채운다)`,
-    )
-  }
-}
 
 report('verify:lessons')
