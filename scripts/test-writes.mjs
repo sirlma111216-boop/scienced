@@ -189,12 +189,12 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
 /* ── ⑥ 1강 자동저장 → 제출 ── */
 {
   try {
-    await studentRepo.saveDraft(CID, '01', 'step-recall', STUDENT, { scene: '초안' })
-    await studentRepo.submitResponse(CID, '01', 'step-recall', STUDENT, { scene: '제출' }, {
+    await studentRepo.saveDraft(CID, '01', 'intro', STUDENT, { choice: '초안' })
+    await studentRepo.submitResponse(CID, '01', 'intro', STUDENT, { choice: '학습의 증거' }, {
       confidence: 3,
       changedReason: null,
     })
-    const doc = await studentRepo.getResponse(CID, '01', 'step-recall', STUDENT)
+    const doc = await studentRepo.getResponse(CID, '01', 'intro', STUDENT)
     if ((doc?.versions?.length ?? 0) !== 1) {
       fail('1강 제출', `버전이 ${doc?.versions?.length ?? 0}개다 (1개여야 한다)`)
     } else {
@@ -205,10 +205,10 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   }
 }
 
-/* ── ⑦ 즉석 모둠: 같은 번호를 고른 두 사람이 서로 보이는가 ── */
+/* ── ⑦ 모둠 데이터(8차 4.6): 제출한 사람의 값이 모둠에 모이고 평균이 맞는가 ── */
 {
   const repo2 = createFirestoreRepo(env.authenticatedContext(STUDENT2).firestore())
-  const STEP = 'step-auction'
+  const STEP = 'activity'
 
   /* 화면과 같은 순서다. 먼저 각자 제출해야 모둠 화면이 열린다. */
   await studentRepo.submitResponse(CID, '01', STEP, STUDENT, {
@@ -219,26 +219,26 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   }, { confidence: null, changedReason: null })
 
   /* 제출 전에는 규칙이 막아야 한다 — 남의 배분을 먼저 보는 길이 없어야 한다. */
-  const NOTYET = 'step-compare'
+  const NOTYET = 'wrapup'
   let blocked = false
   try {
     await studentRepo.setGroupShare(CID, '01', NOTYET, {
-      uid: STUDENT, nickname: '나', groupId: '1', allocation: {}, opinion: 'x', updatedAt: Date.now(),
+      uid: STUDENT, nickname: '나', groupId: '1', value: {}, reason: 'x', updatedAt: Date.now(),
     })
   } catch {
     blocked = true
   }
-  if (!blocked) fail('즉석 모둠 관문', '제출하지 않은 단계에서도 모둠에 들어가진다')
+  if (!blocked) fail('모둠 데이터 관문', '제출하지 않은 단계에서도 모둠에 값이 들어가진다')
 
   /* 둘 다 1모둠을 고른다. */
   await studentRepo.setGroupShare(CID, '01', STEP, {
     uid: STUDENT, nickname: '이나나나', groupId: '1',
-    allocation: { fun: 20, evidence: 60, safety: 20 }, opinion: '증거가 남아야 수업이다',
+    value: { fun: 20, evidence: 60, safety: 20 }, reason: '증거가 남아야 수업이다',
     updatedAt: Date.now(),
   })
   await repo2.setGroupShare(CID, '01', STEP, {
     uid: STUDENT2, nickname: '박두두', groupId: '1',
-    allocation: { fun: 60, evidence: 20, safety: 20 }, opinion: '보고 싶어야 남는다',
+    value: { fun: 60, evidence: 20, safety: 20 }, reason: '보고 싶어야 남는다',
     updatedAt: Date.now(),
   })
 
@@ -257,12 +257,15 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   })
 
   if (seen.length !== 2) {
-    fail('즉석 모둠', `모둠원이 ${seen.length}명 보인다 — 2명이어야 한다`)
+    fail('모둠 데이터', `모둠원이 ${seen.length}명 보인다 — 2명이어야 한다`)
   } else {
-    /* 화면이 그리는 그 평균을 여기서도 계산해 본다. */
-    const avg = (id) => Math.round(seen.reduce((s, g) => s + (g.allocation[id] || 0), 0) / seen.length)
+    /* 화면이 그리는 그 계산(group-math)을 그대로 쓴다 */
+    const { allocationAverage } = await import('../src/lib/group-math.ts')
+    const field = { key: 'allocation', kind: 'allocation', label: '', items: [{ id: 'fun', label: '재미' }, { id: 'evidence', label: '증거' }, { id: 'safety', label: '안전' }] }
+    const rows = allocationAverage(field, seen.map((g) => ({ uid: g.uid, nickname: g.nickname, value: g.value })))
+    const avg = (id) => rows.find((r) => r.id === id)?.avg
     if (avg('fun') !== 40 || avg('evidence') !== 40) {
-      fail('즉석 모둠 평균', `평균이 fun ${avg('fun')} · evidence ${avg('evidence')} 다 (둘 다 40이어야 한다)`)
+      fail('모둠 평균', `평균이 fun ${avg('fun')} · evidence ${avg('evidence')} 다 (둘 다 40이어야 한다)`)
     } else {
       /* 대표가 합의 문장을 올리면 의견 광장의 글이 된다. */
       await studentRepo.upsertPost(CID, '01', STEP, {
@@ -308,7 +311,7 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
         } else if (after[0].latestV !== 1 || after[0].versions.length !== 1) {
           fail('글 덮어쓰기', '다시 올렸는데 버전이 쌓였다')
         } else {
-          pass('즉석 모둠', '제출 뒤에만 열리고, 같은 번호를 고른 두 사람의 평균이 맞고, 합의 문장이 광장에 뜬다')
+          pass('모둠 데이터', '제출 뒤에만 열리고, 같은 모둠 두 사람의 배분 평균이 맞고, 광장 글이 뜬다')
           pass('글 덮어쓰기', '다시 올리면 글이 늘지 않고 그 글의 내용만 바뀐다')
         }
       }
@@ -321,14 +324,14 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
 
 /* ── ⑧ 사다리 자리: 한 사람이 하나만 ── */
 {
-  const GAME = '01-auction'
+  const GAME = '01-activity-ladder'
   const repo2 = createFirestoreRepo(env.authenticatedContext(STUDENT2).firestore())
 
   /* 강사가 판을 연 상태를 만든다 */
   await env.withSecurityRulesDisabled(async (ctx) => {
     await ctx.firestore().doc(`classes/${CID}/sessions/01`).set({
       lessonId: '01',
-      currentStepId: 'step-auction',
+      currentStepId: 'activity',
       stepOpen: true,
       pollResults: {},
       ladders: {
@@ -383,7 +386,7 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
 
 /* ── ⑨ 옛 글이 여러 장이면 다시 올릴 때 하나로 거둔다 ── */
 {
-  const STEP = 'step-auction'
+  const STEP = 'activity'
   /*
    * 문서 id 가 uid 가 아니던 시절의 글을 심는다.
    * 그때는 누를 때마다 새 글이 생겨 같은 사람의 글이 흩어졌다.
@@ -424,7 +427,7 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
 /* ── ⑩ 내보내기: 이 클래스에서만 빼고 계정은 남는다 ── */
 {
   const teacherRepo = createFirestoreRepo(env.authenticatedContext(TEACHER).firestore())
-  const STEP = 'step-auction'
+  const STEP = 'activity'
 
   const t0 = Date.now()
   await teacherRepo.removeEnrollment(CID, STUDENT)
@@ -477,23 +480,23 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
     for (const u of uids) await db.doc(`classes/${CID2}/enrollments/${u}`).set({ uid: u, status: 'active', nickname: u })
   })
 
-  /* 학생이 게임에서 고른다 — 앱의 코드로 */
+  /* 학생이 질문에 답한다 — 앱의 코드로 (8차 5절) */
   const sA = createFirestoreRepo(env.authenticatedContext('g-a').firestore())
-  await sA.setGroupInput(CID2, { uid: 'g-a', lessonId: '01', gameId: '01-words', choice: 'fun', second: null, updatedAt: Date.now() })
+  await sA.setGroupInput(CID2, { uid: 'g-a', lessonId: '01', questionId: 'country', choice: '일본', updatedAt: Date.now() })
   /* 남의 것을 쓰려 하면 막힌다 */
   let stolen = false
   try {
-    await sA.setGroupInput(CID2, { uid: 'g-b', lessonId: '01', gameId: '01-words', choice: 'fun', second: null, updatedAt: Date.now() })
+    await sA.setGroupInput(CID2, { uid: 'g-b', lessonId: '01', questionId: 'country', choice: '일본', updatedAt: Date.now() })
     stolen = true
   } catch { /* 막혀야 한다 */ }
-  if (stolen) fail('게임 선택', '학생이 남의 선택을 썼다 — 규칙이 막아야 한다')
+  if (stolen) fail('질문 답', '학생이 남의 답을 썼다 — 규칙이 막아야 한다')
 
   /* 두 회차를 앱의 계산 코드로 짜서 확정한다 */
   let history = {}
   const t0 = Date.now()
   const r1 = assignGroups({ uids, groupCount: 2, history, round: 1, roundsAhead: 2, seed: 'test:1' })
   const round1 = {
-    id: `${CID2}-01`, round: 1, lessonId: '01', gameId: '01-words',
+    id: `${CID2}-01`, round: 1, lessonId: '01', questionId: 'country',
     groups: r1.groups.map((m, i) => ({ id: String(i + 1), name: `${i + 1}모둠`, memberUids: m })),
     absentUids: [], seed: r1.seed, cost: r1.repeats, createdBy: TEACHER, createdAt: Date.now(),
     manualEdits: [], plannedNext: encodePlan(r1.plannedNext), followedPlan: r1.followedPlan, lateJoins: [],
@@ -501,7 +504,7 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   await teacherRepo.confirmGroupRound(CID2, round1)
   history = applyRound(history, r1.groups, 1)
   const r2 = assignGroups({ uids, groupCount: 2, history, round: 2, roundsAhead: 1, seed: 'test:2', plannedRemaining: decodePlan(round1.plannedNext), planStale: !r1.followedPlan })
-  const round2 = { ...round1, id: `${CID2}-03`, round: 2, lessonId: '03', gameId: '03-cases', groups: r2.groups.map((m, i) => ({ id: String(i + 1), name: `${i + 1}모둠`, memberUids: m })), seed: r2.seed, cost: r2.repeats, plannedNext: encodePlan(r2.plannedNext), followedPlan: r2.followedPlan }
+  const round2 = { ...round1, id: `${CID2}-03`, round: 2, lessonId: '03', questionId: 'drink', groups: r2.groups.map((m, i) => ({ id: String(i + 1), name: `${i + 1}모둠`, memberUids: m })), seed: r2.seed, cost: r2.repeats, plannedNext: encodePlan(r2.plannedNext), followedPlan: r2.followedPlan }
   await teacherRepo.confirmGroupRound(CID2, round2)
   const ms = Date.now() - t0
   console.log(`  모둠 확정 2회: ${ms}ms (에뮬레이터 기준)`)
@@ -569,6 +572,75 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
       const gA = round2b.groups.find((g) => g.memberUids.includes('g-a'))
       if (enr.data()?.currentGroupId !== gA.id) fail('다시 확정 · 현재 모둠', `등록의 currentGroupId 가 ${enr.data()?.currentGroupId} — 다시 확정한 ${gA.id} 이어야 한다`)
     })
+  }
+
+  /* 확정하면 클래스 문서에 쓴 질문이 남는다 — 학기 안에 되풀이하지 않는다 (8차 5.2) */
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const c = await ctx.firestore().doc(`classes/${CID2}`).get()
+    const fq = c.data()?.formationQuestions ?? {}
+    if (fq['01'] !== 'country' || fq['03'] !== 'drink') fail('질문 기록', `클래스 문서의 formationQuestions 가 ${JSON.stringify(fq)} — 01:country · 03:drink 여야 한다`)
+    else pass('질문 기록', '회차를 확정하면 쓴 질문이 클래스 문서에 남는다')
+  })
+
+  /* ── ⑫ 모둠 값(8차 4.6): 내 모둠에만 쓴다. 제출이 먼저다 ── */
+  {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(`classes/${CID2}/lessonState/03`).set({ lessonId: '03', published: true })
+    })
+    const gA = (await new Promise((resolve) => {
+      const stop = sA.watchGroupRounds(CID2, (rs) => {
+        const r = rs.find((x) => x.id === `${CID2}-03`)
+        if (r) { stop(); resolve(r) }
+      })
+      setTimeout(() => { stop(); resolve(null) }, 5000)
+    }))?.groups.find((g) => g.memberUids.includes('g-a'))
+    const other = gA?.id === '1' ? '2' : '1'
+    /* 제출 전에는 못 쓴다 */
+    let early = false
+    try {
+      await sA.setGroupValue(CID2, '03', 'activity', { groupId: gA.id, format: 'sentence', value: '아직', byUid: 'g-a', updatedAt: Date.now() })
+      early = true
+    } catch { /* 막혀야 한다 */ }
+    await sA.submitResponse(CID2, '03', 'activity', 'g-a', { opinion: '한 문장' }, { confidence: null, changedReason: null })
+    await sA.setGroupValue(CID2, '03', 'activity', { groupId: gA.id, format: 'sentence', value: '우리 모둠의 한 문장', byUid: 'g-a', updatedAt: Date.now() })
+    let wrongGroup = false
+    try {
+      await sA.setGroupValue(CID2, '03', 'activity', { groupId: other, format: 'sentence', value: '남의 모둠', byUid: 'g-a', updatedAt: Date.now() })
+      wrongGroup = true
+    } catch { /* 막혀야 한다 */ }
+    const values = await new Promise((resolve) => {
+      const stop = sA.watchGroupValues(CID2, '03', 'activity', (list) => { if (list.length > 0) { stop(); resolve(list) } })
+      setTimeout(() => { stop(); resolve([]) }, 5000)
+    })
+    if (early) fail('모둠 값', '제출 전에 모둠 값을 썼다 — 규칙이 막아야 한다')
+    else if (wrongGroup) fail('모둠 값', '남의 모둠 값을 썼다 — 규칙이 막아야 한다')
+    else if (values.length !== 1 || values[0].value !== '우리 모둠의 한 문장') fail('모둠 값', `모둠 값이 ${JSON.stringify(values)} 다`)
+    else pass('모둠 값', '제출한 뒤 내 모둠의 값만 쓸 수 있고, 같은 단계 사람이 그것을 읽는다')
+  }
+
+  /* ── ⑬ 게임 참가·입력(8차 6.4): 자기 문서만, 모두가 읽는다 ── */
+  {
+    const sB = createFirestoreRepo(env.authenticatedContext('g-b').firestore())
+    const t0 = Date.now()
+    await sA.setGameInput(CID2, '03', { uid: 'g-a', stepId: 'activity', round: 1, joinedAt: t0, value: {}, updatedAt: t0 })
+    await sA.setGameInput(CID2, '03', { uid: 'g-a', stepId: 'activity', round: 1, joinedAt: t0, value: { n: 42 }, updatedAt: t0 + 1 })
+    let stolenInput = false
+    try {
+      await sA.setGameInput(CID2, '03', { uid: 'g-b', stepId: 'activity', round: 1, joinedAt: t0, value: { n: 1 }, updatedAt: t0 })
+      stolenInput = true
+    } catch { /* 막혀야 한다 */ }
+    await sB.setGameInput(CID2, '03', { uid: 'g-b', stepId: 'activity', round: 1, joinedAt: t0 + 5, value: { n: 7 }, updatedAt: t0 + 5 })
+    const inputs = await new Promise((resolve) => {
+      const stop = sB.watchGameInputs(CID2, '03', 'activity', (list) => { if (list.length >= 2) { stop(); resolve(list) } })
+      setTimeout(() => { stop(); resolve([]) }, 5000)
+    })
+    const { derive } = await import('../src/lib/game-core.ts')
+    const state = { kind: 'closest', stepId: 'activity', phase: 'running', round: 1, seed: 'writes::closest', startedAt: t0, state: null, result: null, updatedAt: t0 }
+    const d = derive({ state, inputs, now: t0 + 1000, groups: [] })
+    if (stolenInput) fail('게임 입력', '학생이 남의 게임 입력을 썼다 — 규칙이 막아야 한다')
+    else if (inputs.length !== 2) fail('게임 입력', `다른 학생에게 입력이 ${inputs.length}개 보인다 — 2개여야 한다`)
+    else if (!d.finished || d.winnerUids.length === 0) fail('게임 계산', `두 사람이 다 냈는데 게임이 끝나지 않는다 — ${JSON.stringify(d)}`)
+    else pass('게임 입력', `자기 입력만 쓰고 모두가 읽는다 · 같은 입력으로 앱의 계산(game-core)이 발표자를 낸다 (${d.reason})`)
   }
 
   /* 학생은 자기 등록의 모둠 자리를 못 옮긴다 */

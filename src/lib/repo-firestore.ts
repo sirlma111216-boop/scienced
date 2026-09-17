@@ -17,8 +17,9 @@ import {
   updateDoc,
   writeBatch,
 } from 'firebase/firestore'
-import { LESSONS } from '@/content/lessons'
-import type { GameId, LessonId } from '@/content/types'
+import type { LessonId } from '@/content/types'
+import { COURSE_IDS, courseIdFromTitle, lessonIndex } from '@/content/courses'
+import { stepIdsOf } from '@/content/steps'
 import type { Repo } from './repo'
 import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
@@ -27,10 +28,13 @@ import type {
   AppUser,
   ClassDoc,
   Enrollment,
+  GameInput,
+  GameState,
   Group,
   GroupInput,
   GroupRound,
   GroupShare,
+  GroupValue,
   LadderState,
   PairHistoryDoc,
   Participation,
@@ -43,24 +47,49 @@ import type {
 
 /**
  * Firestore 구현.
- *
- * 경로는 2차 지시서 A.2 의 데이터 모델을 그대로 따른다.
- *   lessons/{lessonId}            콘텐츠 마스터 — 학기와 무관, 한 벌만
  *   classes/{classId}/…           학기별 학생 자료 전부
+ *   …/lessons/{lid}/steps/{sid}/  responses · posts · groupshares · groupValues
+ *   …/sessions/{lid}              진행 상태 (열린 단계 · 자료 공개 · 게임 · 루미 런)
+ *   …/sessions/{lid}/gameInputs/  학생이 게임에 낸 것 — {stepId}__{uid}
  *
  * 학생 권한 판정은 여기서 하지 않는다. 전부 firestore.rules 가 막는다.
- * 이 파일의 코드는 규칙이 이미 허용한 일만 한다.
  */
 
-/** 클래스 하위 컬렉션 */
-const cc = (db: Firestore, classId: string, ...segments: string[]) =>
-  collection(db, 'classes', classId, ...segments)
-/** 클래스 하위 문서 */
-const cd = (db: Firestore, classId: string, ...segments: string[]) =>
-  doc(db, 'classes', classId, ...segments)
+const cc = (db: Firestore, classId: string, ...segments: string[]) => collection(db, 'classes', classId, ...segments)
+const cd = (db: Firestore, classId: string, ...segments: string[]) => doc(db, 'classes', classId, ...segments)
 
 function stepPath(lessonId: string, stepId: string) {
   return ['lessons', lessonId, 'steps', stepId]
+}
+
+/** 옛 골격(8차 이전)의 단계 id — 지울 때 그 아래도 훑는다 */
+const LEGACY_STEP_IDS = ['step-open', 'step-concepts', 'step-module', 'step-formative', 'step-wrapup', 'step-recall', 'step-compare', 'step-auction']
+
+/** 이 클래스가 쓰는 (차시, 단계) — 과목을 모르면 두 과목을 다 훑는다 */
+async function stepPathsOf(db: Firestore, classId: string): Promise<Array<[string, string]>> {
+  let courses = COURSE_IDS
+  try {
+    const snap = await getDoc(doc(db, 'classes', classId))
+    if (snap.exists()) {
+      const c = snap.data() as ClassDoc
+      courses = [c.courseId ?? courseIdFromTitle(c.courseTitle)]
+    }
+  } catch {
+    /* 못 읽으면 두 과목 다 */
+  }
+  const out: Array<[string, string]> = []
+  const seen = new Set<string>()
+  for (const cid of courses) {
+    for (const l of lessonIndex(cid)) {
+      for (const s of [...stepIdsOf(l.layout), ...LEGACY_STEP_IDS]) {
+        const k = `${l.id}/${s}`
+        if (seen.has(k)) continue
+        seen.add(k)
+        out.push([l.id, s])
+      }
+    }
+  }
+  return out
 }
 
 export function createFirestoreRepo(db: Firestore): Repo {
@@ -79,7 +108,10 @@ export function createFirestoreRepo(db: Firestore): Repo {
       return onSnapshot(
         collection(db, 'users'),
         (snap) => cb(snap.docs.map((s) => s.data() as AppUser)),
-        () => cb([]),
+        (err) => {
+          console.warn('[users] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
       )
     },
 
@@ -89,11 +121,6 @@ export function createFirestoreRepo(db: Firestore): Repo {
         collection(db, 'classes'),
         (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as ClassDoc), id: s.id }))),
         (err) => {
-          /*
-           * 오류를 빈 목록으로만 바꾸면 「클래스가 없다」와 「읽지 못했다」가 같아 보인다.
-           * 화면은 어느 쪽인지 말할 수 없고, 강사는 만든 클래스가 왜 안 보이는지 알 수 없다.
-           * 목록은 비우되(그려야 하므로) 이유는 콘솔에 남긴다.
-           */
           console.warn('[classes] 목록을 읽지 못했습니다:', err.code, err.message)
           cb([])
         },
@@ -106,50 +133,27 @@ export function createFirestoreRepo(db: Firestore): Repo {
       await setDoc(doc(db, 'classes', classId), patch, { merge: true })
     },
     async removeEnrollment(classId, uid) {
-      /*
-       * 사람 하나를 이 클래스에서 지운다.
-       *
-       * 응답·즉석 모둠 자리·의견 글은 모두 문서 id 가 uid 라서 읽지 않고 바로 지운다.
-       * 없는 문서를 지우는 것은 배치에서 아무 일도 하지 않으므로 안전하다.
-       * 그래서 왕복이 배치 몇 번으로 끝난다 — 클래스 지우기처럼 훑을 필요가 없다.
-       */
-      const refs = [
-        cd(db, classId, 'enrollments', uid),
-        cd(db, classId, 'roster', uid),
-        cd(db, classId, 'participation', uid),
-      ]
-      for (const lesson of LESSONS) {
-        for (const step of lesson.steps) {
-          const base = stepPath(lesson.id, step.id)
-          refs.push(cd(db, classId, ...base, 'responses', uid))
-          refs.push(cd(db, classId, ...base, 'groupshares', uid))
-          refs.push(cd(db, classId, ...base, 'posts', uid))
-        }
+      const refs = [cd(db, classId, 'enrollments', uid), cd(db, classId, 'roster', uid), cd(db, classId, 'participation', uid)]
+      const paths = await stepPathsOf(db, classId)
+      for (const [lid, sid] of paths) {
+        const base = stepPath(lid, sid)
+        refs.push(cd(db, classId, ...base, 'responses', uid))
+        refs.push(cd(db, classId, ...base, 'groupshares', uid))
+        refs.push(cd(db, classId, ...base, 'posts', uid))
       }
-
       const BATCH = 400
       for (let i = 0; i < refs.length; i += BATCH) {
         const batch = writeBatch(db)
         for (const ref of refs.slice(i, i + BATCH)) batch.delete(ref)
         await batch.commit()
       }
-
-      /*
-       * 문서 id 가 uid 가 아니던 시절의 옛 글은 위에서 걸리지 않는다.
-       * 그런 글이 남아 있는지 한 번 훑어 지운다. 새 클래스에서는 아무것도 안 걸린다.
-       */
+      /* 문서 id 가 uid 가 아니던 시절의 옛 글 */
       const stray: Array<ReturnType<typeof doc>> = []
-      const targets = LESSONS.flatMap((lesson) =>
-        lesson.steps.map((step) => cc(db, classId, ...stepPath(lesson.id, step.id), 'posts')),
-      )
+      const targets = paths.map(([lid, sid]) => cc(db, classId, ...stepPath(lid, sid), 'posts'))
       const CHUNK = 25
       for (let i = 0; i < targets.length; i += CHUNK) {
         const snaps = await Promise.all(targets.slice(i, i + CHUNK).map((t) => getDocs(t)))
-        for (const snap of snaps) {
-          for (const d of snap.docs) {
-            if ((d.data() as { uid?: string }).uid === uid && d.id !== uid) stray.push(d.ref)
-          }
-        }
+        for (const snap of snaps) for (const d of snap.docs) if ((d.data() as { uid?: string }).uid === uid && d.id !== uid) stray.push(d.ref)
       }
       for (let i = 0; i < stray.length; i += BATCH) {
         const batch = writeBatch(db)
@@ -160,80 +164,52 @@ export function createFirestoreRepo(db: Firestore): Repo {
 
     async deleteClass(classId) {
       /*
-       * Firestore 는 문서를 지워도 하위 컬렉션이 남는다.
-       * 클래스 문서만 지우면 화면에서는 사라지지만 학생 응답·의견·실명은 그대로 남는다.
-       * 지웠다고 말할 수 없는 상태다. 그래서 아래를 전부 훑어 치운 뒤에 지운다.
-       *
-       * ★ 훑을 곳이 190군데쯤 된다 (10 + 18강 × 단계 × 2).
-       *   처음에는 하나씩 기다리며 돌았는데, 왕복이 190번이라 몇 분씩 걸렸다.
-       *   화면에는 「지우는 중…」만 떠 있고 끝나지 않는 것처럼 보였다.
-       *   그래서 읽기는 묶어서 동시에 하고, 지우기는 배치로 모아 보낸다.
+       * Firestore 는 문서를 지워도 하위 컬렉션이 남는다. 전부 훑어 치운 뒤에 지운다.
+       * 읽기는 25개씩 동시에, 지우기는 배치로 — 하나씩 기다리면 몇 분씩 걸린다.
        */
-      const targets = [
-        'lessonState',
-        'enrollments',
-        'roster',
-        'aggregates',
-        'sessions',
-        'groups',
-        'groupWork',
-        'picks',
-        'participation',
-        'aiProposals',
-        /* 모둠 나누기 (6차) — 동석 기록·회차·게임 선택도 이 클래스의 것이다 */
-        'pairHistory',
-        'groupRounds',
-        'groupInputs',
-        /* 루미 런 결과 — 서버 함수가 쓴 것도 이 클래스의 것이다 */
-        'lumiResults',
-      ].map((name) => cc(db, classId, name))
-
-      for (const lesson of LESSONS) {
-        for (const step of lesson.steps) {
-          targets.push(cc(db, classId, ...stepPath(lesson.id, step.id), 'responses'))
-          targets.push(cc(db, classId, ...stepPath(lesson.id, step.id), 'posts'))
-          targets.push(cc(db, classId, ...stepPath(lesson.id, step.id), 'groupshares'))
-        }
+      const targets = ['lessonState', 'enrollments', 'roster', 'aggregates', 'sessions', 'groups', 'groupWork', 'picks', 'participation', 'aiProposals', 'pairHistory', 'groupRounds', 'groupInputs', 'lumiResults'].map((name) => cc(db, classId, name))
+      const paths = await stepPathsOf(db, classId)
+      for (const [lid, sid] of paths) {
+        targets.push(cc(db, classId, ...stepPath(lid, sid), 'responses'))
+        targets.push(cc(db, classId, ...stepPath(lid, sid), 'posts'))
+        targets.push(cc(db, classId, ...stepPath(lid, sid), 'groupshares'))
+        targets.push(cc(db, classId, ...stepPath(lid, sid), 'groupValues'))
       }
+      /* 게임 입력은 세션 문서 아래 */
+      const lessonIds = [...new Set(paths.map(([lid]) => lid))]
+      for (const lid of lessonIds) targets.push(cc(db, classId, 'sessions', lid, 'gameInputs'))
 
-      /* 한 번에 다 던지면 브라우저 연결 한도에 걸린다. 25개씩 끊어 동시에 읽는다. */
       const refs: Array<ReturnType<typeof doc>> = []
       const CHUNK = 25
       for (let i = 0; i < targets.length; i += CHUNK) {
         const snaps = await Promise.all(targets.slice(i, i + CHUNK).map((t) => getDocs(t)))
         for (const snap of snaps) for (const d of snap.docs) refs.push(d.ref)
       }
-
-      /* 배치 한 번에 500개까지. 문서를 하나씩 지우면 다시 왕복이 늘어난다. */
       const BATCH = 400
       for (let i = 0; i < refs.length; i += BATCH) {
         const batch = writeBatch(db)
         for (const ref of refs.slice(i, i + BATCH)) batch.delete(ref)
         await batch.commit()
       }
-
       await deleteDoc(doc(db, 'classes', classId))
     },
 
-    /* ── 차시 공개 (클래스마다 따로) ── */
+    /* ── 차시 공개 ── */
     watchLessonState(classId, cb) {
       return onSnapshot(
         cc(db, classId, 'lessonState'),
         (snap) => {
-          const ids = snap.docs
-            .filter((s) => (s.data() as { published?: boolean }).published)
-            .map((s) => s.id as LessonId)
+          const ids = snap.docs.filter((s) => (s.data() as { published?: boolean }).published).map((s) => s.id as LessonId)
           cb(ids.sort())
         },
-        () => cb([]),
+        (err) => {
+          console.warn('[lessonState] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
       )
     },
     async setLessonPublished(classId, lessonId, published) {
-      await setDoc(
-        cd(db, classId, 'lessonState', lessonId),
-        { lessonId, published, publishedAt: published ? Date.now() : null },
-        { merge: true },
-      )
+      await setDoc(cd(db, classId, 'lessonState', lessonId), { lessonId, published, publishedAt: published ? Date.now() : null }, { merge: true })
     },
 
     /* ── 수강 등록 ── */
@@ -241,20 +217,18 @@ export function createFirestoreRepo(db: Firestore): Repo {
       return onSnapshot(
         cc(db, classId, 'enrollments'),
         (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as Enrollment), uid: s.id }))),
-        () => cb([]),
+        (err) => {
+          console.warn('[enrollments] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
       )
     },
     async getEnrollment(classId, uid) {
       const snap = await getDoc(cd(db, classId, 'enrollments', uid))
-      return snap.exists() ? ({ ...(snap.data() as Enrollment), uid }) : null
+      return snap.exists() ? { ...(snap.data() as Enrollment), uid } : null
     },
     async enroll(classId, e) {
-      /*
-       * merge 로 쓴다.
-       * 내보내진(ended) 등록에는 모둠 자리(currentGroupId·currentRoundId)가 남아 있는데, 통째로 덮어쓰면
-       * 그 두 키가 「바뀐 키」에 들어가 규칙(학생은 모둠 자리를 못 옮긴다)에 막혔다 — 다시 등록이 영영 안 됐다.
-       * 남은 자리 값은 해롭지 않다. 학생 화면의 내 모둠은 회차 문서(groupRounds)에서 찾는다.
-       */
+      /* merge — 내보내진 등록에 남은 모둠 자리 키가 「바뀐 키」에 들어가 규칙에 막히지 않게 */
       await setDoc(cd(db, classId, 'enrollments', e.uid), e, { merge: true })
     },
     async updateEnrollment(classId, uid, patch) {
@@ -263,7 +237,6 @@ export function createFirestoreRepo(db: Firestore): Repo {
 
     /* ── 명단 실명 — 강사만 ── */
     watchRoster(classId, cb) {
-      // 학생이 부르면 규칙에서 막힌다. 그때는 빈 목록으로 둔다.
       return onSnapshot(
         cc(db, classId, 'roster'),
         (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as RosterEntry), uid: s.id }))),
@@ -276,17 +249,10 @@ export function createFirestoreRepo(db: Firestore): Repo {
 
     /* ── 응답 ── */
     async saveDraft(classId, lessonId, stepId, uid, payload) {
-      await setDoc(
-        cd(db, classId, ...stepPath(lessonId, stepId), 'responses', uid),
-        { uid, draft: { payload, savedAt: Date.now() } },
-        { merge: true },
-      )
+      await setDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'responses', uid), { uid, draft: { payload, savedAt: Date.now() } }, { merge: true })
     },
-
     async submitResponse(classId, lessonId, stepId, uid, payload, opts) {
       const ref = cd(db, classId, ...stepPath(lessonId, stepId), 'responses', uid)
-      // versions 는 추가만 한다. 트랜잭션으로 읽고 뒤에 붙인다.
-      // 규칙에서도 기존 요소 수정·삭제를 막지만, 여기서도 덮어쓰지 않는다.
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref)
         const cur = snap.exists() ? (snap.data() as ResponseDoc) : null
@@ -295,16 +261,7 @@ export function createFirestoreRepo(db: Firestore): Repo {
           ref,
           {
             uid,
-            versions: [
-              ...versions,
-              {
-                v: versions.length + 1,
-                payload,
-                confidence: opts.confidence,
-                createdAt: Date.now(),
-                changedReason: opts.changedReason,
-              },
-            ],
+            versions: [...versions, { v: versions.length + 1, payload, confidence: opts.confidence, createdAt: Date.now(), changedReason: opts.changedReason }],
             latestV: versions.length + 1,
             submittedAt: Date.now(),
             draft: null,
@@ -313,108 +270,86 @@ export function createFirestoreRepo(db: Firestore): Repo {
         )
       })
     },
-
     async getResponse(classId, lessonId, stepId, uid) {
       const snap = await getDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'responses', uid))
       return snap.exists() ? (snap.data() as ResponseDoc) : null
     },
-
     watchResponse(classId, lessonId, stepId, uid, cb) {
       return onSnapshot(
         cd(db, classId, ...stepPath(lessonId, stepId), 'responses', uid),
         (snap) => cb(snap.exists() ? (snap.data() as ResponseDoc) : null),
-        () => cb(null),
+        (err) => {
+          console.warn('[응답] 내 것을 읽지 못했다:', err.code, err.message)
+          cb(null)
+        },
       )
     },
-
     watchAllResponses(classId, lessonId, stepId, cb) {
-      // 강사만 읽을 수 있다. 학생이 부르면 규칙에서 막힌다.
       return onSnapshot(
         cc(db, classId, ...stepPath(lessonId, stepId), 'responses'),
         (snap) => cb(snap.docs.map((s) => s.data() as ResponseDoc)),
         (err) => {
-          /*
-           * 「없음」과 「읽지 못함」이 화면에서 같아 보이면 안 된다.
-           * 학생이 부르면 막히는 것이 정상이므로 화면은 빈 목록으로 두되,
-           * 왜 비었는지는 콘솔에 남긴다.
-           */
           console.warn('[분포] 응답을 읽지 못했다:', err.code, err.message)
           cb([])
         },
       )
     },
 
-    /* ── 의견 광장 ── */
+    /* ── 모둠 데이터 ── */
     watchGroupShares(classId, lessonId, stepId, cb) {
       return onSnapshot(
         cc(db, classId, ...stepPath(lessonId, stepId), 'groupshares'),
         (snap) => cb(snap.docs.map((s) => s.data() as GroupShare)),
         (err) => {
-          // 본인이 제출하기 전에는 규칙이 막는다. 그때는 빈 목록이 맞다.
-          // 그 밖의 이유라면 화면에는 「아직 아무도 없음」으로 보이므로 콘솔에 남긴다.
           console.warn('[groupshares] 읽지 못했다:', err.code, err.message)
           cb([])
         },
       )
     },
-
     async setGroupShare(classId, lessonId, stepId, share) {
-      const ref = cd(db, classId, ...stepPath(lessonId, stepId), 'groupshares', share.uid)
-      await setDoc(ref, { ...share, updatedAt: Date.now() })
+      await setDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'groupshares', share.uid), { ...share, updatedAt: Date.now() })
     },
-
     async clearGroupShare(classId, lessonId, stepId, uid) {
       await deleteDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'groupshares', uid))
     },
+    watchGroupValues(classId, lessonId, stepId, cb) {
+      return onSnapshot(
+        cc(db, classId, ...stepPath(lessonId, stepId), 'groupValues'),
+        (snap) => cb(snap.docs.map((s) => s.data() as GroupValue)),
+        (err) => {
+          console.warn('[groupValues] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
+      )
+    },
+    async setGroupValue(classId, lessonId, stepId, value) {
+      await setDoc(cd(db, classId, ...stepPath(lessonId, stepId), 'groupValues', value.groupId), { ...value, updatedAt: Date.now() })
+    },
 
+    /* ── 의견 광장 ── */
     watchPosts(classId, lessonId, stepId, cb) {
       return onSnapshot(
         cc(db, classId, ...stepPath(lessonId, stepId), 'posts'),
         (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as Post), id: s.id }))),
-        // 본인이 제출하기 전에는 읽을 수 없다. 규칙에서 막히면 빈 목록으로 둔다.
-        () => cb([]),
+        (err) => {
+          console.warn('[광장] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
       )
     },
-
     async upsertPost(classId, lessonId, stepId, post) {
-      /*
-       * 문서 id 가 uid 다. 한 사람이 한 단계에 글 하나.
-       * 다시 올리면 내용만 바뀐다 — 반응과 댓글은 그대로 둔다.
-       */
       const ref = cd(db, classId, ...stepPath(lessonId, stepId), 'posts', post.uid)
       const now = Date.now()
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref)
         const version = { v: 1, content: post.content, changedReason: null, createdAt: now }
         if (!snap.exists()) {
-          tx.set(ref, {
-            uid: post.uid,
-            nickname: post.nickname,
-            groupId: post.groupId,
-            versions: [version],
-            latestV: 1,
-            reactions: {},
-            comments: [],
-            isPinned: false,
-            isHidden: false,
-            hiddenReason: null,
-            createdAt: now,
-          })
+          tx.set(ref, { uid: post.uid, nickname: post.nickname, groupId: post.groupId, versions: [version], latestV: 1, reactions: {}, comments: [], isPinned: false, isHidden: false, hiddenReason: null, createdAt: now })
           return
         }
-        /*
-         * 규칙이 작성자에게 versions·latestV 만 열어 준다.
-         * createdAt 을 다시 쓰면 changedKeys 에 걸려 통째로 막힌다.
-         */
         tx.update(ref, { versions: [version], latestV: 1 })
       })
-
-      /*
-       * 문서 id 가 uid 가 아니던 시절에 쓴 글이 남아 있을 수 있다.
-       * 그때는 누를 때마다 새 글이 생겨, 같은 사람의 글이 여러 장으로 흩어졌다.
-       * 다시 올릴 때 그 옛 글들을 거둔다 — 한 사람에 한 글이 이 화면의 규칙이다.
-       * 새 클래스에서는 걸리는 것이 없어 왕복 한 번으로 끝난다.
-       */
+      /* 문서 id 가 uid 가 아니던 시절의 옛 글을 거둔다 */
       const col = cc(db, classId, ...stepPath(lessonId, stepId), 'posts')
       const mine = await getDocs(query(col, where('uid', '==', post.uid)))
       const stray = mine.docs.filter((d) => d.id !== post.uid)
@@ -425,41 +360,40 @@ export function createFirestoreRepo(db: Firestore): Repo {
       }
     },
 
-
     /* ── 차시 진행 상태 ── */
     watchSession(classId, lessonId, cb) {
       return onSnapshot(
         cd(db, classId, 'sessions', lessonId),
         (snap) => cb(snap.exists() ? (snap.data() as SessionState) : null),
-        () => cb(null),
+        (err) => {
+          console.warn('[session] 읽지 못했다:', err.code, err.message)
+          cb(null)
+        },
       )
     },
-
     async setSession(classId, lessonId, patch) {
-      await setDoc(
-        cd(db, classId, 'sessions', lessonId),
-        { lessonId, ...patch, updatedAt: Date.now() },
-        { merge: true },
+      await setDoc(cd(db, classId, 'sessions', lessonId), { lessonId, ...patch, updatedAt: Date.now() }, { merge: true })
+    },
+
+    /* ── 게임 ── */
+    async setGame(classId, lessonId, stepId, state: GameState) {
+      await setDoc(cd(db, classId, 'sessions', lessonId), { lessonId, games: { [stepId]: state }, updatedAt: Date.now() }, { merge: true })
+    },
+    async setGameInput(classId, lessonId, input: GameInput) {
+      await setDoc(cd(db, classId, 'sessions', lessonId, 'gameInputs', `${input.stepId}__${input.uid}`), { ...input, updatedAt: Date.now() })
+    },
+    watchGameInputs(classId, lessonId, stepId, cb) {
+      return onSnapshot(
+        query(cc(db, classId, 'sessions', lessonId, 'gameInputs'), where('stepId', '==', stepId)),
+        (snap) => cb(snap.docs.map((s) => s.data() as GameInput)),
+        (err) => {
+          console.warn('[game] 참가 목록을 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
       )
     },
 
-    /* ── 사다리 ── */
-    async joinLadder(classId, lessonId, gameId, uid) {
-      // 판에 들어오는 것만 기록한다. 자리는 아직 안 잡는다.
-      await setDoc(
-        cd(db, classId, 'sessions', lessonId),
-        { pollResults: { [`${gameId}_joined_${uid}`]: 1 } },
-        { merge: true },
-      )
-    },
-
-    /**
-     * 자리 선점.
-     *
-     * 두 사람이 같은 자리를 동시에 누르면 한 명만 가져가야 한다.
-     * 자리 잠금은 pollResults map 에 `ladderSeatKey_…` 키로 얹는다.
-     * 키를 이 map 하나에 모으면 새 활동을 추가해도 보안 규칙을 손대지 않아도 된다.
-     */
+    /* ── 사다리 (1·2강) ── */
     async claimLadderSeat(classId, lessonId, gameId, seat, uid) {
       const ref = cd(db, classId, 'sessions', lessonId)
       try {
@@ -467,54 +401,31 @@ export function createFirestoreRepo(db: Firestore): Repo {
           const snap = await tx.get(ref)
           const s = snap.exists() ? (snap.data() as SessionState) : null
           const l = s?.ladders?.[gameId]
-          if (!l) return false
-          if (l.phase !== 'seating') return false
+          if (!l || l.phase !== 'seating') return false
           const seatKey = String(seat)
           const taken = l.seats?.[seatKey]
           if (taken && taken !== uid) return false
-          /*
-           * ★ merge:true 로는 자리를 놓을 수 없다.
-           *
-           * 예전에는 seats 를 통째로 만들어 delete 로 옛 자리를 지운 뒤 merge 로 썼다.
-           * merge 는 지도(map)를 합칠 뿐이라 없어진 열쇠를 서버에서 지우지 않는다.
-           * 그래서 자리를 옮기면 옛 자리가 그대로 남아 한 사람이 두 자리를 차지했다.
-           * 로컬 저장 구현은 문서를 통째로 다시 써서 이 사고가 드러나지 않았다.
-           *
-           * 열쇠를 콕 집어 고친다. 지울 자리는 deleteField 로 실제로 지운다.
-           * 열쇠에 하이픈과 숫자가 들어가므로 점 경로 문자열 대신 FieldPath 를 쓴다 —
-           * '02-sealed-envelope' 같은 이름은 점 경로에서 따옴표를 씌워야 한다.
-           */
-          const updates: unknown[] = [
-            new FieldPath('ladders', gameId, 'seats', seatKey),
-            uid,
-          ]
+          /* merge 는 지도의 없어진 열쇠를 지우지 않는다 — 옛 자리는 deleteField 로 실제로 지운다 */
+          const updates: unknown[] = [new FieldPath('ladders', gameId, 'seats', seatKey), uid]
           for (const k of Object.keys(l.seats ?? {})) {
-            if (k !== seatKey && l.seats?.[k] === uid) {
-              updates.push(new FieldPath('ladders', gameId, 'seats', k), deleteField())
-            }
+            if (k !== seatKey && l.seats?.[k] === uid) updates.push(new FieldPath('ladders', gameId, 'seats', k), deleteField())
           }
           updates.push(new FieldPath('pollResults', `ladderSeatKey_${gameId}_${seat}`), 1)
           updates.push(new FieldPath('updatedAt'), Date.now())
           tx.update(ref, updates[0] as FieldPath, updates[1], ...updates.slice(2))
           return true
         })
-      } catch {
+      } catch (err) {
+        console.warn('[사다리] 자리를 잡지 못했다:', err)
         return false
       }
     },
-
     async setLadder(classId, lessonId, gameId, state) {
-      await setDoc(
-        cd(db, classId, 'sessions', lessonId),
-        { lessonId, ladders: { [gameId]: state }, updatedAt: Date.now() },
-        { merge: true },
-      )
+      await setDoc(cd(db, classId, 'sessions', lessonId), { lessonId, ladders: { [gameId]: state }, updatedAt: Date.now() }, { merge: true })
     },
-
     async recordPick(classId, pick) {
       await setDoc(cd(db, classId, 'picks', pick.id), { ...pick, serverAt: serverTimestamp() })
     },
-
     watchPicks(classId, cb) {
       return onSnapshot(
         cc(db, classId, 'picks'),
@@ -545,13 +456,12 @@ export function createFirestoreRepo(db: Firestore): Repo {
       await setDoc(cd(db, classId, 'participation', uid), { uid, ...patch }, { merge: true })
     },
 
-    /* ── 모둠 나누기 (6차) ── */
+    /* ── 모둠 나누기 ── */
     watchPairHistory(classId, cb) {
       return onSnapshot(
         cc(db, classId, 'pairHistory'),
         (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as PairHistoryDoc), pairKey: s.id }))),
         (err) => {
-          // 강사만 읽는다. 막히면 왜인지 남긴다 — 빈 격자와 못 읽음은 다르다.
           console.warn('[pairHistory] 읽지 못했다:', err.code, err.message)
           cb([])
         },
@@ -568,14 +478,6 @@ export function createFirestoreRepo(db: Firestore): Repo {
       )
     },
     async confirmGroupRound(classId, round) {
-      /*
-       * 한 번에 쓴다. 회차 문서 · 짝마다 동석 기록 · 모둠원의 현재 모둠.
-       * 짝 기록은 increment 로 올린다 — 읽고 더해 쓰면 두 강사 화면이 겹칠 때 한 번을 잃는다.
-       *
-       * ★ 같은 회차를 다시 확정하면(콘솔의 「다시 나누기」) 이전 확정의 짝을 빼고 새 짝을 더한다.
-       *   그냥 +1 만 하면 한 회차가 두 번 세어져 다음 회차 배정이 그 짝을 피하려 든다.
-       *   그래서 이전 회차 문서를 트랜잭션 안에서 읽는다.
-       */
       const ref = cd(db, classId, 'groupRounds', round.id)
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref)
@@ -583,11 +485,7 @@ export function createFirestoreRepo(db: Firestore): Repo {
         const deltas = pairDeltas(prev ? prev.groups.map((g) => g.memberUids) : null, round.groups.map((g) => g.memberUids))
         tx.set(ref, round)
         for (const [key, delta] of Object.entries(deltas)) {
-          tx.set(
-            cd(db, classId, 'pairHistory', key),
-            delta > 0 ? { pairKey: key, count: increment(delta), lastRound: round.round } : { pairKey: key, count: increment(delta) },
-            { merge: true },
-          )
+          tx.set(cd(db, classId, 'pairHistory', key), delta > 0 ? { pairKey: key, count: increment(delta), lastRound: round.round } : { pairKey: key, count: increment(delta) }, { merge: true })
         }
         const placed = new Set<string>()
         for (const g of round.groups) {
@@ -600,12 +498,11 @@ export function createFirestoreRepo(db: Firestore): Repo {
           placed.add(uid)
           tx.set(cd(db, classId, 'enrollments', uid), { currentGroupId: null, currentRoundId: round.id }, { merge: true })
         }
-        /* 이전 확정에는 있었는데 이번에는 어디에도 없는 사람 — 모둠 자리를 비운다 */
         for (const g of prev?.groups ?? []) {
-          for (const uid of g.memberUids) {
-            if (!placed.has(uid)) tx.set(cd(db, classId, 'enrollments', uid), { currentGroupId: null, currentRoundId: round.id }, { merge: true })
-          }
+          for (const uid of g.memberUids) if (!placed.has(uid)) tx.set(cd(db, classId, 'enrollments', uid), { currentGroupId: null, currentRoundId: round.id }, { merge: true })
         }
+        /* 쓴 질문을 클래스 문서에 기록한다 — 학기 안에 되풀이하지 않는다 */
+        tx.set(doc(db, 'classes', classId), { formationQuestions: { [round.lessonId]: round.questionId } }, { merge: true })
       })
     },
     async addLateJoiner(classId, roundId, uid, groupId) {
@@ -614,18 +511,11 @@ export function createFirestoreRepo(db: Firestore): Repo {
         const snap = await tx.get(ref)
         if (!snap.exists()) throw new Error('회차가 없습니다.')
         const round = snap.data() as GroupRound
-        const groups = round.groups.map((g) => ({
-          ...g,
-          memberUids: g.memberUids.filter((u) => u !== uid),
-        }))
+        const groups = round.groups.map((g) => ({ ...g, memberUids: g.memberUids.filter((u) => u !== uid) }))
         const target = groups.find((g) => g.id === groupId)
         if (!target) throw new Error('그 모둠이 없습니다.')
         target.memberUids = [...target.memberUids, uid]
-        tx.update(ref, {
-          groups,
-          absentUids: round.absentUids.filter((u) => u !== uid),
-          lateJoins: [...(round.lateJoins ?? []), { uid, groupId, at: Date.now() }],
-        })
+        tx.update(ref, { groups, absentUids: round.absentUids.filter((u) => u !== uid), lateJoins: [...(round.lateJoins ?? []), { uid, groupId, at: Date.now() }] })
         for (const other of target.memberUids) {
           if (other === uid) continue
           const key = pairKey(uid, other)
@@ -664,23 +554,14 @@ export function createFirestoreRepo(db: Firestore): Repo {
         collection(db, 'aiLogs'),
         (snap) => cb(snap.docs.map((s) => ({ ...(s.data() as AiLog), id: s.id }))),
         (err) => {
-          // 강사만 읽는다. 막히면 왜인지 남긴다 — 빈 목록과 못 읽음은 다르다.
           console.warn('[aiLogs] 읽지 못했다:', err.code, err.message)
           cb([])
         },
       )
     },
-
     async addAiProposal(classId, p) {
-      // 언제나 pending 으로 들어간다. 규칙에서도 create 시 status 를 검사한다.
-      await setDoc(cd(db, classId, 'aiProposals', p.id), {
-        ...p,
-        status: 'pending',
-        reviewedAt: null,
-        reviewedBy: null,
-      })
+      await setDoc(cd(db, classId, 'aiProposals', p.id), { ...p, status: 'pending', reviewedAt: null, reviewedBy: null })
     },
-
     watchAiProposals(classId, cb) {
       return onSnapshot(
         cc(db, classId, 'aiProposals'),
@@ -688,9 +569,7 @@ export function createFirestoreRepo(db: Firestore): Repo {
         () => cb([]),
       )
     },
-
     async reviewAiProposal(classId, id, patch, reviewedBy) {
-      // original 은 보내지 않는다. 규칙에서도 original 변경을 막는다.
       const next: Record<string, unknown> = {}
       if (patch.edited !== undefined) next.edited = patch.edited
       if (patch.rejectedReason !== undefined) next.rejectedReason = patch.rejectedReason
@@ -704,4 +583,4 @@ export function createFirestoreRepo(db: Firestore): Repo {
   }
 }
 
-export type { GameId, LadderState }
+export type { LadderState }

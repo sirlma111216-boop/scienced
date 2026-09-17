@@ -125,6 +125,8 @@ export function isTimeRangeValid(start: string, end: string): boolean {
 
 export interface ClassFormValues {
   courseTitle: string
+  /** 8차: 클래스는 과목 하나에 속한다 — 'method' 교과교수법 · 'edu' 과학교육론 */
+  courseId: 'method' | 'edu'
   affiliation: Affiliation
   year: number
   term: string
@@ -139,6 +141,7 @@ export function emptyClassForm(): ClassFormValues {
   const year = new Date().getFullYear()
   const base = {
     courseTitle: '',
+    courseId: 'method' as const,
     affiliation: 'undergrad' as Affiliation,
     year,
     term: '1',
@@ -154,6 +157,7 @@ export function emptyClassForm(): ClassFormValues {
 export function validateClassForm(v: ClassFormValues): Record<string, string> {
   const errors: Record<string, string> = {}
   if (!v.courseTitle.trim()) errors.courseTitle = '강의 제목을 적어 주세요.'
+  if (v.courseId !== 'method' && v.courseId !== 'edu') errors.courseId = '과목을 고르세요.'
   if (!Number.isInteger(v.year) || v.year < 2000 || v.year > 2100) {
     errors.year = '학년도를 확인해 주세요.'
   }

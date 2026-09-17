@@ -292,7 +292,7 @@ export function AppShell({
           </button>
 
           {isInstructor ? (
-            <Button variant="secondary" onClick={() => navigate('/instructor')}>
+            <Button variant="secondary" onClick={() => navigate('/instructor/classes')}>
               강사
             </Button>
           ) : null}
@@ -361,35 +361,3 @@ export function AppShell({
     </div>
   )
 }
-
-/**
- * 강사가 단계를 옮겼을 때 뜨는 안내.
- * 학생 화면을 강제로 이동시키지 않는다. 안내와 이동 버튼만 띄운다.
- */
-export function InstructorMovedBanner({
-  label,
-  onGo,
-  onDismiss,
-}: {
-  label: string
-  onGo: () => void
-  onDismiss: () => void
-}) {
-  return (
-    <div
-      role="status"
-      className="rounded-md bg-lilac text-ink flex flex-wrap items-center gap-md no-print"
-      style={{ padding: '12px 16px', marginBottom: 24 }}
-    >
-      <span className="text-body-sm">강사가 「{label}」(으)로 이동했습니다.</span>
-      <span className="flex-1" />
-      <Button variant="secondary" onClick={onGo}>
-        따라가기
-      </Button>
-      <Button variant="tertiary" onClick={onDismiss}>
-        여기 남기
-      </Button>
-    </div>
-  )
-}
-

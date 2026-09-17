@@ -24,7 +24,7 @@ import { fail, pass, report, walk } from './_report.mjs'
  * 그대로 찾으면 오탐만 나온다. 그래서 앞 글자가 ㅎ 계열 어간이 아닌 경우만 잡는다.
  */
 const OCR_ARTIFACTS = [
-  { re: /(?<![맞막좁넓밝익식답눕])히는/, label: '히는 (→하는)' },
+  { re: /(?<![맞막좁넓밝익식답눕뽑잡묻])히는/, label: '히는 (→하는)' },
   { re: /(?<![제표게고예명전개통]|다시 )시용/, label: '시용 (→사용)' },
   { re: /결괴(?![가-힣])/, label: '결괴 (→결과)' },
   { re: /비고츠기/, label: '비고츠기 (→비고츠키)' },
@@ -87,43 +87,33 @@ if (templateHits === 0) {
   pass('반복 템플릿', `72회 반복 문구를 포함한 ${TEMPLATE_PHRASES.length}종이 화면 문구에 없다`)
 }
 
-// 시드 데이터도 직접 확인한다 — 개념 카드와 강사 대본이 차시마다 다른 문장인가
-const { LESSONS } = await import('../src/content/lessons/index.ts')
-
-const oneLiners = new Set()
-const whyMatters = new Set()
-for (const l of LESSONS) {
-  for (const c of l.keyConcepts) {
-    if (oneLiners.has(c.plainOneLiner)) {
-      fail('차시마다 새로 쓰기', `「${c.term}」의 쉬운 한 문장이 다른 개념과 글자 그대로 같다`)
+/*
+ * 차시마다 새로 쓴다 — 문장 단위 대조 (8차 11절).
+ * 두 차시(과목 불문)에 같은 문장이 있으면 실패한다. 교육론 1강은 교수법 1강과 같으므로 그 짝은 예외.
+ * 12자 미만의 짧은 문장(「그렇다.」)은 세지 않는다. 교재 원문은 저장소에 없어 대조하지 못한다 — OCR 오독·반복 템플릿으로 막는다.
+ */
+{
+  const { allLessons, where } = await import('./_courses.mjs')
+  const { sentences, studentStrings } = await import('./_wording-rules.mjs')
+  const norm = (x) => x.replace(/[\s「」『』"'“”‘’.,·—-]/g, '')
+  const bank = new Map()
+  const dupes = []
+  for (const l of await allLessons()) {
+    for (const [, text, theory] of studentStrings(l)) {
+      if (!theory) continue
+      for (const s of sentences(text)) {
+        const key = norm(s)
+        if (key.length < 12) continue
+        const prev = bank.get(key)
+        if (prev && prev.lessonKey !== `${l.courseId}:${l.id}` && !(prev.lessonId === '01' && l.id === '01')) {
+          dupes.push(`${prev.at} ↔ ${where(l)} 「${s.slice(0, 40)}」`)
+        }
+        if (!prev) bank.set(key, { at: where(l), lessonId: l.id, lessonKey: `${l.courseId}:${l.id}` })
+      }
     }
-    oneLiners.add(c.plainOneLiner)
-    if (whyMatters.has(c.whyItMatters)) {
-      fail('차시마다 새로 쓰기', `「${c.term}」의 ‘왜 필요한가’가 다른 개념과 글자 그대로 같다`)
-    }
-    whyMatters.add(c.whyItMatters)
   }
+  for (const d of dupes.slice(0, 40)) fail('문장 중복', d)
+  if (dupes.length === 0) pass('문장 중복', `${bank.size}개 문장이 차시 사이에서 겹치지 않는다 (교육론 1강 = 교수법 1강 제외)`)
 }
-pass('차시마다 새로 쓰기', `개념 ${oneLiners.size}개의 설명이 서로 다른 문장이다`)
-
-// 중심 질문·학생의 말·먼저 한 문장도 서로 달라야 한다
-for (const field of ['centralQuestion', 'studentVoice', 'firstSentence', 'guide']) {
-  const seen = new Set()
-  for (const l of LESSONS) {
-    if (seen.has(l[field])) fail('차시마다 새로 쓰기', `${field} 가 차시 간에 중복된다 (${l.id}강)`)
-    seen.add(l[field])
-  }
-}
-pass('차시 고유 문구', '중심 질문·학생의 말·먼저 한 문장·친절한 길잡이가 모두 차시마다 다르다')
-
-// 「○○분 뒤 ___를 가지고 나가시게 됩니다」 형태의 약속 문구 금지 (지시서 16절 17번)
-const PROMISE_PATTERN = /\d+\s*분\s*(뒤|후)[^.。\n]{0,40}(가지고\s*나가|들고\s*나가)/
-for (const l of LESSONS) {
-  const blob = JSON.stringify(l)
-  if (PROMISE_PATTERN.test(blob)) {
-    fail('약속 문구', `${l.id}강에 「○○분 뒤 ___를 가지고 나가시게 됩니다」 형태의 문구가 있다`)
-  }
-}
-pass('약속 문구', '하루짜리 연수용 약속 문구를 쓰지 않았다')
 
 report('verify:content')

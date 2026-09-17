@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import type { FieldDef } from '@/content/types'
 import { Field, ScrollX, VisuallyHidden } from '@/components/ui'
+import { SortField } from './SortField'
 
 /**
  * 입력 칸 하나를 그린다.
@@ -37,6 +38,8 @@ export function FieldRenderer(props: FieldProps) {
       return <QuadrantField {...props} />
     case 'rank':
       return <RankField {...props} />
+    case 'sort':
+      return <SortField {...props} />
     default:
       return null
   }

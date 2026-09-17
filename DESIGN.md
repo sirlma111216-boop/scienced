@@ -576,3 +576,13 @@ The defining surface of Figma's marketing. Each is a full-content-width panel wi
 - Dark mode is not documented because the marketing site does not ship a dark theme — the closest analog is the navy color-block (`color-block-section-navy`) and the inverse-canvas footer.
 - Form-field error and validation styling is not visible on `/contact/` because no error states render in the static screenshot. Inputs have hairline borders and rounded `{rounded.md}` corners; error treatment is not documented.
 - The animated marquee-strip and color-block reveal animations are not documented (per the no-interaction policy).
+
+## 8차 — 수업 화면과 학생 화면
+
+강사의 수업 화면(`/teach/:classId/:lessonId`)은 학생 화면과 **같은 블록**을 같은 순서로 그린다. 조작부는 덮개 화면이 아니라 블록 옆에 인라인으로 붙는다 — 알약 단추 하나(`단계 열기` · `자료 공개` · `모둠 나누기` · `게임 시작`)와 접힌 응답(「응답 12/28 ▸」)뿐이다. 그 밖의 단추를 두지 않는다.
+
+- **발표 모드**는 같은 화면의 상태다. `--present-scale` 로 글자를 1.35배 키우고 실명을 닉네임으로 바꾼다. 조작부(`no-print`)는 숨기지 않되 응답 수 배지는 그대로 둔다 — 프로젝터에 실명이 나가지 않는 것이 규칙이다.
+- **개념 카드**는 화면 한 장이다. 넘길 층이 없다. 색 블록(lime · lilac · cream · mint) 안에 문단 셋 → 기준 3줄(검은 테두리 상자) → 헷갈리는 것 → 접힌 「더 읽기」.
+- **활동**은 위에서 아래로 한 흐름 — 상황 카드(왼쪽 선) → 칸 → 의견 광장(카드 목록 하나, 최신순) → 우리 모둠(값이 막대·순위표·분포·문장·표로 모인다) → 게임(lime 색 블록).
+- **게임 결과**는 발표자 닉네임을 가장 크게. 씨앗과 후보 수는 캡션으로 남긴다. 반응 속도 게임은 배지로 「반응 속도 게임입니다」.
+- 단계 알약은 학생 화면에서 줄바꿈하고(`.step-tabs`), 강사 화면에서는 한 줄 가로 스크롤이다 — 강사는 넓은 화면을 본다.

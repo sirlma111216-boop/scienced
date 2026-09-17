@@ -61,6 +61,12 @@ export function checkText(text, opts = {}) {
       if (Number(m[1]) > opts.lessonOrder) out.push(`앞 차시 번호 「${m[0]}」 — 「나중에」로`)
     }
   }
+  if (theory) {
+    for (const para of t.split('\n')) {
+      const n = sentences(para).length
+      if (n > 4) out.push(`문단이 ${n}문장 — 4문장 이하: 「${para.slice(0, 30)}…」`)
+    }
+  }
   for (const s of sentences(t)) {
     if (/https?:\/\//.test(s) || /\t|\|/.test(s)) continue
     if ([...s].length > SENTENCE_MAX) out.push(`문장이 ${[...s].length}자 — ${SENTENCE_MAX}자 이하: 「${s.slice(0, 30)}…」`)

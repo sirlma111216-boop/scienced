@@ -347,6 +347,34 @@ const asAnon = env.unauthenticatedContext().firestore()
   pass('즉석 모둠', '제출한 뒤에만 읽고, 남의 자리는 못 쓰며, 내 자리는 지울 수 있다')
 }
 
+/* ── 8차: 게임 입력은 자기 문서(stepId__uid)만, 같은 클래스는 읽는다 ── */
+{
+  const path = (uid) => `classes/${A}/sessions/01/gameInputs/activity__${uid}`
+  const input = (uid) => ({ uid, stepId: 'activity', round: 1, joinedAt: 1, value: {}, updatedAt: 1 })
+  await assertSucceeds(asS1.doc(path(S1)).set(input(S1)))
+  await assertFails(asS1.doc(path(S2)).set(input(S2)))
+  await assertFails(asS1.doc(`classes/${A}/sessions/01/gameInputs/other__${S1}`).set(input(S1)))
+  await assertFails(asS2.doc(path(S1)).get())
+  await assertSucceeds(asTeacher.collection(`classes/${A}/sessions/01/gameInputs`).get())
+  /* 세션의 games 는 강사만 쓴다 */
+  await assertFails(asS1.doc(`classes/${A}/sessions/01`).set({ games: { activity: { phase: 'done' } } }, { merge: true }))
+  await assertSucceeds(asTeacher.doc(`classes/${A}/sessions/01`).set({ lessonId: '01', games: { activity: { phase: 'lobby' } }, updatedAt: 1 }, { merge: true }))
+  pass('게임 입력', '학생은 자기 게임 입력만 쓰고, 세션의 게임 상태는 강사만 쓴다')
+}
+
+/* ── 8차: 모둠 값은 그 모둠 사람만 쓴다 ── */
+{
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`classes/${A}/enrollments/${S1}`).set({ uid: S1, status: 'active', currentGroupId: '1' })
+  })
+  const p = (gid) => `classes/${A}/lessons/01/steps/step-open/groupValues/${gid}`
+  await assertSucceeds(asS1.doc(p('1')).set({ groupId: '1', format: 'sentence', value: '문장', byUid: S1, updatedAt: 1 }))
+  await assertFails(asS1.doc(p('2')).set({ groupId: '2', format: 'sentence', value: '남의 모둠', byUid: S1, updatedAt: 1 }))
+  await assertFails(asS1.doc(p('1')).set({ groupId: '1', format: 'sentence', value: '속임', byUid: S2, updatedAt: 1 }))
+  await assertFails(asS1.doc(`classes/${A}/lessons/01/steps/step-none/groupValues/1`).get())
+  pass('모둠 값', '자기 모둠의 값만 쓰고, 제출하지 않은 단계는 읽지 못한다')
+}
+
 /* ── 수강 종료·내보내기: 권한이 실제로 사라지는가 ── */
 {
   /* 수강 종료 — 문서는 남지만 더는 읽지 못한다 */

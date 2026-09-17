@@ -72,8 +72,8 @@ const all = [...sources.values()].join('\n')
   if (!inCss) fail('reduced-motion', 'CSS 에 prefers-reduced-motion 분기가 없다')
   if (!inJs) fail('reduced-motion', '추첨 애니메이션에 reduced-motion 분기가 없다')
   // 사다리 애니메이션이 실제로 이 훅을 쓰는가
-  const ladder = sources.get('src\\components\\activity\\LadderGame.tsx')
-    ?? sources.get('src/components/activity/LadderGame.tsx') ?? ''
+  const ladder = sources.get('src\\components\\games\\LegacyLadder.tsx')
+    ?? sources.get('src/components/games/LegacyLadder.tsx') ?? ''
   if (ladder && !/useReducedMotion/.test(ladder)) {
     fail('reduced-motion', '추첨 화면이 reduced-motion 을 확인하지 않는다')
   }
@@ -108,9 +108,9 @@ const all = [...sources.values()].join('\n')
   if (board && !/발표!/.test(board)) {
     fail('색만으로 구분 금지', '사다리 결과가 글자 없이 색으로만 표시된다')
   }
-  const roster = sources.get('src\\components\\console\\Roster.tsx')
-    ?? sources.get('src/components/console/Roster.tsx') ?? ''
-  if (roster && !/미제출/.test(roster)) {
+  const roster = sources.get('src\\routes\\Teach.tsx')
+    ?? sources.get('src/routes/Teach.tsx') ?? ''
+  if (roster && !/✓ /.test(roster)) {
     fail('색만으로 구분 금지', '제출 현황이 색으로만 표시된다')
   }
   pass('색만으로 구분 금지', '사다리 결과·제출 현황에 모두 글자 표식이 있다')

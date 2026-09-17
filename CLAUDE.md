@@ -2,7 +2,7 @@
 
 ## 「완료」라고 말하기 전에
 
-검증기 13종은 **소스의 불변식**만 본다. 실제로 터진 버그는 전부 그 바깥, **이음매**에 있었다.
+검증기 19종은 **소스의 불변식**만 본다. 실제로 터진 버그는 전부 그 바깥, **이음매**에 있었다.
 
 | 터진 것 | 검증기가 못 잡은 이유 |
 |---|---|
@@ -16,35 +16,25 @@
 
 1. **앱이 실제로 쓰는 코드를 그대로 불러** 에뮬레이터에서 통과시킨다.
    검사용으로 다시 쓴 코드를 검사하면 아무것도 보장하지 않는다.
-   본보기: `scripts/test-delete.mjs` — `createFirestoreRepo` 를 직접 부른다.
+   본보기: `scripts/test-writes.mjs` — `createFirestoreRepo` 와 `game-core` 를 직접 부른다.
 2. **반복 왕복이 있는 동작은 시간을 재고 상한을 검사에 넣는다.**
-   화면에서 끝나지 않는 것처럼 보이는 순간부터는 동작하지 않는 것과 같다.
 3. 배포가 필요한 변경은 **배포된 번들에 그 코드가 들어갔는지 확인**한 뒤에 완료라고 말한다.
 
 ## 조용한 실패를 만들지 마라
 
-이 앱은 수업 중에 멈추면 안 되므로 실패를 삼키는 자리가 많다.
-그것이 원인을 감춘 사고가 반복됐다.
-
 - `catch { cb([]) }` — 「없음」과 「읽지 못함」이 화면에서 같아 보인다
-- 서버 함수의 `200 + ok:false` — 엣지가 5xx 본문을 덮어쓰기 때문에 필요하지만,
-  화면이 `ok` 만 읽고 `message`·`failures` 를 버리면 원인이 사라진다
+- 서버 함수의 `200 + ok:false` — 화면이 `ok` 만 읽고 `message` 를 버리면 원인이 사라진다
 - 응답 결과를 확인하지 않는 `await fetch(...)`
 
 삼켜야 한다면 **콘솔에 이유를 남기고**, 화면에는 다음에 할 일을 적는다.
 
 ## 서버 호출
 
-`fetch('/api/…')` 를 직접 부르지 않는다. `src/lib/api.ts` 의 `apiPost` 만 쓴다.
-토큰을 붙이는 일이 한 곳에만 있어야 한다. `verify:api` 가 우회를 막는다.
+`fetch('/api/…')` 를 직접 부르지 않는다. `src/lib/api.ts` 의 `apiPost` 만 쓴다. `verify:api` 가 우회를 막는다.
 
 ## 외부 설정
 
-**역할을 주는 것과 API 를 켜는 것은 다른 일이다.** 둘 다 해야 한다.
-역할만 있고 API 가 꺼져 있으면 403 `API has not been used in project ... or it is disabled` 가 온다.
-Vertex AI 는 무료 등급이 없어 결제 계정도 연결되어 있어야 한다.
-
-서비스 계정 하나가 세 가지를 한다. IAM 역할도 셋 다 있어야 한다.
+**역할을 주는 것과 API 를 켜는 것은 다른 일이다.** 둘 다 해야 한다. Vertex AI 는 결제 계정도 필요하다.
 
 | 하는 일 | 역할 |
 |---|---|
@@ -52,66 +42,68 @@ Vertex AI 는 무료 등급이 없어 결제 계정도 연결되어 있어야 �
 | 학생 계정 만들기 | `Firebase 인증 관리자` |
 | 명단 문서 저장 (Firestore) | `Cloud Datastore 사용자` |
 
-하나라도 빠지면 **그 기능만** 조용히 막힌다.
-외부 설정이 걸린 기능은 코드를 끝까지 따라가 필요한 것을 **처음에 전부** 알려 준다.
+## 차시 콘텐츠 (8차)
 
-## 모둠 나누기 (6차)
+지시서는 `docs/8차_변경지시서_전면개편.md`, 판단이 갈린 것은 **`docs/검토/8차-결정.md`** 에 「이렇게 정했다, 이유는」으로 적는다. 그때그때 강의자에게 묻지 않는다.
 
-배정 계산은 **`shared/groups-core.ts` 하나**다. 서버 함수(`/api/groups/assign`)·강사 화면(로컬 모드)·`verify:groups` 가 같은 코드를 쓴다.
+**차시 하나를 쓰는 순서** — 문서가 먼저다.
+1. `docs/검토/<과목>-<nn>.md` 를 지시서 10.1 의 꼴로 쓴다 (본보기 `docs/검토/method-01.md`).
+2. `src/content/courses/<과목>/lesson<nn>.ts` 로 옮긴다 (본보기 `method/lesson01.ts`). 색인(`index.ts`)에 한 줄, loaders 에 한 줄.
+3. `npm run verify` — `audit:draft` 가 문서와 코드를 대조하고, `verify:flow` · `verify:concepts` · `audit:activity` · `verify:wording` 이 꼴을 본다.
 
-- **회차마다 따로 최적화하지 않는다.** 그렇게 하면 1~3회차는 0이지만 5~6회차에서 만날 사람이 다 떨어진다.
-  남은 회차 전체를 한꺼번에 짜고(`planSchedule`), 이번 회차는 그 계획의 첫 장을 쓴다. 계획은 회차 문서의
-  `plannedNext` 에 저장돼 다음 회차가 거기서 출발한다. 제약이 없으면 계획에서 벗어나지 않는다 —
-  「이번 회차만 보면 한 번 덜 만난다」며 벗어나면 뒤 회차가 전부 어긋난다(계획 8회 → 실행 17회로 실측).
-- **N.5 의 공식은 필요조건이다.** 20명×5모둠×6회는 공식상 0 이지만 6회째에 반드시 중복이 생긴다(5-4-6 배치는 없다).
-  강사 화면은 공식과 함께 계획기가 실제로 짠 예상 중복을 보인다. 30명×6모둠×6회에서 이 계획기는 8~11회다 — 0 이 아니다.
-- Firestore 는 배열 속 배열을 못 담는다. 계획은 `encodePlan` 으로 싸서 저장한다.
-- 닉네임의 출처는 등록 문서다. `users` 는 본인·강사만 읽는다.
+지켜야 하는 꼴 (검증기가 센다):
+- 개념 카드: `what` 3~4문장 · `why` 2~3 · `inClass` 3~4 · `keyPoints` 3줄은 「~이 아니라 ~다」「~이면 ~다」「~를 보면 ~를 알 수 있다」 꼴의 완전한 문장.
+- 활동: 상황 200~400자 + 「수업용으로 만든 가상 자료」 꼬리표 · 명령형 과제 한 문장 · 칸 1~2 · 네 검사(정답·갈림·이해·상황)를 코드 주석과 `checks` 양쪽에.
+- 글: 어미 「~다」「~하세요」만 · 문장 60자 · 문단 4문장 · 정의 → 예 · 비유·구호·다짐·장식 기호 없음.
+- 모둠 데이터 형식은 연속 차시에 같지 않게, 배분은 학기당 3회 이하. 게임은 6.3 배치표.
+- 두 과목은 자료·상황·과제·개념 문장을 공유하지 않는다 (1강 제외). `verify:course` 가 문장 단위로 본다.
 
-## 진행 콘솔 (7차)
+## 수업 화면 (8차)
 
-콘솔은 **`src/lib/console-registry.ts`** 의 등록표에서 그려진다 — 학생 화면과 같은 블록 정의를 읽고, 블록 종류마다 정해진 조작부만 그린다.
-학생 화면과 콘솔을 따로 만들어 여섯 차례 변경 동안 어긋났던 것을 이렇게 끝냈다.
+강사는 **`/teach/:classId/:lessonId` 화면 하나**로 가르친다. `src/components/lesson/LessonBody.tsx` 가 학생 화면과 강사 화면을 같은 블록으로 그리고, `src/lib/teach-registry.ts` 의 등록표가 블록 종류마다 조작부를 정한다. 강사용 화면을 따로 만들지 않는다.
 
-- 새 블록 종류를 만들면 등록표에 한 줄을 더한다. 콘솔 코드(`Live.tsx`)를 따로 고치지 않는다.
-- 콘솔에는 수업 중에 누르는 것만 둔다. 블록 추가·삭제·순서 바꾸기는 편집 화면 소관이다.
-- **강사 대본은 어디에도 그리지 않는다.** `instructorScript` 필드는 남아 있지만 `MustSay` 는 지웠다.
-- 이름: 기본은 강사가 적은 이름(`rosterName`), 없으면 닉네임. **발표 모드거나 「실명 가리기」가 켜지면 닉네임만** (`components/console/shared.tsx` 의 `useNames`).
-- `npm run audit:console` 이 18차시 블록과 등록표를 대조해 `docs/7차-콘솔-대조표.md` 를 만든다.
+- 수업 중 누르는 것은 여섯 가지뿐이다: `단계 열기` · `자료 공개` · `모둠 나누기` · `게임 시작` · `발표 모드` · `응답 펼치기`. 그 밖의 단추는 `verify:teach` 가 막는다. 「응답 펼치기」는 `<summary>` 접기 요소다.
+- 새 블록 종류를 만들면 등록표에 한 줄, `LessonBody` 의 `switch` 에 한 갈래를 더한다.
+- 이름: 기본은 강사가 적은 이름(`rosterName`), 없으면 닉네임. **발표 모드거나 「실명 가리기」가 켜지면 닉네임만** (`components/teach/names.tsx` 의 `NamesProvider`).
+- 학생의 쓰는 칸은 강사가 「단계 열기」를 누른 뒤에만 열린다 (`session.openSteps`).
 
-## 루미 런 — 3·4강 발표자 선정 게임
+## 게임 (8차)
 
-3·4강의 발표자 뽑기(`03-lumi` 공중정원 6·9등 · `04-lumi` 수정동굴 1·3등)는 따로 배포된 게임(저장소 `sirlma111216-boop/gamerun`, Render)을 iframe 으로 붙인다. 화면 쪽은 `src/lib/lumi.ts` · `src/components/lumi/`, 서버 쪽은 `functions/api/lumi/`.
+게임 상태는 **`src/lib/game-core.ts`** 가 (서버 시드 · 참가 · 입력 · 서버 시각)에서 계산한다. 강사 화면은 게임 진행자 루프를 돌지 않는다 — 끝난 것을 보면 세션에 결과를 적고 발표 횟수를 올린다.
+- 학생은 `sessions/{lid}/gameInputs/{stepId}__{uid}` 자기 문서만 쓴다. 세션의 `games` 는 강사만 쓴다.
+- 반응 시각은 `serverNow()` (참가 때 `/api/game/time` 으로 잰 오프셋).
+- 새 게임: `content/games.ts` 라이브러리 · `game-core.ts` 의 `DERIVE` 표 · `GameInputs.tsx` 의 `case`. `verify:games` 가 셋을 대조한다.
+- 1강 사다리·2강 봉투는 옛 엔진(`ladder.ts`) 그대로 (`components/games/LegacyLadder.tsx`).
 
-- **발표자는 webhook 으로만 확정된다.** 브라우저의 `lumi:result` 는 「확인 중」으로만 보이고, 게임 서버가 서명해 `/api/lumi/result` 로 보낸 결과가 세션(`lumi.result` · `ladders[gameId].winnerUids`) · `lumiResults` · `picks` · `participation.presentCount` 에 적힌다. 같은 경기는 한 번만 센다.
-- 학생은 코드·닉네임·QR 을 보지 않는다. 강사가 「게임 방 만들기」를 누르면 세션 `lumi.roomCode` 가 적히고, 학생 화면은 `/api/lumi/ticket` 으로 자기 티켓을 받아 「게임 참가」 한 번으로 들어간다. 티켓은 현재 활동(`activityInstanceId`)에만 나온다. 강사는 다 들어왔는지 보고 「다 함께 시작」만 누른다.
-- **발표할 등수(`games.ts` 의 `lumi.ranks`)는 학생 화면·강사 콘솔 어디에도 적지 않는다.** 학생 config 에는 `ranks` 를 넣지 않고(`studentRules`), 게임 서버 스냅숏도 결과 전에는 `ranks` 를 뺀다. 결과 때 게임 서버가 적은 `selectionReason` 으로만 드러난다. 문구는 「몇 등이 발표자가 될지는 결과 때 알려드립니다」.
-- 제한 시간 60초(`lumi.timeLimit`). 그 전에 모두 완주·탈락하면 끝. 그 등수까지 완주가 안 됐으면 게임 서버가 **접속 중인 미완주자 중 무작위**로 채운다(끊긴 사람 제외, 같은 사람 두 번 없음). 참가자가 등수보다 적어 전원 완주했으면 완주자 중 무작위. 규칙은 gamerun `docs/RULES.md` 「등수 발표」.
-- 코스는 30초 코스(`lumi.course`) — 60초 안에 아홉 명 이상이 들어와야 등수가 채워진다. 같은 틱 도착은 공동 선정.
-- **외부 설정 셋이 다 있어야 한다.** Cloudflare `LUMI_SHARED_SECRET` / Render `LESSON_SHARED_SECRET`(같은 값) · `LESSON_RESULT_URL`. 게임 주소는 `src/lib/lumi.ts` 의 `LUMI_DEFAULT_ORIGIN`(https://gamerun-mlhh.onrender.com)이고 `VITE_LUMI_ORIGIN` 은 옮길 때만. 게임 `/health` 의 `lesson.configured` · `resultUrl` 로 Render 쪽을 확인한다. Render 의 `ALLOWED_ORIGINS` 는 두지 않는다(WebSocket 은 iframe 이 있는 게임 origin 에서 오므로 기본 같은-host 검사로 충분하고, 강의 앱 주소만 넣으면 오히려 막힌다).
-- 로컬 저장 모드에서는 서버 함수가 없으므로 티켓을 브라우저가 `local-dev` 비밀로 만든다(`fetchTicket`). 게임 서버를 `LESSON_SHARED_SECRET=local-dev` 로 띄우면 방 만들기·자동 참가·경기까지 돈다. webhook 은 `npm run test:lumi` 가 **그 함수 그대로** 에뮬레이터에 대고 확인한다.
+## 모둠 나누기 (6차 · 8차)
 
-## 강의 콘텐츠를 고칠 때
+배정 계산은 **`shared/groups-core.ts` 하나**다. 서버 함수(`/api/groups/assign`)·강사 화면·`verify:groups` 가 같은 코드를 쓴다.
+- 8차: 과학 소재 게임 대신 **아이스브레이킹 질문**(`content/formation-questions.ts`) 하나로 나눈다. 같은 답끼리 모으되(`categoryMode: 'gather'`) 동석 최소화는 그대로. 모둠 이름은 답이다. 쓴 질문은 클래스 문서 `formationQuestions` 에 남아 학기 안에 되풀이하지 않는다.
+- **회차마다 따로 최적화하지 않는다.** 남은 회차 전체를 짜고(`planSchedule`) 이번 회차는 그 첫 장을 쓴다. 계획은 `plannedNext` 에 저장된다.
+- Firestore 는 배열 속 배열을 못 담는다. 계획은 `encodePlan` 으로 싼다.
 
-강의자가 **「3, 4강을 지난 강의들처럼 일괄로 수정해」** 라고 하면
-**`docs/강의-일괄-수정-기준.md`** 대로 한다. 무엇을 고쳐야 하는지 다시 묻지 않는다.
+## 루미 런 — 교수법 3·4강
 
-1·2강은 실제 수업에 쓰면서 강의자의 지시로 열두 가지를 고쳤다.
-그 열두 가지에 5차 지시서의 이론 배경(F)과 50분 판 규칙(G)을 더해 항목 A1~G3 으로 정리돼 있고, **`npm run audit:lesson -- 03` 이 그것을 센다.**
-문서와 스크립트가 어긋나면 스크립트가 맞다 — 문서를 고친다.
+따로 배포된 게임(저장소 `sirlma111216-boop/gamerun`, Render)을 iframe 으로 붙인다. 화면 `src/lib/lumi.ts` · `src/components/lumi/`, 서버 `functions/api/lumi/`.
+- **발표할 등수는 번들에 없다** — `functions/api/_lib/lumi-rules.ts`. 강사 티켓에만 규칙이 붙고 학생 티켓에는 코스·제한 시간만 온다.
+- 발표자는 webhook(`/api/lumi/result`)으로만 확정된다. 같은 경기는 한 번만 센다.
+- 외부 설정 셋: Cloudflare `LUMI_SHARED_SECRET` / Render `LESSON_SHARED_SECRET`(같은 값) · `LESSON_RESULT_URL`.
+- 로컬 저장 모드에서는 브라우저가 `local-dev` 비밀로 티켓을 만든다. webhook 은 `npm run test:lumi` 가 확인한다.
 
 ## 검사 명령
 
 ```bash
-npm run verify        # 17종 — 소스 불변식
+npm run verify        # 19종 — 소스 불변식
 npm run typecheck
 npm run lint
-npm run audit:lesson  # 차시가 1·2강 기준(A~G)에 맞는가 (인수 없으면 18차시 요약)
-npm run verify:theory # 이론 배경 — 깨진 인명 표기 · 확인 중 배지 · 카드 연결 · 팝오버 (5차)
-npm run verify:groups # 모둠 나누기 — 게임 6종 · 모의 실행 1000번 (SIM_RUNS 로 조절) · 접근성 (6차)
-npm run emulators     # 아래 둘의 선행
+npm run emulators     # 아래의 선행
 npm run test:rules    # 보안 규칙을 실제로 읽고 써 본다
-npm run test:writes   # 앱이 쓰는 코드로 실제 저장·모둠·덮어쓰기·내보내기
+npm run test:writes   # 앱이 쓰는 코드로 제출·모둠 데이터·사다리·모둠 나누기·게임 계산
+npm run test:flow     # 클래스 만들기 → 등록 → 제출 → 강사가 읽기
 npm run test:delete   # 지우기가 하위 자료까지 치우는지 + 걸리는 시간
 npm run test:lumi     # 루미 런 결과 webhook 함수를 그대로 불러 발표자 저장·멱등·거절을 본다
 ```
+
+## Windows 에서 파일을 고칠 때
+
+Bash heredoc 과 `node -e` 는 백틱과 `${}` 를 먹는다. 패치는 스크립트 파일로 써서 `node` 로 돌린다. `python3` 는 스토어 스텁이다. CRLF 파일은 먼저 LF 로 바꾼다.

@@ -26,7 +26,11 @@ import { fail, pass, report, walk } from './_report.mjs'
     'upsertPost',
     'watchSession',
     'setSession',
-    'joinLadder',
+    'setGame',
+    'setGameInput',
+    'watchGameInputs',
+    'watchGroupValues',
+    'setGroupValue',
     'claimLadderSeat',
     'setLadder',
     'recordPick',
@@ -89,7 +93,7 @@ import { fail, pass, report, walk } from './_report.mjs'
     // roster 를 다루는 곳과 명단 화면, 타입 정의, 그리고 진행 콘솔(강사 전용 경로 · 발표 모드에서는 닉네임만 — 7차 작업 S)만 허용한다.
     const allowed =
       /roster/i.test(file) ||
-      /components[\\/]console[\\/]/.test(file) ||
+      /components[\\/]teach[\\/]names\.tsx$/.test(file) ||
       /ClassStudents/.test(file) ||
       /lib[\\/]types\.ts$/.test(file) ||
       /lib[\\/]repo/.test(file)

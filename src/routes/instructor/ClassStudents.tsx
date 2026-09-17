@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
-import { LESSONS } from '@/content/lessons'
+import { lessonIndex } from '@/content/courses'
+import { stepIdsOf } from '@/content/steps'
 import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { courseOf } from '@/lib/lesson-data'
 import type { Enrollment, ResponseDoc, RosterEntry } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
@@ -10,15 +12,9 @@ import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/com
 /**
  * 수강생 명단.
  *
- * 이름(실명)은 강사가 직접 적는다. 학생이 스스로 넣는 값이 아니다.
- * 이 이름은 `classes/{cid}/roster/{uid}` 에만 있고 규칙에서 강사만 읽을 수 있다.
- *
- * ★ 왜 별도 컬렉션인가
- *   Firestore 보안 규칙은 필드 단위 읽기 제어를 하지 못한다.
- *   enrollments 문서에 rosterName 을 넣고 화면에서만 가리면
- *   학생 브라우저로 문서 전체가 그대로 내려간다. 이 구조를 합치지 마라.
- *
- * 의견 광장·발표자 뽑기·분포·발표 모드 등 학생이 볼 수 있는 모든 곳에는 닉네임만 나온다.
+ * 이름(실명)은 강사가 직접 적는다. `classes/{cid}/roster/{uid}` 에만 있고 규칙에서 강사만 읽을 수 있다.
+ * Firestore 규칙은 필드 단위 읽기 제어를 하지 못한다 — enrollments 에 실명을 넣으면 학생 브라우저로 내려간다. 이 구조를 합치지 마라.
+ * 제출 현황은 색인의 골격(stepIdsOf)과 옛 단계 id 만으로 센다 — 내용 파일을 불러오지 않는다.
  */
 
 type SortKey = 'studentId' | 'name' | 'unsubmitted'
@@ -36,28 +32,13 @@ export function InstructorClassStudents() {
   const [drafts, setDrafts] = useState<Record<string, string>>({})
 
   const cls = classes.find((c) => c.id === classId) ?? null
+  const courseId = courseOf(cls)
   const readOnly = cls?.status === 'archived'
   const [removing, setRemoving] = useState<string | null>(null)
   const [removeNote, setRemoveNote] = useState<string | null>(null)
 
-  /*
-   * 이 클래스에서만 내보낸다. 계정은 남는다.
-   *
-   * 등록 문서가 사라지면 보안 규칙이 곧바로 막으므로 그 학기 자료에 더는 닿지 못한다.
-   * 이 클래스에 남긴 응답·의견 글·모둠 자리도 함께 치운다 —
-   * 등록만 지우면 의견 광장에 그 사람 글이 이름을 달고 남는다.
-   */
   async function remove(uid: string, who: string) {
-    const ok = confirm(
-      `${who} 님을 이 클래스에서 내보냅니다.
-
-` +
-        `· 이 클래스의 응답·의견 글·모둠 자리·실명이 지워집니다
-` +
-        `· 계정 자체는 지워지지 않습니다. 다른 학기 수강도 그대로입니다
-` +
-        `· 되돌릴 수 없습니다. 기록을 남기려면 「수강 종료」를 쓰세요`,
-    )
+    const ok = confirm(`${who} 님을 이 클래스에서 내보냅니다.\n\n· 이 클래스의 응답·의견 글·모둠 자리·실명이 지워집니다\n· 계정 자체는 지워지지 않습니다. 다른 학기 수강도 그대로입니다\n· 되돌릴 수 없습니다. 기록을 남기려면 「수강 종료」를 쓰세요`)
     if (!ok || !repo) return
     setRemoving(uid)
     setRemoveNote(null)
@@ -66,7 +47,6 @@ export function InstructorClassStudents() {
       await repo.removeEnrollment(classId!, uid)
       setRemoveNote(`${who} 님을 내보냈습니다. (${Math.round((Date.now() - t0) / 100) / 10}초)`)
     } catch (err) {
-      // 삼키지 않는다. 화면에는 다음에 할 일을, 콘솔에는 이유를 남긴다.
       console.error('[내보내기] 실패:', err)
       setRemoveNote('내보내지 못했습니다. 잠시 뒤 다시 눌러 보세요.')
     } finally {
@@ -88,34 +68,29 @@ export function InstructorClassStudents() {
     }
   }, [repo, classId])
 
-  /** 제출 현황 — 공개된 차시의 단계 수 대비 몇 개를 냈는가 */
+  /** 제출 현황 — 단계마다 몇 개를 냈는가 */
   useEffect(() => {
     if (!repo || !classId) return
     const unsubs: Array<() => void> = []
     const tally: Record<string, Set<string>> = {}
-    for (const l of LESSONS) {
-      for (const s of l.steps) {
+    for (const l of lessonIndex(courseId)) {
+      for (const s of [...stepIdsOf(l.layout), ...(l.legacyStepIds ?? [])]) {
         unsubs.push(
-          repo.watchAllResponses(classId, l.id, s.id, (docs: ResponseDoc[]) => {
+          repo.watchAllResponses(classId, l.id, s, (docs: ResponseDoc[]) => {
             for (const d of docs) {
               if ((d.versions?.length ?? 0) === 0) continue
               tally[d.uid] = tally[d.uid] ?? new Set()
-              tally[d.uid].add(`${l.id}/${s.id}`)
+              tally[d.uid].add(`${l.id}/${s}`)
             }
-            setSubmitted(
-              Object.fromEntries(Object.entries(tally).map(([uid, set]) => [uid, set.size])),
-            )
+            setSubmitted(Object.fromEntries(Object.entries(tally).map(([uid, set]) => [uid, set.size])))
           }),
         )
       }
     }
     return () => unsubs.forEach((u) => u())
-  }, [repo, classId])
+  }, [repo, classId, courseId])
 
-  const nameOf = useCallback(
-    (uid: string) => roster.find((r) => r.uid === uid)?.rosterName ?? '',
-    [roster],
-  )
+  const nameOf = useCallback((uid: string) => roster.find((r) => r.uid === uid)?.rosterName ?? '', [roster])
 
   const rows = useMemo(() => {
     const list = enrollments.filter((e) => e.status === 'active')
@@ -126,9 +101,7 @@ export function InstructorClassStudents() {
       case 'unsubmitted':
         return withName.sort((a, b) => a.count - b.count)
       default:
-        return withName.sort((a, b) =>
-          (a.e.studentId ?? '').localeCompare(b.e.studentId ?? '', 'ko'),
-        )
+        return withName.sort((a, b) => (a.e.studentId ?? '').localeCompare(b.e.studentId ?? '', 'ko'))
     }
   }, [enrollments, nameOf, submitted, sort])
 
@@ -146,11 +119,6 @@ export function InstructorClassStudents() {
     })
   }
 
-  /**
-   * 붙여넣기 입력.
-   * `학번⇥이름` 여러 줄을 받아 학번을 맞춰 한 번에 채운다.
-   * 명단이 엑셀에 있을 때 한 번에 끝난다.
-   */
   async function applyPaste() {
     if (!repo || !classId) return
     const lines = pasteText
@@ -171,12 +139,7 @@ export function InstructorClassStudents() {
       await repo.setRosterEntry(classId, target.uid, { rosterName: name })
       matched++
     }
-    setMessage(
-      `${matched}명 이름을 채웠습니다.` +
-        (unmatched.length > 0
-          ? ` 명단에 없는 학번 ${unmatched.length}개는 건너뛰었습니다: ${unmatched.slice(0, 5).join(', ')}${unmatched.length > 5 ? '…' : ''}`
-          : ''),
-    )
+    setMessage(`${matched}명 이름을 채웠습니다.` + (unmatched.length > 0 ? ` 명단에 없는 학번 ${unmatched.length}개는 건너뛰었습니다: ${unmatched.slice(0, 5).join(', ')}${unmatched.length > 5 ? '…' : ''}` : ''))
     setPasteText('')
     setPasteOpen(false)
   }
@@ -204,9 +167,7 @@ export function InstructorClassStudents() {
       <div style={{ marginTop: 24 }}>
         <Notice tone="cream">
           <p className="text-body-sm" style={{ margin: 0 }}>
-            <strong>이 이름은 강사 화면에만 보입니다.</strong> 의견 광장, 발표자 뽑기, 분포, 발표
-            모드 등 학생이 볼 수 있는 곳에는 닉네임만 나갑니다. 실명은 학생 브라우저로 내려가지
-            않습니다.
+            <strong>이 이름은 강사 화면에만 보입니다.</strong> 의견 광장, 발표자 뽑기, 분포, 발표 모드 등 학생이 볼 수 있는 곳에는 닉네임만 나갑니다. 실명은 학생 브라우저로 내려가지 않습니다.
           </p>
         </Notice>
       </div>
@@ -232,15 +193,7 @@ export function InstructorClassStudents() {
             ['unsubmitted', '미제출자 먼저'],
           ] as const
         ).map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            className="tab"
-            data-selected={sort === k}
-            aria-pressed={sort === k}
-            onClick={() => setSort(k)}
-            style={{ fontSize: 14, minHeight: 40, padding: '6px 14px' }}
-          >
+          <button key={k} type="button" className="tab" data-selected={sort === k} aria-pressed={sort === k} onClick={() => setSort(k)} style={{ fontSize: 14, minHeight: 40, padding: '6px 14px' }}>
             {label}
           </button>
         ))}
@@ -253,15 +206,7 @@ export function InstructorClassStudents() {
         <div style={{ marginTop: 16 }}>
           <Card>
             <Caption>엑셀에서 「학번 이름」 두 열을 복사해 그대로 붙여 넣으세요</Caption>
-            <textarea
-              className="field"
-              rows={6}
-              value={pasteText}
-              placeholder={'2024123456\t홍길동\n2024123457\t김민수'}
-              aria-label="학번과 이름 붙여넣기"
-              onChange={(e) => setPasteText(e.target.value)}
-              style={{ marginTop: 8, resize: 'vertical', fontFamily: 'JetBrains Mono, monospace' }}
-            />
+            <textarea className="field" rows={6} value={pasteText} placeholder={'2024123456\t홍길동\n2024123457\t김민수'} aria-label="학번과 이름 붙여넣기" onChange={(e) => setPasteText(e.target.value)} style={{ marginTop: 8, resize: 'vertical', fontFamily: 'JetBrains Mono, monospace' }} />
             <div className="flex items-center gap-md" style={{ marginTop: 12 }}>
               <Button disabled={!pasteText.trim()} onClick={() => void applyPaste()}>
                 학번을 맞춰 채우기
@@ -277,7 +222,6 @@ export function InstructorClassStudents() {
           {message}
         </p>
       ) : null}
-
       {removeNote ? (
         <p role="status" className="text-body-sm" style={{ marginTop: 16, fontWeight: 480 }}>
           {removeNote}
@@ -298,18 +242,11 @@ export function InstructorClassStudents() {
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 940, marginTop: 24 }}>
             <thead>
               <tr>
-                {['학번', '이름', '닉네임', '모둠', '등록일', '최근 접속', '제출', '관리'].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      scope="col"
-                      className="caption"
-                      style={{ textAlign: 'left', padding: '8px 16px 8px 0' }}
-                    >
-                      {h}
-                    </th>
-                  ),
-                )}
+                {['학번', '이름', '닉네임', '모둠', '등록일', '최근 접속', '제출', '관리'].map((h) => (
+                  <th key={h} scope="col" className="caption" style={{ textAlign: 'left', padding: '8px 16px 8px 0' }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -322,29 +259,18 @@ export function InstructorClassStudents() {
                       {e.studentId ?? '—'}
                     </td>
                     <td style={{ padding: '10px 16px 10px 0' }}>
-                      {/* 셀을 눌러 바로 고치고, 포커스가 빠지면 저장한다 */}
                       <input
                         className="field"
                         value={draft ?? name}
                         disabled={readOnly}
                         aria-label={`${e.studentId ?? e.uid} 의 이름`}
                         placeholder={empty ? '이름을 적어 주세요' : ''}
-                        onChange={(ev) =>
-                          setDrafts((d) => ({ ...d, [e.uid]: ev.target.value }))
-                        }
+                        onChange={(ev) => setDrafts((d) => ({ ...d, [e.uid]: ev.target.value }))}
                         onBlur={() => void saveName(e.uid)}
                         onKeyDown={(ev) => {
                           if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur()
                         }}
-                        style={{
-                          minHeight: 40,
-                          padding: '6px 10px',
-                          width: 140,
-                          // 색만이 아니라 테두리 굵기로도 표시한다
-                          boxShadow: empty
-                            ? 'inset 0 0 0 2px #000'
-                            : 'inset 0 0 0 1px #e6e6e6',
-                        }}
+                        style={{ minHeight: 40, padding: '6px 10px', width: 140, boxShadow: empty ? 'inset 0 0 0 2px #000' : 'inset 0 0 0 1px #e6e6e6' }}
                       />
                       {empty ? (
                         <span className="font-mono text-caption" style={{ display: 'block' }}>
@@ -356,40 +282,21 @@ export function InstructorClassStudents() {
                       {e.nickname || '미설정'}
                     </td>
                     <td className="text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
-                      {e.groupId ?? '—'}
+                      {e.currentGroupId ?? e.groupId ?? '—'}
                     </td>
                     <td className="text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
                       {new Date(e.joinedAt).toLocaleDateString('ko-KR')}
                     </td>
                     <td className="text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
-                      {e.lastSeenAt
-                        ? new Date(e.lastSeenAt).toLocaleDateString('ko-KR')
-                        : '—'}
+                      {e.lastSeenAt ? new Date(e.lastSeenAt).toLocaleDateString('ko-KR') : '—'}
                     </td>
                     <td className="font-mono text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
                       {count}
                     </td>
                     <td style={{ padding: '10px 0' }}>
                       <div className="flex flex-wrap gap-xxs">
-                        <Button
-                          variant="tertiary"
-                          disabled={readOnly}
-                          onClick={() => void resetPassword(e.studentId)}
-                        >
+                        <Button variant="tertiary" disabled={readOnly} onClick={() => void resetPassword(e.studentId)}>
                           비밀번호 초기화
-                        </Button>
-                        <Button
-                          variant="tertiary"
-                          disabled={readOnly}
-                          onClick={() => {
-                            const g = prompt('모둠 이름', e.groupId ?? '')
-                            if (g === null) return
-                            void repo?.updateEnrollment(classId, e.uid, {
-                              groupId: g.trim() || null,
-                            })
-                          }}
-                        >
-                          모둠
                         </Button>
                         <Button
                           variant="tertiary"
@@ -401,16 +308,7 @@ export function InstructorClassStudents() {
                         >
                           수강 종료
                         </Button>
-                        {/*
-                          내보내기 — 계정은 그대로 두고 이 클래스에서만 뺀다.
-                          시험용으로 만든 계정을 치우거나 잘못 등록한 사람을 뺄 때 쓴다.
-                          무엇이 사라지는지 확인 문구에 그대로 적는다. 되돌릴 수 없다.
-                        */}
-                        <Button
-                          variant="tertiary"
-                          disabled={readOnly || removing === e.uid}
-                          onClick={() => void remove(e.uid, nameOf(e.uid) || e.nickname)}
-                        >
+                        <Button variant="tertiary" disabled={readOnly || removing === e.uid} onClick={() => void remove(e.uid, nameOf(e.uid) || e.nickname)}>
                           {removing === e.uid ? '내보내는 중…' : '내보내기'}
                         </Button>
                       </div>

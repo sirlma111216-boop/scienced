@@ -5,14 +5,12 @@ import { Login } from '@/routes/Login'
 import { ResetPassword } from '@/routes/ResetPassword'
 import { Home } from '@/routes/Home'
 import { Lesson } from '@/routes/Lesson'
+import { Teach } from '@/routes/Teach'
 import { Portfolio } from '@/routes/Portfolio'
 import { ConceptMap } from '@/routes/ConceptMap'
 import { Microteaching } from '@/routes/Microteaching'
 import { Curriculum } from '@/routes/Curriculum'
 import { ClassSelect } from '@/routes/ClassSelect'
-import { InstructorDashboard } from '@/routes/instructor/Dashboard'
-import { InstructorLessons } from '@/routes/instructor/Lessons'
-import { InstructorLive } from '@/routes/instructor/Live'
 import { InstructorStudents } from '@/routes/instructor/Students'
 import { InstructorAnalytics } from '@/routes/instructor/Analytics'
 import { InstructorAiReview } from '@/routes/instructor/AiReview'
@@ -21,11 +19,14 @@ import { InstructorClassStudents } from '@/routes/instructor/ClassStudents'
 import { InstructorClassGroups } from '@/routes/instructor/ClassGroups'
 
 /**
- * 라우트 보호 (지시서 4.5).
+ * 라우트 보호.
  *  - 비로그인 → /login
  *  - mustResetPassword → /reset-password 외 전부 차단
- *  - 학생이 /instructor/* → 403 안내
- *  - 미공개 차시 내용은 전송하지 않는다 (차시 화면과 Firestore 규칙 양쪽에서)
+ *  - 학생이 /instructor/* · /teach/* → 403 안내
+ *  - 미공개 차시 내용은 전송하지 않는다 (차시 화면이 공개 여부를 본 뒤에만 import() · Firestore 규칙)
+ *
+ * 8차: 강사 홈은 클래스 목록이다. 클래스 → 차시 목록 → 수업 화면(/teach/:classId/:lessonId).
+ * 옛 /instructor/lessons · /instructor/lesson/:id/live · 대시보드는 없다.
  */
 function Guard({
   children,
@@ -48,18 +49,10 @@ function Guard({
     )
   }
   if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />
-  /*
-   * 닉네임이 없으면 무조건 여기로 보낸다.
-   *
-   * 예전에는 mustResetPassword 깃발만 봤다. 깃발이 빠진 문서가 만들어지자
-   * 닉네임 없는 계정이 그대로 통과했고, 그 뒤 수강 등록에서 터졌다.
-   * 깃발은 상태에 대한 이야기일 뿐이다. 상태 자체를 본다 —
-   * 닉네임이 비어 있으면 아직 시작할 준비가 안 된 것이다.
-   */
+  /* 닉네임이 없으면 무조건 여기로 보낸다. 깃발이 아니라 상태를 본다 (needsSetup). */
   if (needsSetup(user) && loc.pathname !== '/reset-password') {
     return <Navigate to="/reset-password" replace />
   }
-  // 클래스를 하나도 고르지 않으면 다른 화면에 접근할 수 없다 (2차 지시서 A.4).
   if (!classOptional && !classId) return <Navigate to="/class" replace />
   if (instructorOnly && !isInstructor) {
     return (
@@ -143,6 +136,16 @@ export function App() {
             }
           />
 
+          {/* 강사 — 수업 화면 하나 */}
+          <Route
+            path="/teach/:classId/:lessonId"
+            element={
+              <Guard instructorOnly classOptional>
+                <Teach />
+              </Guard>
+            }
+          />
+
           <Route
             path="/instructor/classes"
             element={
@@ -167,31 +170,9 @@ export function App() {
               </Guard>
             }
           />
-
-          <Route
-            path="/instructor"
-            element={
-              <Guard instructorOnly classOptional>
-                <InstructorDashboard />
-              </Guard>
-            }
-          />
-          <Route
-            path="/instructor/lessons"
-            element={
-              <Guard instructorOnly>
-                <InstructorLessons />
-              </Guard>
-            }
-          />
-          <Route
-            path="/instructor/lesson/:id/live"
-            element={
-              <Guard instructorOnly>
-                <InstructorLive />
-              </Guard>
-            }
-          />
+          <Route path="/instructor" element={<Navigate to="/instructor/classes" replace />} />
+          <Route path="/instructor/lessons" element={<Navigate to="/instructor/classes" replace />} />
+          <Route path="/instructor/lesson/:id/live" element={<Navigate to="/instructor/classes" replace />} />
           <Route
             path="/instructor/students"
             element={
@@ -200,7 +181,6 @@ export function App() {
               </Guard>
             }
           />
-
           <Route
             path="/instructor/analytics"
             element={

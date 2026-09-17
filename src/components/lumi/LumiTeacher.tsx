@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { GameDef, LessonId } from '@/content/types'
+import type { CourseId, LessonId } from '@/content/types'
 import { useAuth } from '@/lib/auth'
-import { LUMI_MAX_PLAYERS, activeLumi, fetchTicket, lumiConfigured, lumiCount, lumiMap, newActivityInstanceId, serverWsUrl, storageKey, teacherRules, type LumiGameResult, type LumiSnapshot } from '@/lib/lumi'
+import { LUMI_MAX_PLAYERS, LUMI_TIME_LIMIT, activeLumi, fetchTicket, lumiConfigured, newActivityInstanceId, serverWsUrl, storageKey, type LumiGameResult, type LumiSnapshot, type LumiTeacherRules } from '@/lib/lumi'
 import type { Enrollment, LumiActivity, SessionState } from '@/lib/types'
 import { Badge, Button, Caption, Notice } from '@/components/ui'
-import { useNames } from '@/components/console/shared'
+import { useNames } from '@/components/teach/names'
 import { LumiFrame } from './LumiFrame'
 
 /**
- * 강사 — 루미 런으로 발표자 선정 (3·4강).
+ * 강사 — 루미 런으로 발표자 선정 (교수법 3·4강, 라이브러리 13번).
  *
- * 강사 계정에는 교사 방 만들기와 교사용 운영 화면만 보인다. 학생 참가 탭이나 자기 자신을 학생으로 넣는 화면은 없다.
- *   ★ 발표할 등수(game.lumi.ranks)는 여기 어디에도 적지 않는다. 게임 서버가 결과에 적어 보낸 selectionReason 으로만 드러난다.
- *     강사가 하는 일은 둘 — 다 들어왔는지 보고, 「다 함께 시작」을 누른다. 발표자 수 칸·규칙 칸은 없다.
- *   ① 「게임 방 만들기」 — 활동 실행 id 를 만들고 티켓을 받아 iframe 을 연다. 방은 그 클릭으로 게임이 만든다.
+ *   ★ 발표할 등수는 번들에 없다 (8차 부록 ②). 「게임 시작」을 누르면 서버가 티켓과 함께 규칙을 준다.
+ *     강사 화면에도 등수를 적지 않는다 — 결과 때 게임 서버가 적은 selectionReason 으로만 드러난다.
+ *   ① 「게임 시작」 — 활동 실행 id 를 만들고 티켓(규칙 포함)을 받아 iframe 을 연다. 방은 그 클릭으로 게임이 만든다.
  *   ② 게임이 로비에 들어가면(lumi:ready) 방 코드를 세션(sessions/{lid}.lumi)에 적는다 → 학생 화면이 저절로 들어간다.
  *   ③ 대상 학생 N명 / 게임 연결 M명 / 미참가 를 따로 센다. 30명을 넘으면 알린다.
  *   ④ 경기가 끝나면 브라우저의 lumi:result 는 「확인 중」으로만 보이고, 서버 함수가 확인해 세션에 적은 결과만 발표자로 그린다.
@@ -23,21 +22,21 @@ export function LumiTeacher({
   classId,
   lessonId,
   stepId,
-  game,
+  courseId,
   session,
   students,
 }: {
   classId: string
   lessonId: LessonId
   stepId: string
-  game: GameDef
+  courseId: CourseId
   session: SessionState | null
   students: Enrollment[]
 }) {
   const { repo, user } = useAuth()
   const { nameOf } = useNames()
   const lumi = activeLumi(session?.lumi)
-  const [ticket, setTicket] = useState<{ act: string; ticket: string } | null>(null)
+  const [ticket, setTicket] = useState<{ act: string; ticket: string; rules: LumiTeacherRules | null; map: number; timeLimit: number } | null>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [snapshot, setSnapshot] = useState<LumiSnapshot | null>(null)
@@ -49,20 +48,20 @@ export function LumiTeacher({
   const connectedStudents = connected.filter((id) => studentUids.includes(id))
   const missing = studentUids.filter((id) => !connected.includes(id))
 
-  /* 현재 활동의 티켓 — 활동이 바뀌면 새로 받는다 */
+  /* 현재 활동의 티켓 — 활동이 바뀌면 새로 받는다 (새로고침 뒤에도 같은 방에 다시 잇는다) */
   useEffect(() => {
     if (!lumi || !user) return
     if (ticket?.act === lumi.activityInstanceId) return
     let cancelled = false
-    fetchTicket(classId, lessonId, lumi.activityInstanceId)
+    fetchTicket(classId, lessonId, lumi.activityInstanceId, courseId)
       .then((t) => {
-        if (!cancelled) setTicket({ act: lumi.activityInstanceId, ticket: t.ticket })
+        if (!cancelled) setTicket({ act: lumi.activityInstanceId, ticket: t.ticket, rules: t.rules ?? null, map: t.map ?? 1, timeLimit: t.timeLimit ?? LUMI_TIME_LIMIT })
       })
       .catch((err) => setNote(`수업 인증을 받지 못했습니다 — ${(err as Error).message}`))
     return () => {
       cancelled = true
     }
-  }, [lumi, user, classId, lessonId, ticket?.act])
+  }, [lumi, user, classId, lessonId, courseId, ticket?.act])
 
   async function openRoom() {
     if (!repo || !user) return
@@ -70,15 +69,16 @@ export function LumiTeacher({
     setNote(null)
     try {
       const act = newActivityInstanceId(classId, lessonId)
-      const t = await fetchTicket(classId, lessonId, act)
+      const t = await fetchTicket(classId, lessonId, act, courseId)
       if (t.role !== 'teacher') throw new Error('강사 계정이 아닙니다.')
+      if (!t.rules) throw new Error('서버가 발표 규칙을 주지 않았습니다. 다시 눌러 보세요.')
       const next: LumiActivity = {
         activityInstanceId: act,
-        gameId: game.id,
+        gameId: `${lessonId}-${stepId}-lumi`,
         stepId,
         roomCode: null,
         status: 'open',
-        requestedCount: lumiCount(game),
+        requestedCount: t.rules.count,
         round: (session?.lumi?.round ?? 0) + 1,
         createdBy: user.uid,
         createdAt: Date.now(),
@@ -87,10 +87,11 @@ export function LumiTeacher({
         result: null,
       }
       await repo.setSession(classId, lessonId, { lumi: next })
-      setTicket({ act, ticket: t.ticket })
+      setTicket({ act, ticket: t.ticket, rules: t.rules, map: t.map ?? 1, timeLimit: t.timeLimit ?? LUMI_TIME_LIMIT })
       setSnapshot(null)
       setPendingResult(null)
     } catch (err) {
+      console.error('[lumi] 방을 열지 못했다:', err)
       setNote(`방을 열지 못했습니다 — ${(err as Error).message}`)
     } finally {
       setBusy(false)
@@ -105,7 +106,7 @@ export function LumiTeacher({
 
   const confirmed = lumi?.result && (!pendingResult || lumi.result.matchId === pendingResult.matchId) ? lumi.result : null
   /* 방 코드는 열쇠에 넣지 않는다 — 코드가 적히는 순간 게임을 다시 만들면 안 된다. 새로고침이면 코드와 함께 다시 잇는다. */
-  const mountKey = lumi && ticket?.act === lumi.activityInstanceId ? `${lumi.activityInstanceId}:teacher` : ''
+  const mountKey = lumi && ticket?.act === lumi.activityInstanceId && ticket.rules ? `${lumi.activityInstanceId}:teacher` : ''
 
   if (!lumiConfigured()) {
     return (
@@ -120,16 +121,15 @@ export function LumiTeacher({
   return (
     <div>
       <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-        <Badge>{game.tab}</Badge>
-        <Badge>제한 시간 {game.lumi?.timeLimit ?? 60}초</Badge>
+        <Badge>루미 런</Badge>
+        <Badge>제한 시간 {ticket?.timeLimit ?? LUMI_TIME_LIMIT}초</Badge>
         {lumi ? <Badge solid>{lumi.status === 'open' ? (lumi.roomCode ? `방 ${lumi.roomCode}` : '방 만드는 중') : '결과 확정'}</Badge> : <Badge>아직 방 없음</Badge>}
         {gameVersion ? <Caption>게임 v{gameVersion.version}{!gameVersion.capabilities.includes('lesson-entry') ? ' · ⚠ 연동 기능 없음(옛 배포)' : !gameVersion.capabilities.includes('ranks-mode') ? ' · ⚠ 옛 배포 — 등수 방식·제한 시간이 없어 방을 못 만듭니다. 게임을 다시 배포하세요' : ''}</Caption> : null}
       </div>
       <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.8 }}>
-        몇 등이 발표자가 될지는 결과 때 알려드립니다. 학생은 「참가」를 누르면 자기 계정·닉네임으로 들어옵니다. 다 들어왔으면 아래 게임 화면의 「다 함께 시작」을 누르세요 — 3초 뒤 출발하고, 모두 들어오거나 제한 시간이 되면 끝납니다.
+        몇 등이 발표자가 될지는 결과 때 알려드립니다. 학생은 「참가」를 누르면 자기 계정·닉네임으로 들어옵니다. 다 들어왔으면 아래 게임 화면의 「다 함께 시작」을 누르세요.
       </p>
 
-      {/* 대상 · 연결 · 미참가 — 서로 다른 상태다 */}
       <div className="flex flex-wrap items-center gap-xs" style={{ marginTop: 12 }}>
         <Badge>대상 학생 {studentUids.length}명</Badge>
         <Badge solid>게임 연결 {connectedStudents.length}명</Badge>
@@ -143,18 +143,17 @@ export function LumiTeacher({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-xs" style={{ marginTop: 12 }}>
-        {lumi?.status === 'open' ? (
-          <Button variant="secondary" onClick={() => void markLost()} disabled={busy}>
-            방을 잃었어요 — 닫기
-          </Button>
-        ) : null}
         <Button onClick={() => void openRoom()} disabled={busy || (lumi?.status === 'open' && Boolean(lumi.roomCode))}>
-          {busy ? '여는 중…' : lumi ? '새 방 만들기' : '게임 방 만들기'}
+          {busy ? '여는 중…' : '게임 시작'}
         </Button>
+        {lumi?.status === 'open' ? (
+          <label className="text-body-sm flex items-center gap-xxs">
+            <input type="checkbox" checked={false} disabled={busy} onChange={() => void markLost()} /> 방을 잃었다 — 닫고 새로 연다
+          </label>
+        ) : null}
         {note ? <span className="text-body-sm" role="status">{note}</span> : null}
       </div>
 
-      {/* 결과 — 서버가 확인한 것만 발표자다 */}
       {pendingResult && !confirmed ? (
         <Notice tone="cream">
           <p className="text-body-sm" style={{ margin: 0 }} role="status">
@@ -187,12 +186,11 @@ export function LumiTeacher({
           <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.75 }}>
             {confirmed.selectionReason} · {confirmed.tieHandling}
           </p>
-          <Caption>발표 횟수에 반영됐고, 학생 화면에도 같은 발표자와 같은 이유가 뜹니다. 재경기는 아래 게임 화면의 「같은 방에서 재경기」로 — 새 경기 id 로 저장됩니다.</Caption>
+          <Caption>발표 횟수에 반영됐고, 학생 화면에도 같은 발표자와 같은 이유가 뜹니다. 재경기는 아래 게임 화면의 「같은 방에서 재경기」로 합니다.</Caption>
         </div>
       ) : null}
 
-      {/* 게임 화면 — 교사 진입만 */}
-      {lumi && mountKey ? (
+      {lumi && mountKey && ticket?.rules ? (
         <div style={{ marginTop: 16 }}>
           <LumiFrame
             mountKey={mountKey}
@@ -204,9 +202,9 @@ export function LumiTeacher({
               activityId: lumi.activityInstanceId,
               storageKey: storageKey(lumi.activityInstanceId, user?.uid ?? 'teacher', 'teacher'),
               roomCode: lumi.roomCode ?? undefined,
-              integrationTicket: ticket?.ticket,
-              map: lumiMap(game),
-              rules: teacherRules(game),
+              integrationTicket: ticket.ticket,
+              map: ticket.map,
+              rules: ticket.rules,
               serverUrl: serverWsUrl(),
               joinBaseUrl: `${window.location.origin}/lesson/${lessonId}`,
             }}
@@ -214,7 +212,6 @@ export function LumiTeacher({
             onAvailable={(info) => setGameVersion(info)}
             onReady={(s) => {
               setSnapshot(s)
-              /* 로비에 들어갔다 — 방 코드를 세션에 적어 학생이 들어오게 한다 (한 번만) */
               if (repo && lumi && s.code && lumi.roomCode !== s.code) {
                 void repo.setSession(classId, lessonId, { lumi: { ...lumi, roomCode: s.code, status: 'open' } })
               }

@@ -1,328 +1,178 @@
-import type { GameDef } from './types'
+import type { GameKind } from './types'
 
 /**
- * 차시별 발표자 뽑기 게임 18종.
+ * 발표자 선정 게임 라이브러리 (8차 6절).
  *
- * 엔진은 전부 같다. 1강 사다리 코드(`src/lib/ladder.ts`)의
- * 씨앗 재현성·전단사·비상 추첨을 그대로 쓰고, 화면 표현만 mode 로 갈린다.
+ * 공통 규칙
+ *   · 3분 이내. 80분 차시의 활동 1 에 붙는 것은 1분 이내.
+ *   · 학생은 [참가] 하나, 강사는 [시작] 하나. 규칙은 화면 한 줄.
+ *   · 결과는 서버 시드로 정해지고 결과 화면에 시드와 후보를 남긴다.
+ *   · 발표 횟수가 적은 사람의 가중치 · 재추첨 · 수동 지정 · 비상 추첨은 GameShell 이 공통으로 갖는다.
+ *   · 폰 세로 화면에서 된다. 루미 런만 가로.
+ *   · 모둠 협동 게임은 모둠 단계가 끝난 뒤에만 뜬다.
+ *   · 반응 속도 게임(late · flash)은 결과에 「반응 속도 게임입니다」를 적고 한 학기에 두 번 이하.
  *
- * 규칙 (지시서 10.1)
- *  - 실행은 강사만. 시드는 서버가 만든다.
- *  - 정답·오답을 기준으로 뽑지 않는다. 틀린 답을 고른 사람을 지목하는 데 쓰지 않는다.
- *  - 발표 횟수가 적은 사람의 확률을 높인다(기본 켬).
- *  - prefers-reduced-motion 이면 애니메이션을 건너뛰고 결과를 즉시 보여준다.
+ * 배치는 차시 파일의 activity.game 이 정한다 — 강의자가 바꾼다. verify:games 가 6.4 를 본다.
  */
-export const GAMES: GameDef[] = [
-  {
-    id: '01-auction',
-    lessonId: '01',
-    mode: 'ladder',
-    tab: '사다리타기',
-    lead: '같은 수업을 두고도 무엇이 가장 중요한지는 갈립니다.\n두 분의 이유를 직접 들어보겠습니다.',
-    hint: '자리를 하나 고르세요. 강사가 결과를 열면 사다리를 타고 내려갑니다.',
-    choiceField: 'allocation',
-    reasonField: 'opinion',
-    askLine: '우리 모둠이 그 카드에 가장 많이 준 이유를 말해 주세요.',
-    presenterAsk: '두 분의 이유가 어디에서 갈리는지 학급이 듣게 한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '02-sealed-envelope',
-    lessonId: '02',
-    mode: 'sealed-envelope',
-    /*
-     * 이름을 「봉인된 증거 봉투」에서 바꿨다.
-     * 봉투 안에 든 것은 증거가 아니라 발표 표시다. 이름이 활동을 잘못 설명하고 있었다.
-     */
-    tab: '발표자 선정 봉투',
-    lead: '봉투 하나에 발표 표시가 들어 있습니다.\n열기 전에 "내가 걸릴 확률"을 먼저 적어 주세요.',
-    hint: '연 뒤에는 예상과 결과의 차이를 한 줄로 적습니다.',
-    /* 없는 칸(observationVsInference)을 가리키고 있었다. 2강 도입의 실제 칸은 predict 다. */
-    choiceField: 'predict',
-    reasonField: 'reason',
-    askLine: '발자국 사진에서 본 것과 생각한 것을 어떻게 갈랐는지 그 기준을 말해 주세요.',
-    presenterAsk: '확률 예상과 실제 결과의 차이를 과학의 본성과 연결한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  /*
-   * 3·4강 — 루미 런 (횡스크롤 멀티플레이 게임, 별도 배포).
-   * 강사가 방을 열고 「다 함께 시작」만 누른다. 학생은 「참가」를 누르면 자기 계정·닉네임으로 들어가 각자 캐릭터를 조작한다.
-   * 발표자는 미리 정해 둔 등수(lumi.ranks)다 — 학생 화면·강사 콘솔 어디에도 적지 않고 결과 때만 드러난다.
-   * 제한 시간 1분. 그 전에 모두 들어오면 끝. 그 등수까지 완주가 안 됐으면 게임 서버가 접속 중인 미완주자 중 무작위로 채운다(끊긴 사람 제외).
-   * 선정은 게임 서버가 확정하고 서명해서 보낸 결과로만 발표자를 정한다 (functions/api/lumi/result.ts).
-   * 동점(같은 틱 도착)은 공동 선정 — 실제 선정이 더 많을 수 있다. 자르지 않는다.
-   */
-  {
-    id: '03-lumi',
-    lessonId: '03',
-    mode: 'lumi-garden',
-    tab: '루미 런 · 공중정원',
-    lead: '루미와 함께 달립니다. 몇 등이 발표자가 될지는 결과 때 알려드립니다.\n제한 시간은 60초입니다.',
-    lumi: { map: 2, ranks: [6, 9], timeLimit: 60, course: 30 },
-    hint: '휴대폰은 가로로. ← → 이동, 스페이스(또는 점프 버튼)로 점프.',
-    choiceField: 'diagnosis',
-    reasonField: 'followUpQuestion',
-    askLine: '그 발화 뒤에 있는 학생의 사고모형을 진단해 주세요.',
-    presenterAsk: '같은 발화에 서로 다른 진단이 나오는지 확인한다.',
-    candidateRule: 'byResponseType',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '04-lumi',
-    lessonId: '04',
-    mode: 'lumi-cave',
-    tab: '루미 런 · 수정동굴',
-    lead: '루미와 함께 달립니다. 몇 등이 발표자가 될지는 결과 때 알려드립니다.\n제한 시간은 60초입니다.',
-    lumi: { map: 4, ranks: [1, 3], timeLimit: 60, course: 30 },
-    hint: '휴대폰은 가로로. ← → 이동, 스페이스(또는 점프 버튼)로 점프.',
-    choiceField: 'hintB',
-    reasonField: 'reason',
-    askLine: '이 도움을 언제, 어떤 증거를 보고 줄일 것인지 말해 주세요.',
-    presenterAsk: '도움의 양이 아니라 제거 시점을 이야기하게 한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '05-survival',
-    lessonId: '05',
-    mode: 'survival',
-    tab: '설명 생존',
-    lead: '증거가 한 장씩 공개될 때마다 후보가 한 명씩 빠집니다.\n마지막까지 남은 한 분이 발표합니다.',
-    hint: '오래 버틴 설명이 아니라 증거에 맞게 고친 설명을 봅니다.',
-    choiceField: 'explanationChoice',
-    reasonField: 'changedReason',
-    askLine: '어떤 증거에서 설명을 바꿨는지, 무엇을 그대로 두었는지 말해 주세요.',
-    presenterAsk: '수정 자체가 실패가 아니라는 점을 학급에 짚는다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 1,
-  },
-  {
-    id: '06-map-pin',
-    lessonId: '06',
-    mode: 'map-pin',
-    tab: '교육과정 지도 핀',
-    lead: '영역 지도 위에서 핀이 돌다 멈춥니다.\n멈춘 영역의 성취기준을 해부합니다.',
-    hint: '핀이 멈춘 영역을 맡은 분이 발표합니다.',
-    choiceField: 'domain',
-    reasonField: 'threeCategories',
-    askLine: '그 영역 성취기준의 세 범주(지식·이해 / 과정·기능 / 가치·태도)를 갈라 주세요.',
-    presenterAsk: '성취기준 문장에서 근거 구절을 직접 짚게 한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '07-triple-spinner',
-    lessonId: '07',
-    mode: 'triple-spinner',
-    tab: '목표·증거·활동 스피너',
-    lead: '세 칸 룰렛이 돕니다.\n멈춘 칸이 여러분 설계에서 다시 볼 자리입니다.',
-    hint: '목표 / 증거 / 활동 중 어느 칸에 멈추는지 봅니다.',
-    choiceField: 'alignment',
-    reasonField: 'misfit',
-    askLine: '멈춘 칸에서 내 설계가 어긋난 곳을 짚어 주세요.',
-    presenterAsk: '활동목표와 학습목표를 섞어 쓴 자리를 찾게 한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '08-variable-dice',
-    lessonId: '08',
-    mode: 'variable-dice',
-    tab: '변인 주사위',
-    lead: '주사위 두 개가 굴러갑니다.\n변인 하나와 조건 하나가 짝지어집니다.',
-    hint: '나온 조합으로 공정한 비교를 설계합니다.',
-    choiceField: 'design',
-    reasonField: 'controlReason',
-    askLine: '그 조합에서 무엇을 같게 두어야 공정한 비교가 되는지 말해 주세요.',
-    presenterAsk: '통제 목록 암송이 아니라 통제가 주장을 어떻게 정당화하는지 묻는다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '09-bracket',
-    lessonId: '09',
-    mode: 'bracket',
-    tab: '모형 대진 추첨',
-    lead: '무작위 대진표가 모형 두 개를 맞붙입니다.\n어느 모형이 더 넓게 설명하는지 봅니다.',
-    hint: '이기는 모형을 뽑는 게임이 아닙니다. 설명 범위를 비교합니다.',
-    choiceField: 'modelSketch',
-    reasonField: 'scope',
-    askLine: '두 모형의 설명 범위가 어디에서 갈리는지 말해 주세요.',
-    presenterAsk: '예쁜 그림이 아니라 요소 사이의 인과 관계를 보게 한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '10-draft-order',
-    lessonId: '10',
-    mode: 'draft-order',
-    tab: '드래프트 순번',
-    lead: '추첨 순번대로 수업 상황 카드를 고릅니다.\n마지막 순번이 먼저 발표합니다.',
-    hint: '남은 카드가 적을수록 선택의 제약이 커집니다. 그 제약이 오늘의 주제입니다.',
-    choiceField: 'modelChoice',
-    reasonField: 'reason',
-    askLine: '이 상황에 그 모형을 고른 이유를 말해 주세요.',
-    presenterAsk: '다른 모둠이 반례 조건을 제시하게 한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '11-representation-roulette',
-    lessonId: '11',
-    mode: 'representation-roulette',
-    tab: '표상 룰렛',
-    lead: '현상 / 입자 그림 / 그래프 / 수식 네 칸이 돕니다.\n멈춘 표상으로 번역합니다.',
-    hint: '번역한 뒤 "사라진 정보"를 함께 말합니다.',
-    choiceField: 'translation',
-    reasonField: 'lostInformation',
-    askLine: '멈춘 표상으로 번역하고, 그 과정에서 사라진 정보를 말해 주세요.',
-    presenterAsk: '새 표상에서 더 잘 보이는 것과 사라지는 것을 둘 다 묻는다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '12-jury-roles',
-    lessonId: '12',
-    mode: 'jury-roles',
-    tab: '배심원 역할 추첨',
-    lead: '주장자·반론자·증거 검토자·요약자를 동시에 뽑습니다.\n네 분이 한 장면을 함께 만듭니다.',
-    hint: '역할은 정답 발표자가 아니라 담화 이동입니다.',
-    choiceField: 'claim',
-    reasonField: 'evidence',
-    askLine: '맡은 역할의 담화 이동을 실제로 해 주세요.',
-    presenterAsk: '결론만 듣지 말고 증거와 추론에 응답하게 한다.',
-    candidateRule: 'splitOpinion',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 4,
-  },
-  {
-    id: '13-stakeholder-lots',
-    lessonId: '13',
-    mode: 'stakeholder-lots',
-    tab: '이해당사자 제비',
-    lead: '연구자·주민·기업·지자체·학생 역할 카드를 나눕니다.\n뽑힌 분이 그 입장에서 말합니다.',
-    hint: '찬반이 아니라 기준과 우려를 말합니다.',
-    choiceField: 'decision',
-    reasonField: 'criteria',
-    askLine: '그 입장이 중요하게 보는 기준과 우려를 말해 주세요.',
-    presenterAsk: '사실 판단과 가치 판단을 갈라서 듣게 한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '14-silent-data',
-    lessonId: '14',
-    mode: 'silent-data',
-    tab: '침묵 데이터',
-    lead: '이번 추첨은 발표 기회가 적었던 분의 확률을 크게 줍니다.\n가중치를 화면에 그대로 공개합니다.',
-    hint: '규칙 자체가 오늘의 학습 내용입니다. 숨기지 않습니다.',
-    choiceField: 'contributionType',
-    reasonField: 'reason',
-    askLine: '우리 모둠에서 누구의 생각이 기록에 남았는지 말해 주세요.',
-    presenterAsk: '가중치 표를 띄운 채로 진행한다. 규칙을 숨기지 않는다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: true,
-    winnerCount: 2,
-  },
-  {
-    id: '15-by-response-type',
-    lessonId: '15',
-    mode: 'by-response-type',
-    tab: '응답 유형별 한 명',
-    lead: '형성평가 응답이 유형별로 묶였습니다.\n묶음마다 한 분씩 뽑습니다.',
-    hint: '정답 여부가 아니라 이유의 유형으로 묶습니다.',
-    choiceField: 'answer',
-    reasonField: 'reason',
-    askLine: '같은 답을 고른 사람들의 서로 다른 이유를 말해 주세요.',
-    presenterAsk: '같은 답 안의 다른 이유가 드러나면 다음 행동이 달라진다.',
-    candidateRule: 'byResponseType',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 3,
-  },
-  {
-    id: '16-boundary-pair',
-    lessonId: '16',
-    mode: 'boundary-pair',
-    tab: '경계 사례 짝',
-    lead: '같은 산출물에 다른 점수를 준 두 분을 짝으로 뽑습니다.\n점수가 아니라 기준 문구를 봅니다.',
-    hint: '누가 맞았는지 가리지 않습니다.',
-    choiceField: 'score',
-    reasonField: 'criterionQuote',
-    askLine: '기준 문구의 어느 말에서 판단이 갈렸는지 말해 주세요.',
-    presenterAsk: '루브릭 문장을 늘리지 말고 모호한 말을 찾아 고치게 한다.',
-    candidateRule: 'splitOpinion',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 2,
-  },
-  {
-    id: '17-sentence-audit',
-    lessonId: '17',
-    mode: 'sentence-audit',
-    tab: '문장 감사 배정',
-    lead: 'AI 응답의 문장에 번호가 붙었습니다.\n무작위로 배정된 문장을 맡습니다.',
-    hint: '맡은 문장만 판정하면 됩니다.',
-    choiceField: 'sentenceVerdict',
-    reasonField: 'sourceNeeded',
-    askLine: '맡은 문장이 사실인지, 해석인지, 출처가 필요한지, 오류인지 판정해 주세요.',
-    presenterAsk: 'AI가 유창하다는 이유로 타당성을 인정하지 않게 한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: false,
-    winnerCount: 3,
-  },
-  {
-    id: '18-reteach-order',
-    lessonId: '18',
-    mode: 'reteach-order',
-    tab: '재수업 순번',
-    lead: '마이크로티칭 순서를 뽑습니다.\n1강 사다리에서 이미 발표한 분은 후보에서 빠집니다.',
-    hint: '한 학기 동안 한 번도 발표하지 않은 분이 먼저 옵니다.',
-    choiceField: 'reteachPlan',
-    reasonField: 'evidenceOfChange',
-    askLine: '수정 전후 학생 반응의 차이를 증거로 말해 주세요.',
-    presenterAsk: '1강 결과와 겹치는 사람을 제외했음을 화면에 표시한다.',
-    candidateRule: 'all',
-    weightByFewPresentations: true,
-    revealWeights: true,
-    winnerCount: 2,
-  },
-]
-
-export const GAMES_BY_LESSON = Object.fromEntries(GAMES.map((g) => [g.lessonId, g])) as Record<
-  string,
-  GameDef
->
-
-export function gameById(id: string): GameDef | undefined {
-  return GAMES.find((g) => g.id === id)
+export interface GameSpec {
+  kind: GameKind
+  name: string
+  /** 규칙 한 줄 — 학생 화면에 그대로 */
+  rule: string
+  scope: 'individual' | 'group'
+  /** 대략 걸리는 시간(초). 80분 활동 1 은 60 이하 */
+  seconds: number
+  /** 발표자를 정하는 규칙 */
+  winner: string
+  /** 기기·회선에 좌우되는 반응 속도 게임인가 */
+  reaction?: boolean
+  /** 폰 가로 화면 필요 */
+  landscape?: boolean
+  /** 옛 게임을 그대로 쓴다 (1·2강) */
+  legacy?: boolean
+  /** 차시별로 고를 수 있는 옵션과 기본값 */
+  options?: Record<string, { label: string; values: string[]; default: string }>
 }
+
+export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
+  bomb: {
+    kind: 'bomb',
+    name: '폭탄 돌리기',
+    rule: '폭탄을 가진 사람은 넘기기를 누르세요. 시간이 끝났을 때 든 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 60,
+    winner: '시간이 끝났을 때 폭탄을 든 사람',
+  },
+  closest: {
+    kind: 'closest',
+    name: '숫자 가까이',
+    rule: '1부터 100 사이에서 하나를 고르세요. 서버가 뽑은 숫자에 가장 가까운 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 30,
+    winner: '가장 가까운 사람 (동점 공동)',
+  },
+  doors: {
+    kind: 'doors',
+    name: '문 세 개',
+    rule: '문 하나를 고르세요. 열린 문을 고른 사람은 통과합니다. 마지막까지 남은 한 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 120,
+    winner: '끝까지 안 뽑힌 사람',
+  },
+  mine: {
+    kind: 'mine',
+    name: '지뢰 한 칸',
+    rule: '5×5 격자에서 한 칸을 고르세요. 지뢰를 밟은 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 30,
+    winner: '지뢰를 밟은 사람 (없으면 재추첨)',
+  },
+  late: {
+    kind: 'late',
+    name: '늦게 눌러라',
+    rule: '10초 카운트다운. 가장 늦게 누른 사람이 발표합니다. 0 이 지난 뒤 누르면 탈락입니다.',
+    scope: 'individual',
+    seconds: 30,
+    winner: '0 이 되기 전에 가장 늦게 누른 사람',
+    reaction: true,
+  },
+  rps: {
+    kind: 'rps',
+    name: '가위바위보 토너먼트',
+    rule: '짝이 정해지면 동시에 내세요. 진 사람은 탈락합니다.',
+    scope: 'individual',
+    seconds: 120,
+    winner: '우승자 (또는 첫 탈락자 — 차시별 선택)',
+    options: { pick: { label: '누가 발표하는가', values: ['winner', 'firstOut'], default: 'winner' } },
+  },
+  sync: {
+    kind: 'sync',
+    name: '동시에 눌러라',
+    rule: '모둠원 전원이 「지금」을 누르세요. 누른 시각의 편차가 가장 작은 모둠이 발표합니다.',
+    scope: 'group',
+    seconds: 30,
+    winner: '편차가 가장 작은 모둠의 대표',
+    reaction: true,
+  },
+  sum: {
+    kind: 'sum',
+    name: '비밀 합',
+    rule: '말하지 말고 1에서 5 중 하나를 고르세요. 합이 서버가 정한 목표에 가장 가까운 모둠이 발표합니다.',
+    scope: 'group',
+    seconds: 30,
+    winner: '합이 목표에 가장 가까운 모둠의 대표',
+  },
+  relay: {
+    kind: 'relay',
+    name: '릴레이 단어',
+    rule: '모둠원이 순서대로 한 글자씩 넣어 여섯 글자 낱말을 완성하세요. 가장 빠른 모둠이 발표합니다.',
+    scope: 'group',
+    seconds: 60,
+    winner: '가장 먼저 완성한 모둠의 대표',
+  },
+  bingo: {
+    kind: 'bingo',
+    name: '빙고',
+    rule: '3×3 판의 항목을 서버가 하나씩 뽑습니다. 먼저 한 줄을 만든 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 120,
+    winner: '첫 빙고',
+  },
+  estimate: {
+    kind: 'estimate',
+    name: '추정',
+    rule: '오늘 모둠 질문에서 그 답을 고른 사람이 몇 명인지 맞히세요. 가장 가까운 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 30,
+    winner: '가장 가까운 사람',
+  },
+  flash: {
+    kind: 'flash',
+    name: '순간 포착',
+    rule: '화면이 초록으로 바뀌는 순간 누르세요. 가장 빨리(또는 늦게) 누른 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 30,
+    winner: '가장 빠른 사람 (또는 가장 늦은 사람 — 차시별 선택)',
+    reaction: true,
+    options: { pick: { label: '누가 발표하는가', values: ['fastest', 'slowest'], default: 'fastest' } },
+  },
+  lumi: {
+    kind: 'lumi',
+    name: '루미 런',
+    rule: '루미와 함께 달립니다. 몇 등이 발표자가 될지는 결과 때 알려드립니다.',
+    scope: 'individual',
+    seconds: 180,
+    winner: '미리 정한 등수 (결과 때만 공개)',
+    landscape: true,
+    options: { map: { label: '코스', values: ['1', '2', '3', '4', '5'], default: '1' } },
+  },
+  ladder: {
+    kind: 'ladder',
+    name: '사다리타기',
+    rule: '자리를 하나 고르세요. 강사가 결과를 열면 사다리를 타고 내려갑니다.',
+    scope: 'individual',
+    seconds: 90,
+    winner: '발표 칸에 도착한 사람',
+    legacy: true,
+  },
+  envelope: {
+    kind: 'envelope',
+    name: '발표자 선정 봉투',
+    rule: '봉투 하나를 고르세요. 열기 전에는 아무도 모릅니다.',
+    scope: 'individual',
+    seconds: 60,
+    winner: '발표 표시가 든 봉투를 고른 사람',
+    legacy: true,
+  },
+}
+
+/** 6.2 의 새 게임 12 + 루미 런 — 라이브러리 13종. 사다리·봉투는 1·2강에 유지되는 옛 게임이다 */
+export const LIBRARY_KINDS: GameKind[] = ['bomb', 'closest', 'doors', 'mine', 'late', 'rps', 'sync', 'sum', 'relay', 'bingo', 'estimate', 'flash', 'lumi']
+export const LEGACY_KINDS: GameKind[] = ['ladder', 'envelope']
+
+export function gameSpec(kind: GameKind): GameSpec {
+  return GAME_LIBRARY[kind]
+}
+
+/** 릴레이 단어에 쓰는 여섯 글자 낱말 — 과학 낱말이 아니다 */
+export const RELAY_WORDS = ['다람쥐도토리', '봄바람산책길', '고구마아이스', '바닷가모래성', '초록우산하나', '겨울밤귤껍질', '동네빵집냄새', '기차역대합실', '토요일늦잠꿈', '수박화채한통']

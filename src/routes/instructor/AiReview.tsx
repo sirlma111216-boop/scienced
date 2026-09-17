@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import { lessonIndex } from '@/content/courses'
+import { stepIdsOf } from '@/content/steps'
 import { useAuth } from '@/lib/auth'
-import type { AiLog, AiProposal } from '@/lib/types'
+import { courseOf } from '@/lib/lesson-data'
+import type { AiLog, AiProposal, ResponseDoc } from '@/lib/types'
+import { AiClusterPanel } from '@/components/teach/AiClusterPanel'
 import { AppShell } from '@/components/layout/AppShell'
 import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
 
@@ -27,8 +31,18 @@ const TASK_LABEL: Record<string, string> = {
 }
 
 export function InstructorAiReview() {
-  const { user, repo, isInstructor, classId } = useAuth()
+  const { user, repo, isInstructor, classId, currentClass } = useAuth()
+  const courseId = courseOf(currentClass)
   const [list, setList] = useState<AiProposal[]>([])
+  /* 응답 유형 묶기 — 8차: 수업 화면에서 뺐다. 검토대 안에서 단계를 골라 요청한다 */
+  const [clusterKey, setClusterKey] = useState('')
+  const [clusterDocs, setClusterDocs] = useState<ResponseDoc[]>([])
+  const clusterOptions = lessonIndex(courseId).flatMap((l) => stepIdsOf(l.layout).filter((s) => s !== 'concepts' && s !== 'concepts-2').map((s) => ({ key: `${l.id}/${s}`, label: `${Number(l.id)}강 ${l.title} · ${s}` })))
+  useEffect(() => {
+    if (!repo || !classId || !clusterKey) return
+    const [lid, sid] = clusterKey.split('/')
+    return repo.watchAllResponses(classId, lid, sid, setClusterDocs)
+  }, [repo, classId, clusterKey])
   const [logs, setLogs] = useState<AiLog[]>([])
   const [filter, setFilter] = useState<'pending' | 'accepted' | 'rejected' | 'all'>('pending')
   const [drafts, setDrafts] = useState<Record<string, string>>({})
@@ -164,6 +178,34 @@ export function InstructorAiReview() {
         </Card>
       </div>
 
+      {/* 응답 유형 묶기 — 제안 만들기 */}
+      <div style={{ marginTop: 32 }}>
+        <Card>
+          <h2 className="text-card-title" style={{ margin: '0 0 8px' }}>
+            응답 유형 묶기 요청
+          </h2>
+          <Caption>단계를 고르면 익명 이유 문장만 모아 제안을 만든다. 만든 제안은 아래 검토 대기에 쌓인다.</Caption>
+          <div className="flex items-center gap-xs" style={{ marginTop: 12, flexWrap: 'wrap' }}>
+            <label htmlFor="cluster-step" className="text-body-sm" style={{ fontWeight: 480 }}>
+              단계
+            </label>
+            <select id="cluster-step" className="field" style={{ maxWidth: 420 }} value={clusterKey} onChange={(e) => setClusterKey(e.target.value)}>
+              <option value="">고르기</option>
+              {clusterOptions.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {clusterKey && classId ? (
+            <div style={{ marginTop: 16 }}>
+              <AiClusterPanel classId={classId} lessonId={clusterKey.split('/')[0]} stepId={clusterKey.split('/')[1]} stepTitle={clusterOptions.find((o) => o.key === clusterKey)?.label ?? clusterKey} docs={clusterDocs} proposals={list} />
+            </div>
+          ) : null}
+        </Card>
+      </div>
+
       <div className="flex flex-wrap gap-xs" style={{ marginTop: 32 }}>
         {(
           [
@@ -206,7 +248,7 @@ export function InstructorAiReview() {
                 <div className="flex items-center gap-xs" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
                   <Badge solid>{TASK_LABEL[p.taskId] ?? p.taskId}</Badge>
                   <Badge>
-                    {p.lessonId}강 · {p.stepId}
+                    {Number(p.lessonId)}강 · {p.stepId}
                   </Badge>
                   <Badge>
                     {p.status === 'pending' ? '검토 대기' : p.status === 'accepted' ? '채택함' : '거부함'}
