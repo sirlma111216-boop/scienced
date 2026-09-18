@@ -29,6 +29,13 @@ export const METHOD_INDEX: LessonIndexEntry[] = [
   idx('09', 9, '과학·공학 실행과 모형 기반 탐구', '학생의 모형이 새 자료와 어긋날 때 교사는 무엇을 먼저 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('10', 10, '교수·학습 모형을 선택하고 변형하기', '수업 조건이 바뀌었을 때 교수·학습 모형에서 무엇을 남기고 무엇을 빼는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('11', 11, '설명·비유·모형·표상으로 이해시키기', '비유는 어디까지 쓰고 어디서 멈춰야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('12', 12, '질문·토론·과학적 논증', '학생들이 결론만 주고받을 때 교사는 다음 한마디로 무엇을 요구해야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('13', 13, 'SSI·기후위기·의사결정', '학생이 「선생님은 어느 쪽이에요」라고 물을 때 교사는 무엇을 먼저 해야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('14', 14, '협동적이고 포용적인 과학 교실', '한 학생이 다 하고도 결과가 좋은 모둠에 교사는 무엇을 먼저 넣어야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('15', 15, '학습을 움직이는 형성평가', '학생 답의 분포를 본 뒤 교사는 다음 시간을 어디에 얼마나 써야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('16', 16, '같은 보고서에 다른 점수가 나올 때', '같은 학생 보고서에 교사마다 다른 점수를 줄 때 무엇을 고쳐야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('17', 17, 'AI 가 쓴 답을 학생이 그대로 냈을 때', 'AI 가 만든 설명을 학생이 자기 답으로 냈을 때 교사는 무엇부터 시켜야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('18', 18, '같은 수업을 다시 할 때 무엇부터 고치는가', '학생의 반응을 보고 같은 수업을 다시 할 때 무엇부터 고쳐야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
 ]
 
 const loaders: Record<string, () => Promise<{ lesson: Lesson }>> = {
@@ -43,6 +50,13 @@ const loaders: Record<string, () => Promise<{ lesson: Lesson }>> = {
   '09': () => import('./lesson09'),
   '10': () => import('./lesson10'),
   '11': () => import('./lesson11'),
+  '12': () => import('./lesson12'),
+  '13': () => import('./lesson13'),
+  '14': () => import('./lesson14'),
+  '15': () => import('./lesson15'),
+  '16': () => import('./lesson16'),
+  '17': () => import('./lesson17'),
+  '18': () => import('./lesson18'),
 }
 
 export async function loadMethodLesson(id: LessonId): Promise<Lesson | undefined> {
