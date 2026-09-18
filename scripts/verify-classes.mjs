@@ -90,7 +90,7 @@ import { fail, pass, report, walk } from './_report.mjs'
   for (const file of files) {
     const text = await readFile(file, 'utf8')
     if (!/rosterName/.test(text)) continue
-    // roster 를 다루는 곳과 명단 화면, 타입 정의, 그리고 진행 콘솔(강사 전용 경로 · 발표 모드에서는 닉네임만 — 7차 작업 S)만 허용한다.
+    // roster 를 다루는 곳과 명단 화면, 타입 정의, 그리고 진행 콘솔(강사 전용 경로 · 실명 가리기에서는 닉네임만 — 7차 작업 S)만 허용한다.
     const allowed =
       /roster/i.test(file) ||
       /components[\\/]teach[\\/]names\.tsx$/.test(file) ||

@@ -2,12 +2,11 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useRef, useState, type ReactNode } from 'react'
 import { buildShortName } from '@/content/classes'
 import { useAuth } from '@/lib/auth'
-import { Badge, Button, usePresent } from '@/components/ui'
+import { Badge, Button } from '@/components/ui'
 
 /**
- * 상단바 + 단계 네비게이션 + 발표 모드 토글.
+ * 상단바 + 단계 네비게이션.
  *
- * 발표 모드는 별도 경로가 아니라 상단바 토글이다.
  * 로컬 저장으로 떨어졌을 때만 알린다. 정상일 때는 띄우지 않는다 —
  * 늘 맞는 말은 정보가 아니라 잡음이다.
  */
@@ -149,7 +148,6 @@ export function AppShell({
 }) {
   const { user, mode, isInstructor, signOut, currentClass, classes, myClassIds, selectClass } =
     useAuth()
-  const { present, toggle } = usePresent()
   const navigate = useNavigate()
   const [switching, setSwitching] = useState(false)
 
@@ -279,17 +277,6 @@ export function AppShell({
             강의 중에 그것을 모르면 화면이 왜 비었는지 알 길이 없다.
           */}
           {mode === 'local' ? <Badge>로컬 저장</Badge> : null}
-
-          {/* 발표 모드는 화면을 띄워 놓고 쓰는 기능이다. 손전화 폭에서는 자리만 차지한다. */}
-          <button
-            type="button"
-            className="tab hidden md:inline-flex"
-            data-selected={present}
-            aria-pressed={present}
-            onClick={toggle}
-          >
-            발표 모드
-          </button>
 
           {isInstructor ? (
             <Button variant="secondary" onClick={() => navigate('/instructor/classes')}>

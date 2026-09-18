@@ -17,7 +17,7 @@ const CHECKS = [
   ['verify:api', '서버 호출에 인증 토큰이 붙는가 · 열린 서버 함수가 없는가'],
   ['verify:games', '게임 라이브러리 15종 · 계산 · 배치 6.4 · 서버 시각 · 단추'],
   ['verify:groups', '질문 은행 · 모둠 데이터 형식 · 모의 실행 · 접근성'],
-  ['verify:teach', '등록표 · 같은 부품 · 단추 여섯 · 발표 모드 실명 · /live 없음'],
+  ['verify:teach', '등록표 · 같은 부품 · 단추 다섯 · 실명 가리기 · 발표 모드·단계 시간 없음 · /live 없음'],
   ['verify:modules', 'AI 교사 검토 관문'],
   ['verify:a11y', '드래그 전용 없음 · 포커스 · 대체 텍스트 · reduced-motion'],
   ['verify:publish', '시드 공개 차시 · 보안 규칙 · 내용 전송'],

@@ -141,6 +141,10 @@ export function studentStrings(lesson) {
       push(`${where}.${c.id}.inClass`, c.inClass, false)
       for (const k of c.keyPoints ?? []) push(`${where}.${c.id}.keyPoint`, k)
       push(`${where}.${c.id}.confusedWith`, c.confusedWith)
+      if (c.check) {
+        push(`${where}.${c.id}.check.prompt`, c.check.prompt)
+        for (const o of c.check.options ?? []) push(`${where}.${c.id}.check.option`, o)
+      }
       if (c.more) {
         push(`${where}.${c.id}.more.title`, c.more.title)
         push(`${where}.${c.id}.more.body`, c.more.body)

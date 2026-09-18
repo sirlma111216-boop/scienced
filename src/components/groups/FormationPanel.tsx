@@ -25,7 +25,8 @@ import { Badge, Button, Caption, Card, ScrollX } from '@/components/ui'
  * 강사 — 한 차시의 모둠 나누기: 질문 → 학생 선택 → 서버 배정 → 미리보기·옮기기 → 확정 (8차 5.2).
  *
  * 수업 화면(/teach)의 「모둠 나누기」와 모둠 관리 화면이 같은 부품을 쓴다.
- * 결석자 체크·늦게 온 학생·반드시 같이/따로·동석 기록은 6차 그대로. 게임만 질문으로 바뀌었다.
+ * 결석자 체크·늦게 온 학생·동석 기록은 6차 그대로. 게임만 질문으로 바뀌었다.
+ * 「반드시 같이/따로」 고정 규칙은 강의자 지시로 뺐다 (2026-09-18).
  */
 
 type Preview = {
@@ -61,10 +62,6 @@ export function FormationPanel({
   const { repo, user } = useAuth()
   const [inputs, setInputs] = useState<GroupInput[]>([])
   const [absent, setAbsent] = useState<Set<string>>(new Set())
-  const [together, setTogether] = useState<Array<[string, string]>>([])
-  const [apart, setApart] = useState<Array<[string, string]>>([])
-  const [ruleA, setRuleA] = useState('')
-  const [ruleB, setRuleB] = useState('')
   const [preview, setPreview] = useState<Preview | null>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -112,15 +109,6 @@ export function FormationPanel({
   const sizes = groupSizes(Math.max(attendees.length, groupCount), groupCount)
   const sizeText = sizes.length === 0 ? '' : Math.min(...sizes) === Math.max(...sizes) ? `${sizes[0]}명` : `${Math.min(...sizes)}~${Math.max(...sizes)}명`
 
-  function addRule(kind: 'together' | 'apart') {
-    if (!ruleA || !ruleB || ruleA === ruleB) return
-    const pair: [string, string] = [ruleA, ruleB]
-    if (kind === 'together') setTogether((l) => [...l, pair])
-    else setApart((l) => [...l, pair])
-    setRuleA('')
-    setRuleB('')
-  }
-
   async function run() {
     if (!repo || !user || !roundNo) return
     setBusy(true)
@@ -138,8 +126,6 @@ export function FormationPanel({
         round: roundNo,
         roundsAhead: lessons.length - roundNo + 1,
         inputs: inputs.filter((i) => i.questionId === question.id),
-        mustTogether: together,
-        mustApart: apart,
         plannedRemaining: decodePlan(prev?.plannedNext),
         planStale: prev ? !prev.followedPlan : false,
       })
@@ -314,58 +300,6 @@ export function FormationPanel({
             </li>
           ))}
         </ul>
-      </div>
-
-      <div style={{ marginTop: 20 }}>
-        <Caption>고정 규칙</Caption>
-        <div className="flex items-center gap-xs" style={{ marginTop: 8, flexWrap: 'wrap' }}>
-          <select className="field" style={{ width: 160 }} value={ruleA} onChange={(e) => setRuleA(e.target.value)} aria-label="첫 번째 사람">
-            <option value="">사람 고르기</option>
-            {students.map((s) => (
-              <option key={s.uid} value={s.uid}>
-                {s.nickname || '이름 없음'}
-              </option>
-            ))}
-          </select>
-          <select className="field" style={{ width: 160 }} value={ruleB} onChange={(e) => setRuleB(e.target.value)} aria-label="두 번째 사람">
-            <option value="">사람 고르기</option>
-            {students.map((s) => (
-              <option key={s.uid} value={s.uid}>
-                {s.nickname || '이름 없음'}
-              </option>
-            ))}
-          </select>
-          <Button variant="secondary" onClick={() => addRule('together')}>
-            반드시 같이
-          </Button>
-          <Button variant="secondary" onClick={() => addRule('apart')}>
-            반드시 따로
-          </Button>
-        </div>
-        {together.length + apart.length > 0 ? (
-          <ul className="flex flex-wrap gap-xs" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
-            {together.map(([a, b], i) => (
-              <li key={`t${i}`}>
-                <Badge solid>
-                  같이 · {nameOf[a]} + {nameOf[b]}
-                </Badge>{' '}
-                <button type="button" className="btn-tertiary" style={{ minHeight: 28, fontSize: 12 }} onClick={() => setTogether((l) => l.filter((_, j) => j !== i))}>
-                  빼기
-                </button>
-              </li>
-            ))}
-            {apart.map(([a, b], i) => (
-              <li key={`a${i}`}>
-                <Badge>
-                  따로 · {nameOf[a]} / {nameOf[b]}
-                </Badge>{' '}
-                <button type="button" className="btn-tertiary" style={{ minHeight: 28, fontSize: 12 }} onClick={() => setApart((l) => l.filter((_, j) => j !== i))}>
-                  빼기
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
       </div>
 
       <div className="flex items-center gap-md" style={{ marginTop: 20, flexWrap: 'wrap' }}>

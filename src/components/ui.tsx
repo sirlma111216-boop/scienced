@@ -1,9 +1,6 @@
 import {
-  createContext,
-  useContext,
   useEffect,
   useId,
-  useMemo,
   useState,
   type ButtonHTMLAttributes,
   type CSSProperties,
@@ -16,31 +13,6 @@ import {
  * DESIGN.md 를 따른다. 버튼은 전부 알약, 아이콘 버튼은 전부 원, 색 블록이 그림자를 대신한다.
  * 여기 없는 색·간격·반경은 쓰지 않는다.
  */
-
-/* ─────────────────────────── 발표 모드 ─────────────────────────── */
-
-interface PresentState {
-  present: boolean
-  toggle: () => void
-}
-const PresentCtx = createContext<PresentState>({ present: false, toggle: () => {} })
-
-export function PresentProvider({ children }: { children: ReactNode }) {
-  const [present, setPresent] = useState(false)
-
-  useEffect(() => {
-    // 글자를 1.35배로 키운다. 학생 화면에는 진행 팁과 토론 타이머가 뜨지 않는다.
-    document.documentElement.style.setProperty('--present-scale', present ? '1.35' : '1')
-    return () => document.documentElement.style.setProperty('--present-scale', '1')
-  }, [present])
-
-  const value = useMemo(() => ({ present, toggle: () => setPresent((p) => !p) }), [present])
-  return <PresentCtx.Provider value={value}>{children}</PresentCtx.Provider>
-}
-
-export function usePresent() {
-  return useContext(PresentCtx)
-}
 
 /* ─────────────────────────── 버튼 ─────────────────────────── */
 

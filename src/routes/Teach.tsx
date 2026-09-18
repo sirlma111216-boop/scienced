@@ -12,17 +12,17 @@ import { MusicToggle } from '@/components/teach/MusicToggle'
 import { NamesProvider, Overlay, useNames } from '@/components/teach/names'
 import { Rich } from '@/components/theory/Rich'
 import { TheoryProvider } from '@/components/theory/TheoryContext'
-import { Badge, Button, Caption, usePresent } from '@/components/ui'
+import { Button, Caption } from '@/components/ui'
 
 /**
  * 강사 — 수업 화면 /teach/:classId/:lessonId (8차 7절). 화면 하나로 가르친다.
  *
- *   머리   ← 차시 목록 · 제목 · 단계 알약(가로 스크롤) · [발표 모드] · 실명 가리기 · 명단 n/N · 음악
+ *   머리   ← 차시 목록 · 제목 · 단계 알약(가로 스크롤) · 실명 가리기 · 명단 n/N · 음악
  *   본문   학생 화면과 같은 블록(LessonBody)에 조작부가 인라인으로 붙는다
  *
- * ★ 수업 중에 누르는 단추는 여섯 가지뿐이다 (7.3 · verify:teach):
- *   단계 열기 · 자료 공개 · 모둠 나누기 · 게임 시작 · 발표 모드 · 응답 펼치기(응답 n/N ▸ · 올라온 글 n ▸ · 모둠별 ▸)
- * 발표 모드는 화면 상태다 — 큰 글자, 실명 없음. 별도 경로가 없다.
+ * ★ 수업 중에 누르는 단추는 다섯 가지뿐이다 (7.3 · verify:teach — 발표 모드는 강의자 지시로 뺐다):
+ *   단계 열기 · 자료 공개 · 모둠 나누기 · 게임 시작 · 응답 펼치기(응답 n/N ▸ · 올라온 글 n ▸ · 모둠별 ▸)
+ * 화면을 띄울 때 실명은 「실명 가리기」로 가린다.
  */
 export function Teach() {
   const { classId = '', lessonId = '' } = useParams()
@@ -47,7 +47,6 @@ export function Teach() {
   const [hideNames, setHideNames] = useState(false)
   const [rosterOpen, setRosterOpen] = useState(false)
   const [formationOpen, setFormationOpen] = useState(false)
-  const { present, toggle } = usePresent()
 
   useEffect(() => {
     if (classId) void selectClass(classId)
@@ -135,9 +134,6 @@ export function Teach() {
               </span>
               <Caption>{cls?.displayName ?? classId}</Caption>
               <span className="flex-1" />
-              <button type="button" className="tab" data-selected={present} aria-pressed={present} onClick={toggle}>
-                발표 모드
-              </button>
               <label className="text-body-sm flex items-center gap-xxs">
                 <input type="checkbox" checked={hideNames} onChange={(e) => setHideNames(e.target.checked)} /> 실명 가리기
               </label>
@@ -163,7 +159,7 @@ export function Teach() {
                             {s.shortTitle}
                           </span>
                           <span className="step-name step-name-full" aria-hidden="true">
-                            {s.title} · {s.minutes}분
+                            {s.title}
                           </span>
                         </button>
                       </li>
@@ -202,7 +198,6 @@ export function Teach() {
                   <h2 className="text-headline" style={{ margin: 0 }}>
                     {step.title}
                   </h2>
-                  <Badge>{step.minutes}분</Badge>
                   {step.fields.length > 0 ? (
                     <Button variant={openSteps.includes(step.id) ? 'primary' : 'secondary'} aria-pressed={openSteps.includes(step.id)} onClick={() => void toggleStep(step.id)}>
                       단계 열기
@@ -239,7 +234,7 @@ export function Teach() {
   )
 }
 
-/** 명단 서랍 — 이 단계의 제출 여부. 실명은 NamesProvider 가 정한 대로만 (발표 모드면 닉네임) */
+/** 명단 서랍 — 이 단계의 제출 여부. 실명은 NamesProvider 가 정한 대로만 (실명 가리기면 닉네임) */
 function RosterList({ students, docs }: { students: Enrollment[]; docs: ResponseDoc[] }) {
   const { nameOf } = useNames()
   const done = new Set(docs.filter((d) => (d.latestV ?? 0) > 0).map((d) => d.uid))

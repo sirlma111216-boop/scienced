@@ -144,8 +144,6 @@ export interface RunAssignmentParams {
   round: number
   roundsAhead: number
   inputs: GroupInput[]
-  mustTogether: Array<[string, string]>
-  mustApart: Array<[string, string]>
   plannedRemaining?: string[][][]
   planStale?: boolean
 }
@@ -163,8 +161,6 @@ export async function runAssignment(p: RunAssignmentParams): Promise<AssignResul
     history: p.history,
     round: p.round,
     roundsAhead: p.roundsAhead,
-    mustTogether: p.mustTogether,
-    mustApart: p.mustApart,
     categories: cat.categories,
     categoryMode: Object.keys(cat.categories).length > 0 ? cat.mode : 'none',
     plannedRemaining: p.plannedRemaining,

@@ -1,12 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { AppUser, Enrollment, ResponseDoc, RosterEntry } from '@/lib/types'
-import { usePresent } from '@/components/ui'
 
 /**
  * 진행 콘솔의 공용 부품 (7차).
  *
  *   NamesProvider / useNames  — 학생 이름. 기본은 강사가 적은 이름(rosterName), 없으면 닉네임.
- *                               발표 모드거나 「실명 가리기」가 켜지면 닉네임만 (작업 S).
+ *                               「실명 가리기」가 켜지면 닉네임만 (작업 S). 수업 화면을 띄울 때 켠다.
  *   Overlay                   — 화면을 떠나지 않고 위에 덮는 판 (모둠 · 뽑기 · 개인 화면 · 크게 띄우기)
  *   latestOf / payloadOf      — 응답 문서에서 마지막 버전을 꺼낸다
  */
@@ -14,7 +13,7 @@ import { usePresent } from '@/components/ui'
 interface Names {
   /** 화면에 적을 이름 */
   nameOf: (uid: string) => string
-  /** 닉네임만 (발표 모드 · 크게 띄우기) */
+  /** 닉네임만 */
   nicknameOf: (uid: string) => string
   /** 지금 실명이 가려져 있는가 */
   masked: boolean
@@ -36,18 +35,17 @@ export function NamesProvider({
   hideNames: boolean
   children: ReactNode
 }) {
-  const { present } = usePresent()
   const value = useMemo<Names>(() => {
     const nick = new Map<string, string>()
     for (const u of users) if (u.nickname) nick.set(u.uid, u.nickname)
     for (const e of enrollments) if (e.nickname && !nick.has(e.uid)) nick.set(e.uid, e.nickname)
     const real = new Map(roster.filter((r) => r.rosterName?.trim()).map((r) => [r.uid, r.rosterName.trim()]))
-    const masked = present || hideNames
+    const masked = hideNames
     const nicknameOf = (uid: string) => nick.get(uid) ?? '이름 없음'
-    /* 발표 모드에서는 실명을 읽지 않는다 — 스위치와 무관하게. 프로젝터에 실명이 나가면 안 된다 (작업 S). */
+    /* 가리기가 켜지면 실명을 읽지 않는다. 프로젝터에 실명이 나가면 안 된다 (작업 S). */
     const nameOf = (uid: string) => (masked ? nicknameOf(uid) : (real.get(uid) ?? nicknameOf(uid)))
     return { nameOf, nicknameOf, masked }
-  }, [users, enrollments, roster, hideNames, present])
+  }, [users, enrollments, roster, hideNames])
   return <NamesCtx.Provider value={value}>{children}</NamesCtx.Provider>
 }
 

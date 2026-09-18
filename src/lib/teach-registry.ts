@@ -7,14 +7,14 @@ import { buildSteps } from '@/content/steps'
  * 학생 화면과 강사 화면은 같은 블록 정의를 읽는다 — stepBlocks() 하나가 두 화면의 순서를 정한다.
  * 강사 화면은 블록 옆에 등록표가 정한 조작부만 인라인으로 그린다. 덮개 화면이 아니다.
  *
- * ★ 수업 중에 누르는 것은 여섯 가지뿐이다 (7.3). verify:teach 가 이 목록과 Teach.tsx 를 대조한다.
+ * ★ 수업 중에 누르는 것은 다섯 가지뿐이다 (7.3 — 발표 모드는 강의자 지시로 뺐다). verify:teach 가 이 목록과 Teach.tsx 를 대조한다.
  */
 
 export type BlockKind =
   | 'stimulus' // 읽을 것·볼 것 — 조작부 없음
   | 'stimulusReveal' // 강사가 공개해야 열리는 자료 — 자료 공개 / 되돌리기
   | 'field' // 학생이 쓰는 칸 — 응답 n/N ▸ 분포 또는 목록
-  | 'concepts' // 개념 카드 — 조작부 없음
+  | 'concepts' // 개념 카드 — 카드마다 잠깐 확인 응답 n/N ▸
   | 'wall' // ③ 공유 — 올라온 글 n ▸
   | 'group' // ④ 모둠 — 모둠별 ▸ (모둠 나누기는 도입 단계 머리에)
   | 'game' // ⑤ 게임 — 게임 시작 · 참가 n/N
@@ -27,7 +27,7 @@ export const CONTROLS: Record<BlockKind, ControlId[]> = {
   stimulus: [],
   stimulusReveal: ['reveal'],
   field: ['responses'],
-  concepts: [],
+  concepts: ['responses'],
   wall: ['wall'],
   group: ['group'],
   game: ['game'],
@@ -35,8 +35,8 @@ export const CONTROLS: Record<BlockKind, ControlId[]> = {
   more: [],
 }
 
-/** 7.3 — 수업 화면에 있는 단추 여섯 가지. 이 밖의 단추가 있으면 verify:teach 가 실패한다 */
-export const TEACH_BUTTONS = ['단계 열기', '자료 공개', '모둠 나누기', '게임 시작', '발표 모드', '응답 펼치기'] as const
+/** 7.3 — 수업 화면에 있는 단추 다섯 가지. 이 밖의 단추가 있으면 verify:teach 가 실패한다 */
+export const TEACH_BUTTONS = ['단계 열기', '자료 공개', '모둠 나누기', '게임 시작', '응답 펼치기'] as const
 
 export interface Block {
   /** `${stepId}:${kind}:${key}` */

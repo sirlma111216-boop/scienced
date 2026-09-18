@@ -120,6 +120,21 @@ export interface FieldDef {
 
 /* ─────────────────────────── 개념 카드 (4.4) ─────────────────────────── */
 
+/**
+ * 잠깐 확인 — 카드 아래 4지선다 하나 (강의자 지시 2026-09-18). 이유 칸은 없다.
+ *
+ * 카드의 기준을 장면에 써야 풀리는 물음이다. 정의를 되묻지 않는다.
+ * 보기 넷은 길이가 비슷해야 한다 — 긴 보기가 답이 되는 버릇을 만들지 않는다. verify:concepts 가 센다.
+ */
+export interface ConceptCheck {
+  /** 물음. 장면이나 진술을 주고 판단을 묻는다. 물음표로 끝난다 */
+  prompt: string
+  /** 보기 넷 */
+  options: [string, string, string, string]
+  /** 정답 보기의 자리 0~3 */
+  answer: 0 | 1 | 2 | 3
+}
+
 /** 카드 하나는 화면 한 장이다. 넘길 층이 없다. */
 export interface KeyConcept {
   id: string
@@ -138,6 +153,8 @@ export interface KeyConcept {
   keyPoints: [string, string, string]
   /** 흔히 섞어 쓰는 것과의 차이. 한두 문장. 필요할 때만 */
   confusedWith?: string
+  /** 잠깐 확인 — 카드마다 하나. 검토 문서의 「확인」 블록에서 sync:checks 가 옮긴다 */
+  check: ConceptCheck
   /** 수업 뒤에 읽는 글 한 편. 접혀 있다 */
   more?: { title: string; body: string }
 }
@@ -298,7 +315,6 @@ export interface Step {
   title: string
   /** 단계 알약에 쓰는 짧은 이름 */
   shortTitle: string
-  minutes: number
   material: Stimulus[]
   fields: FieldDef[]
   concepts: KeyConcept[]

@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, needsSetup, useAuth } from '@/lib/auth'
-import { PresentProvider } from '@/components/ui'
 import { Login } from '@/routes/Login'
 import { ResetPassword } from '@/routes/ResetPassword'
 import { Home } from '@/routes/Home'
@@ -73,7 +72,6 @@ function Guard({
 export function App() {
   return (
     <AuthProvider>
-      <PresentProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
@@ -200,7 +198,6 @@ export function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </PresentProvider>
     </AuthProvider>
   )
 }

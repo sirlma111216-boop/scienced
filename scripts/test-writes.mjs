@@ -205,6 +205,46 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   }
 }
 
+/* ── ⑥-b 잠깐 확인: 카드마다 고른 자리가 한 문서에 모이고, 강사가 분포를 읽는다 (강의자 지시 2026-09-18) ── */
+{
+  const { saveConceptCheck, checkChoices, checkTally } = await import('../src/lib/concept-check.ts')
+  const { loadAllLessons } = await import('../src/content/courses/index.ts')
+  const l01 = (await loadAllLessons('method')).find((l) => l.id === '01')
+  const [k1, k2] = l01.concepts
+  const repo2 = createFirestoreRepo(env.authenticatedContext(STUDENT2).firestore())
+  const teacher = createFirestoreRepo(env.authenticatedContext(TEACHER).firestore())
+  try {
+    /* 화면(StudentConceptCards)과 같은 순서 — 앞 답을 담아 뒤 답을 낸다 */
+    let prev = checkChoices(await studentRepo.getResponse(CID, '01', 'concepts', STUDENT))
+    prev = await saveConceptCheck(studentRepo, { classId: CID, lessonId: '01', stepId: 'concepts', uid: STUDENT, prev, conceptId: k1.id, choice: k1.check.answer })
+    prev = await saveConceptCheck(studentRepo, { classId: CID, lessonId: '01', stepId: 'concepts', uid: STUDENT, prev, conceptId: k2.id, choice: (k2.check.answer + 1) % 4 })
+    await saveConceptCheck(repo2, { classId: CID, lessonId: '01', stepId: 'concepts', uid: STUDENT2, prev: {}, conceptId: k1.id, choice: (k1.check.answer + 2) % 4 })
+    const mine = checkChoices(await studentRepo.getResponse(CID, '01', 'concepts', STUDENT))
+    /* 강사는 화면이 쓰는 구독으로 읽는다 */
+    const docs = await new Promise((resolve) => {
+      const off = teacher.watchAllResponses(CID, '01', 'concepts', (d) => {
+        if (d.length >= 2) {
+          off()
+          resolve(d)
+        }
+      })
+    })
+    const t1 = checkTally(docs, k1.id)
+    const t2 = checkTally(docs, k2.id)
+    let peeked = false
+    try {
+      await repo2.getResponse(CID, '01', 'concepts', STUDENT)
+      peeked = true
+    } catch { /* 막혀야 한다 */ }
+    if (mine[k1.id] !== k1.check.answer || mine[k2.id] !== (k2.check.answer + 1) % 4) fail('잠깐 확인', `둘째 답을 낸 뒤 첫째 답이 남지 않았다 — ${JSON.stringify(mine)}`)
+    else if (t1.answered !== 2 || t1.counts[k1.check.answer] !== 1 || t2.answered !== 1 || t2.counts[k2.check.answer] !== 0) fail('잠깐 확인', `강사 분포가 맞지 않다 — ${JSON.stringify({ t1, t2 })}`)
+    else if (peeked) fail('잠깐 확인', '학생이 남의 확인 답을 읽었다 — 규칙이 막아야 한다')
+    else pass('잠깐 확인', `카드 두 장의 답이 한 문서에 모이고(앱의 saveConceptCheck), 강사 분포가 맞다 — 1번 카드 ${t1.answered}명 중 맞힘 ${t1.counts[k1.check.answer]} · 남의 답은 못 읽는다`)
+  } catch (err) {
+    fail('잠깐 확인', `막힌다 — ${err.message}`)
+  }
+}
+
 /* ── ⑦ 모둠 데이터(8차 4.6): 제출한 사람의 값이 모둠에 모이고 평균이 맞는가 ── */
 {
   const repo2 = createFirestoreRepo(env.authenticatedContext(STUDENT2).firestore())
@@ -454,10 +494,13 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
       gone('응답', `classes/${CID}/lessons/01/steps/${STEP}/responses/${STUDENT}`),
       gone('의견 글', `classes/${CID}/lessons/01/steps/${STEP}/posts/${STUDENT}`),
       gone('모둠 자리', `classes/${CID}/lessons/01/steps/${STEP}/groupshares/${STUDENT}`),
+      /* ⑥-b 에서 남긴 잠깐 확인의 답 — 개념 단계도 치운다 */
+      gone('잠깐 확인 답', `classes/${CID}/lessons/01/steps/concepts/responses/${STUDENT}`),
       /* ★ 계정은 남아야 한다. 다른 학기 수강도 그대로다. */
       kept('계정', `users/${STUDENT}`),
       /* 같은 클래스의 다른 사람 자료는 건드리지 않는다 */
       kept('다른 수강생 등록', `classes/${CID}/enrollments/${STUDENT2}`),
+      kept('다른 수강생 잠깐 확인 답', `classes/${CID}/lessons/01/steps/concepts/responses/${STUDENT2}`),
     ])
     if (checks.every(Boolean)) {
       pass('내보내기', '이 클래스의 등록·응답·의견·모둠 자리만 사라지고, 계정과 남은 사람은 그대로다')

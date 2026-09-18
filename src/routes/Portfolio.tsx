@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { lessonIndex } from '@/content/courses'
-import { stepIdsOf } from '@/content/steps'
+import { isConceptStepId, stepIdsOf } from '@/content/steps'
 import type { LessonId } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
@@ -12,6 +12,7 @@ import { Badge, Button, Caption, ColorBlock } from '@/components/ui'
  * 포트폴리오 — 차시마다 낸 답이 그대로 남는다.
  *
  * 내용 파일을 불러오지 않는다. 색인의 골격(stepIdsOf)과 옛 단계 id(legacyStepIds)만으로 응답 경로를 안다.
+ * 개념 단계는 뺀다 — 잠깐 확인의 답(보기 자리)만 있어 내용 없이는 읽을 수 없다.
  * 공개된 차시만 구독한다 — 규칙이 미공개 차시의 응답 읽기를 막으므로 헛된 구독을 만들지 않는다.
  */
 const STEP_LABEL: Record<string, string> = { intro: '도입', concepts: '개념', activity: '활동', 'concepts-2': '개념 2부', 'activity-2': '활동 2', wrapup: '정리' }
@@ -35,7 +36,7 @@ export function Portfolio() {
     if (!repo || !user || !classId) return
     const unsubs: Array<() => void> = []
     for (const l of visible) {
-      for (const s of [...stepIdsOf(l.layout), ...(l.legacyStepIds ?? [])]) {
+      for (const s of [...stepIdsOf(l.layout).filter((x) => !isConceptStepId(x)), ...(l.legacyStepIds ?? [])]) {
         unsubs.push(
           repo.watchResponse(classId, l.id, s, user.uid, (d: ResponseDoc | null) => {
             if (!d || (d.latestV ?? 0) === 0) return
@@ -95,7 +96,7 @@ export function Portfolio() {
       ) : (
         <div className="flex flex-col gap-xl" style={{ marginTop: 48 }}>
           {visible.map((l) => {
-            const ids = [...stepIdsOf(l.layout), ...(l.legacyStepIds ?? [])]
+            const ids = [...stepIdsOf(l.layout).filter((x) => !isConceptStepId(x)), ...(l.legacyStepIds ?? [])]
             const rows = ids.map((s) => ({ stepId: s, doc: byStep[`${l.id}/${s}`] })).filter((r) => r.doc)
             if (rows.length === 0) return null
             return (

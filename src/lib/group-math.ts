@@ -65,7 +65,7 @@ export function sortTally(field: FieldDef, members: MemberValue[]): Array<{ id: 
   })
 }
 
-/** 모둠 값의 요약 한 줄 — 발표 모드 큰 화면과 검사에 쓴다 */
+/** 모둠 값의 요약 한 줄 — 검사에 쓴다 */
 export function summarize(format: GroupFormat, field: FieldDef, members: MemberValue[]): string {
   if (members.length === 0) return '아직 낸 사람이 없다'
   switch (format) {

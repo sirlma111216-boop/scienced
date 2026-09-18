@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { CourseId, FieldDef, Lesson, LessonId, Step } from '@/content/types'
+import type { CourseId, FieldDef, KeyConcept, Lesson, LessonId, Step } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { allocationAverage, rankSum, sortTally, voteCounts, type MemberValue } from '@/lib/group-math'
+import { OPTION_MARK, checkTally } from '@/lib/concept-check'
 import { stepBlocks, type Block } from '@/lib/teach-registry'
 import type { Enrollment, GroupRound, GroupShare, GroupValue, Participation, Post, ResponseDoc, SessionState } from '@/lib/types'
-import { Badge, Button, Caption, ScrollX, usePresent } from '@/components/ui'
+import { Badge, Button, Caption, ScrollX } from '@/components/ui'
 import { ConceptCard, KeyPoints } from '@/components/concept/ConceptCard'
+import { StudentConceptCards } from '@/components/concept/ConceptCheck'
 import { LockedCard, StimulusView } from '@/components/stimulus/StimulusView'
 import { DistributionView } from '@/components/response/DistributionView'
 import { ResponseCollector } from '@/components/response/ResponseCollector'
@@ -20,7 +22,7 @@ import { payloadOf, submitted as isSubmitted } from '@/components/teach/names'
  * 한 단계의 본문 — 학생 화면과 강사 수업 화면이 같은 부품이다 (8차 7절).
  *
  * 블록 순서는 teach-registry 의 stepBlocks() 하나가 정한다. 강사(teacher prop)면 블록 옆에 등록표가 정한 조작부만 붙는다:
- *   stimulusReveal → [자료 공개] · field → 「응답 n/N ▸」 · wall → 「올라온 글 n ▸」 · group → 「모둠별 ▸」 · game → [게임 시작]
+ *   stimulusReveal → [자료 공개] · concepts → 잠깐 확인 「응답 n/N ▸」 · field → 「응답 n/N ▸」 · wall → 「올라온 글 n ▸」 · group → 「모둠별 ▸」 · game → [게임 시작]
  * 학생의 쓰는 칸은 강사가 「단계 열기」를 누른 뒤에만 열린다 (session.openSteps).
  */
 export interface TeacherView extends TeacherGameProps {
@@ -84,10 +86,13 @@ export function LessonBody({
             return open ? <StimulusView key={b.id} stimulus={b.material!} /> : <LockedCard key={b.id} title={b.material!.title} message={b.material!.gate?.lockedMessage ?? '강사가 공개하면 열린다.'} />
           }
           case 'concepts':
+            if (!teacher) return <StudentConceptCards key={b.id} classId={classId} lessonId={lesson.id} step={step} />
             return (
               <div key={b.id} className="flex flex-col" style={{ gap: 48 }}>
                 {step.concepts.map((c, j) => (
-                  <ConceptCard key={c.id} concept={c} index={j} />
+                  <ConceptCard key={c.id} concept={c} index={j}>
+                    <TeacherCheck concept={c} docs={teacher.docs} students={teacher.students} nameOf={teacher.nameOf} />
+                  </ConceptCard>
                 ))}
               </div>
             )
@@ -157,10 +162,49 @@ function Control({ children }: { children: ReactNode }) {
   )
 }
 
+/* ─────────────────────────── 강사 — 잠깐 확인 응답 n/N ▸ ─────────────────────────── */
+
+/** 물음과 보기는 펼쳐 두고, 정답과 분포는 접어 둔다 — 띄운 화면에 정답이 먼저 나오지 않게 */
+function TeacherCheck({ concept, docs, students, nameOf }: { concept: KeyConcept; docs: ResponseDoc[]; students: Enrollment[]; nameOf: (uid: string) => string }) {
+  const check = concept.check
+  if (!check) return null
+  const t = checkTally(docs, concept.id)
+  return (
+    <section aria-label="잠깐 확인" className="bg-canvas rounded-md" style={{ padding: '14px 18px', marginTop: 20, boxShadow: 'inset 0 0 0 2px #000' }}>
+      <Caption>잠깐 확인</Caption>
+      <p className="text-body" style={{ margin: '6px 0 8px', fontWeight: 480 }}>
+        {check.prompt}
+      </p>
+      <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        {check.options.map((o, i) => (
+          <li key={i} className="text-body" style={{ marginBottom: 4 }}>
+            <span className="font-mono">{OPTION_MARK[i]}</span> {o}
+          </li>
+        ))}
+      </ol>
+      <details style={{ marginTop: 12 }}>
+        <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 480 }}>
+          응답 {t.answered}/{students.length} ▸
+        </summary>
+        <p className="text-body-sm" style={{ margin: '8px 0', fontWeight: 480 }}>
+          정답 {OPTION_MARK[check.answer]} · 맞힘 {t.counts[check.answer]}/{t.answered}
+        </p>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {t.counts.map((n, i) => (
+            <li key={i} className="text-body-sm" style={{ marginBottom: 4 }}>
+              <strong className="font-mono">{OPTION_MARK[i]}</strong> {n}명{i === check.answer ? ' · 정답' : ''}
+              {t.byOption[i].length > 0 ? <span style={{ opacity: 0.7 }}> — {t.byOption[i].map(nameOf).join(', ')}</span> : null}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </section>
+  )
+}
+
 /* ─────────────────────────── 강사 — 응답 n/N ▸ ─────────────────────────── */
 
 function TeacherResponses({ block, field, docs, students, nameOf }: { block: Block; field: FieldDef; docs: ResponseDoc[]; students: Enrollment[]; nameOf: (uid: string) => string }) {
-  const { present } = usePresent()
   const done = docs.filter((d) => isSubmitted(d) && payloadOf(d)[field.key] !== undefined)
   const members: MemberValue[] = done.map((d) => ({ uid: d.uid, nickname: nameOf(d.uid), value: payloadOf(d)[field.key], reason: block.reasonKey ? String(payloadOf(d)[block.reasonKey] ?? '') : undefined }))
   const missing = students.filter((s) => !done.some((d) => d.uid === s.uid))
@@ -173,15 +217,15 @@ function TeacherResponses({ block, field, docs, students, nameOf }: { block: Blo
         {field.kind === 'choice' || field.kind === 'multi' ? (
           <DistributionView docs={done} field={field} reasonKey={block.reasonKey} totalExpected={students.length} />
         ) : null}
-        <ResponseTable field={field} members={members} big={present} />
+        <ResponseTable field={field} members={members} />
         {missing.length > 0 ? <Caption>미제출 · {missing.map((s) => nameOf(s.uid)).join(', ')}</Caption> : null}
       </div>
     </details>
   )
 }
 
-function ResponseTable({ field, members, big }: { field: FieldDef; members: MemberValue[]; big: boolean }) {
-  const cls = big ? 'text-body-lg' : 'text-body-sm'
+function ResponseTable({ field, members }: { field: FieldDef; members: MemberValue[] }) {
+  const cls = 'text-body-sm'
   if (members.length === 0)
     return (
       <p className="text-body-sm" style={{ opacity: 0.6, margin: 0 }}>
@@ -284,7 +328,6 @@ function ResponseTable({ field, members, big }: { field: FieldDef; members: Memb
 
 function TeacherWall({ classId, lessonId, stepId, prompt }: { classId: string; lessonId: LessonId; stepId: string; prompt: string }) {
   const { repo } = useAuth()
-  const { present } = usePresent()
   const [posts, setPosts] = useState<Post[]>([])
   useEffect(() => {
     if (!repo) return
@@ -306,7 +349,7 @@ function TeacherWall({ classId, lessonId, stepId, prompt }: { classId: string; l
       ) : (
         <div style={{ columnWidth: 300, columnGap: 16, marginTop: 12 }}>
           {list.map((p) => (
-            <WallCard key={p.id} post={p} big={present} />
+            <WallCard key={p.id} post={p} />
           ))}
         </div>
       )}
@@ -318,7 +361,6 @@ function TeacherWall({ classId, lessonId, stepId, prompt }: { classId: string; l
 
 function TeacherGroups({ classId, lessonId, stepId, group, field, groups, nameOf }: { classId: string; lessonId: LessonId; stepId: string; group: NonNullable<Step['activity']>['group']; field: FieldDef; groups: Array<{ id: string; name: string }>; nameOf: (uid: string) => string }) {
   const { repo } = useAuth()
-  const { present } = usePresent()
   const [shares, setShares] = useState<GroupShare[]>([])
   const [values, setValues] = useState<GroupValue[]>([])
   useEffect(() => {
@@ -331,12 +373,12 @@ function TeacherGroups({ classId, lessonId, stepId, group, field, groups, nameOf
     }
   }, [repo, classId, lessonId, stepId])
   return (
-    <details className="card" open={present}>
+    <details className="card">
       <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 480 }}>
         모둠별 ▸ <span className="caption">{shares.length}명 냈다</span>
       </summary>
       <div style={{ marginTop: 12 }}>
-        <GroupBoard group={group} field={field} groups={groups} shares={shares} values={values} nameOf={nameOf} big={present} />
+        <GroupBoard group={group} field={field} groups={groups} shares={shares} values={values} nameOf={nameOf} />
       </div>
     </details>
   )

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { KeyConcept } from '@/content/types'
 import { Badge, Caption, ColorBlock, type BlockTone } from '@/components/ui'
 import { Rich } from '@/components/theory/Rich'
@@ -5,14 +6,15 @@ import { Rich } from '@/components/theory/Rich'
 /**
  * 개념 카드 — 화면 한 장, 넘길 층이 없다 (8차 4.4).
  *
- *   이름 → 무엇인가(문단) → 왜 필요한가(문단) → 교실에서(문단) → 기준 3줄 → 헷갈리는 것 → (접힘) 더 읽기
+ *   이름 → 무엇인가(문단) → 왜 필요한가(문단) → 교실에서(문단) → 기준 3줄 → 헷갈리는 것 → 잠깐 확인 → (접힘) 더 읽기
  *
  * 쓰는 칸이 없다. 강사가 화면을 띄우고 설명한다.
+ * 잠깐 확인(4지선다, 이유 칸 없음)은 children 으로 받는다 — 학생은 푸는 칸, 강사는 분포 (강의자 지시 2026-09-18).
  */
 
 const TONES: BlockTone[] = ['lime', 'lilac', 'cream', 'mint']
 
-export function ConceptCard({ concept, index }: { concept: KeyConcept; index: number }) {
+export function ConceptCard({ concept, index, children }: { concept: KeyConcept; index: number; children?: ReactNode }) {
   const tone = TONES[index % TONES.length]
   return (
     <article id={`concept-${concept.id}`}>
@@ -35,6 +37,8 @@ export function ConceptCard({ concept, index }: { concept: KeyConcept; index: nu
             <strong>헷갈리는 것</strong> · <Rich text={concept.confusedWith} />
           </p>
         ) : null}
+
+        {children}
 
         {concept.more ? (
           <details style={{ marginTop: 16 }}>

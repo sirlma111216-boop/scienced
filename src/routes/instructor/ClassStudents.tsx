@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { lessonIndex } from '@/content/courses'
-import { stepIdsOf } from '@/content/steps'
+import { isConceptStepId, stepIdsOf } from '@/content/steps'
 import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
@@ -15,6 +15,7 @@ import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/com
  * 이름(실명)은 강사가 직접 적는다. `classes/{cid}/roster/{uid}` 에만 있고 규칙에서 강사만 읽을 수 있다.
  * Firestore 규칙은 필드 단위 읽기 제어를 하지 못한다 — enrollments 에 실명을 넣으면 학생 브라우저로 내려간다. 이 구조를 합치지 마라.
  * 제출 현황은 색인의 골격(stepIdsOf)과 옛 단계 id 만으로 센다 — 내용 파일을 불러오지 않는다.
+ * 개념 단계(잠깐 확인)는 쓰는 칸이 아니므로 세지 않는다.
  */
 
 type SortKey = 'studentId' | 'name' | 'unsubmitted'
@@ -74,7 +75,7 @@ export function InstructorClassStudents() {
     const unsubs: Array<() => void> = []
     const tally: Record<string, Set<string>> = {}
     for (const l of lessonIndex(courseId)) {
-      for (const s of [...stepIdsOf(l.layout), ...(l.legacyStepIds ?? [])]) {
+      for (const s of [...stepIdsOf(l.layout).filter((x) => !isConceptStepId(x)), ...(l.legacyStepIds ?? [])]) {
         unsubs.push(
           repo.watchAllResponses(classId, l.id, s, (docs: ResponseDoc[]) => {
             for (const d of docs) {
@@ -167,7 +168,7 @@ export function InstructorClassStudents() {
       <div style={{ marginTop: 24 }}>
         <Notice tone="cream">
           <p className="text-body-sm" style={{ margin: 0 }}>
-            <strong>이 이름은 강사 화면에만 보입니다.</strong> 의견 광장, 발표자 뽑기, 분포, 발표 모드 등 학생이 볼 수 있는 곳에는 닉네임만 나갑니다. 실명은 학생 브라우저로 내려가지 않습니다.
+            <strong>이 이름은 강사 화면에만 보입니다.</strong> 의견 광장, 발표자 뽑기, 분포 등 학생이 볼 수 있는 곳에는 닉네임만 나갑니다. 실명은 학생 브라우저로 내려가지 않습니다. 수업 화면을 띄울 때는 「실명 가리기」를 켜세요.
           </p>
         </Notice>
       </div>

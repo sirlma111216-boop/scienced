@@ -9,6 +9,18 @@
         "dev"
       ],
       "autoPort": true
+    },
+    {
+      "name": "science-lesson-studio-offline",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--mode",
+        "offline"
+      ],
+      "autoPort": true
     }
   ]
 }

@@ -3,9 +3,11 @@ import type { Activity, FieldDef, KeyConcept, Layout, Lesson, Step } from './typ
 /**
  * 골격 하나로 세 layout 을 그린다 (8차 4.1 · 4.2 · B-2).
  *
- *   method  도입 5 · 개념 15 · 활동 25 · 정리 5                       = 50
- *   edu80   도입 5 · 개념 15 · 활동 20 · 개념 15 · 활동 20 · 정리 5   = 80
- *   edu40   도입 5 · 개념 10 · 활동 20 · 정리 5                       = 40
+ *   method  도입 · 개념 · 활동 · 정리
+ *   edu80   도입 · 개념 · 활동 · 개념 2부 · 활동 2 · 정리
+ *   edu40   도입 · 개념 · 활동 · 정리
+ *
+ * 단계마다 시간을 정해 두지 않는다 — 진행 속도는 강의자가 그 자리에서 정한다 (강의자 지시 2026-09-18 · 3차 D).
  *
  * 단계 id 는 고정이다: intro · concepts · activity · concepts-2 · activity-2 · wrapup.
  * 응답은 이 id 아래에 저장된다. 옛 골격(step-open …)과 겹치지 않는다.
@@ -15,12 +17,6 @@ export const STEP_IDS: Record<Layout, string[]> = {
   method: ['intro', 'concepts', 'activity', 'wrapup'],
   edu80: ['intro', 'concepts', 'activity', 'concepts-2', 'activity-2', 'wrapup'],
   edu40: ['intro', 'concepts', 'activity', 'wrapup'],
-}
-
-export const LAYOUT_MINUTES: Record<Layout, Record<string, number>> = {
-  method: { intro: 5, concepts: 15, activity: 25, wrapup: 5 },
-  edu80: { intro: 5, concepts: 15, activity: 20, 'concepts-2': 15, 'activity-2': 20, wrapup: 5 },
-  edu40: { intro: 5, concepts: 10, activity: 20, wrapup: 5 },
 }
 
 /** 정리 칸의 key. 포트폴리오·검사가 같은 이름을 쓴다 */
@@ -36,14 +32,13 @@ export function introFields(lesson: Lesson): FieldDef[] {
   return [{ key: INTRO_KEY, kind: 'choice', label: i.prompt, required: true, options: i.options ?? [], requiresStimulus: [i.stimulus.id] }]
 }
 
-function activityStep(id: string, order: number, minutes: number, a: Activity, n: 1 | 2): Step {
+function activityStep(id: string, order: number, a: Activity, n: 1 | 2): Step {
   return {
     id,
     kind: 'activity',
     order,
     title: n === 1 ? '활동' : '활동 2',
     shortTitle: n === 1 ? '활동' : '활동 2',
-    minutes,
     material: [a.situation],
     fields: a.fields,
     concepts: [],
@@ -51,14 +46,13 @@ function activityStep(id: string, order: number, minutes: number, a: Activity, n
   }
 }
 
-function conceptStep(id: string, order: number, minutes: number, cs: KeyConcept[], n: 1 | 2): Step {
+function conceptStep(id: string, order: number, cs: KeyConcept[], n: 1 | 2): Step {
   return {
     id,
     kind: 'concepts',
     order,
     title: n === 1 ? '개념' : '개념 2부',
     shortTitle: n === 1 ? '개념' : '개념 2부',
-    minutes,
     material: [],
     fields: [],
     concepts: cs,
@@ -66,7 +60,6 @@ function conceptStep(id: string, order: number, minutes: number, cs: KeyConcept[
 }
 
 export function buildSteps(lesson: Lesson): Step[] {
-  const m = LAYOUT_MINUTES[lesson.layout]
   const steps: Step[] = [
     {
       id: 'intro',
@@ -74,17 +67,16 @@ export function buildSteps(lesson: Lesson): Step[] {
       order: 1,
       title: '도입',
       shortTitle: '도입',
-      minutes: m.intro,
       material: [lesson.intro.stimulus],
       fields: introFields(lesson),
       concepts: [],
     },
-    conceptStep('concepts', 2, m.concepts, lesson.concepts, 1),
-    activityStep('activity', 3, m.activity, lesson.activity, 1),
+    conceptStep('concepts', 2, lesson.concepts, 1),
+    activityStep('activity', 3, lesson.activity, 1),
   ]
   if (lesson.layout === 'edu80') {
-    steps.push(conceptStep('concepts-2', 4, m['concepts-2'], lesson.concepts2 ?? [], 2))
-    if (lesson.activity2) steps.push(activityStep('activity-2', 5, m['activity-2'], lesson.activity2, 2))
+    steps.push(conceptStep('concepts-2', 4, lesson.concepts2 ?? [], 2))
+    if (lesson.activity2) steps.push(activityStep('activity-2', 5, lesson.activity2, 2))
   }
   steps.push({
     id: 'wrapup',
@@ -92,7 +84,6 @@ export function buildSteps(lesson: Lesson): Step[] {
     order: steps.length + 1,
     title: '정리',
     shortTitle: '정리',
-    minutes: m.wrapup,
     material: [],
     fields: [{ key: WRAPUP_KEY, kind: 'longtext', label: lesson.wrapup.prompt, required: true }],
     concepts: [],
@@ -114,4 +105,9 @@ export function writingSlots(lesson: Lesson): number {
 /** 저장 경로를 만들 때 쓴다 — 내용을 불러오지 않고도 단계 id 를 안다 */
 export function stepIdsOf(layout: Layout): string[] {
   return STEP_IDS[layout]
+}
+
+/** 개념 단계 — 응답 문서에는 잠깐 확인의 답만 있다. 쓰는 칸이 아니므로 제출 현황·포트폴리오가 뺀다 */
+export function isConceptStepId(stepId: string): boolean {
+  return stepId === 'concepts' || stepId === 'concepts-2'
 }

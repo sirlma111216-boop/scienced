@@ -393,7 +393,7 @@ function LessonList({ classId, courseId, published, readOnly, onOpen }: { classI
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640, marginTop: 16 }}>
         <thead>
           <tr>
-            {['차시', '제목', '골격', '공개', ''].map((h) => (
+            {['차시', '제목', '공개', ''].map((h) => (
               <th key={h} scope="col" className="caption" style={{ textAlign: 'left', padding: '8px 12px 8px 0' }}>
                 {h}
               </th>
@@ -411,10 +411,6 @@ function LessonList({ classId, courseId, published, readOnly, onOpen }: { classI
                 <td className="text-body-sm" style={{ padding: '10px 12px 10px 0' }}>
                   {l.title}
                   <span style={{ display: 'block', opacity: 0.7 }}>{l.centralQuestion}</span>
-                </td>
-                <td className="text-body-sm" style={{ padding: '10px 12px 10px 0', whiteSpace: 'nowrap' }}>
-                  {/* wording-ok: 차시 골격의 길이 — 강사 목록에만 */}
-                  {l.layout === 'edu80' ? '80분' : l.layout === 'edu40' ? '40분' : '50분'}
                 </td>
                 <td style={{ padding: '10px 12px 10px 0' }}>
                   <label className="text-body-sm flex items-center gap-xxs">

@@ -61,6 +61,7 @@ pass('색인', '두 과목의 색인과 내용 파일이 id · 과목 · 골격 
       for (const k of conceptsOf(l)) {
         texts.push(['what', k.what])
         for (const p of k.keyPoints) texts.push(['기준', p])
+        if (k.check) texts.push(['확인', k.check.prompt])
       }
       for (const [kind, text] of texts) {
         for (const s of sentences(text)) {

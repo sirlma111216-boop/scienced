@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { lessonIndex } from '@/content/courses'
-import { stepIdsOf } from '@/content/steps'
+import { isConceptStepId, stepIdsOf } from '@/content/steps'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
 import type { AiLog, AiProposal, ResponseDoc } from '@/lib/types'
@@ -37,7 +37,7 @@ export function InstructorAiReview() {
   /* 응답 유형 묶기 — 8차: 수업 화면에서 뺐다. 검토대 안에서 단계를 골라 요청한다 */
   const [clusterKey, setClusterKey] = useState('')
   const [clusterDocs, setClusterDocs] = useState<ResponseDoc[]>([])
-  const clusterOptions = lessonIndex(courseId).flatMap((l) => stepIdsOf(l.layout).filter((s) => s !== 'concepts' && s !== 'concepts-2').map((s) => ({ key: `${l.id}/${s}`, label: `${Number(l.id)}강 ${l.title} · ${s}` })))
+  const clusterOptions = lessonIndex(courseId).flatMap((l) => stepIdsOf(l.layout).filter((s) => !isConceptStepId(s)).map((s) => ({ key: `${l.id}/${s}`, label: `${Number(l.id)}강 ${l.title} · ${s}` })))
   useEffect(() => {
     if (!repo || !classId || !clusterKey) return
     const [lid, sid] = clusterKey.split('/')

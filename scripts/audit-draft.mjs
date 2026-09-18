@@ -2,51 +2,16 @@
  * npm run audit:draft (8차 10.1 · 11절 신설)
  *
  * docs/검토/<과목>-<nn>.md 가 시드다. 문서에 적힌 문장이 코드에 없으면 실패한다.
- *   중심 질문 · 학습목표 셋 · 도입 질문과 선택지 · 카드 이름과 기준 3줄 · 과제문 · 정리 문항 · 네 검사
+ *   중심 질문 · 학습목표 셋 · 도입 질문과 선택지 · 카드 이름과 기준 3줄 · 잠깐 확인(물음 · 보기 넷 · 정답) · 과제문 · 정리 문항 · 네 검사
  * 그리고 반대로 — 코드에 있는 차시에 문서가 없어도 실패한다 (문서 없이 코드를 쓰지 않는다).
  */
 import { readdir, readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { fail, pass, report } from './_report.mjs'
 import { activitiesOf, conceptsOf, loadCourses, where } from './_courses.mjs'
+import { MARKS, docNameOf, norm, parseDoc } from './_draft-doc.mjs'
 
 const DIR = 'docs/검토'
-const norm = (s) => String(s ?? '').replace(/\s+/g, ' ').trim()
-
-function parseDoc(md) {
-  const lines = md.replace(/\r\n/g, '\n').split('\n')
-  const doc = { objectives: [], options: [], cards: [], checks: {}, task: [], wrapup: [] }
-  let section = ''
-  let card = null
-  for (const raw of lines) {
-    const line = raw.trim()
-    if (!line) continue
-    /* 줄머리 꼬리표(과제 · 문항 · 질문 · 선택지)는 첫 칸에서 시작한다. 들여쓴 줄은 자료 본문(「과제  가열 그래프…」)이다 */
-    const head = !/^\s/.test(raw)
-    let m
-    if ((m = line.match(/^## (도입|개념|활동|정리|이렇게 정했다)/))) {
-      section = m[1]
-      card = null
-      continue
-    }
-    if ((m = line.match(/^### 카드 \d+ ─ (.+)$/))) {
-      card = { name: norm(m[1]), points: [] }
-      doc.cards.push(card)
-      continue
-    }
-    if ((m = line.match(/^중심 질문\s+(.+)$/))) doc.centralQuestion = norm(m[1])
-    else if ((m = line.match(/^학습목표\s+1\s+(.+)$/))) doc.objectives.push(norm(m[1]))
-    else if (section === '' && (m = line.match(/^([23])\s+(.+)$/))) doc.objectives.push(norm(m[2]))
-    else if (head && section === '도입' && (m = line.match(/^질문\s+(.+)$/))) doc.introPrompt = norm(m[1])
-    else if (head && section === '도입' && (m = line.match(/^선택지\s+(.+)$/))) doc.options = m[1].split('/').map(norm)
-    else if (section === '개념' && card && (m = line.match(/^(?:기준\s+)?([123])\s+(.+)$/))) card.points.push(norm(m[2]))
-    else if (head && section === '활동' && (m = line.match(/^과제\s+(.+)$/))) doc.task.push(norm(m[1]))
-    else if (section === '활동' && (m = line.match(/^(?:검사\s+)?(정답|갈림|이해|상황):\s*(.+)$/))) doc.checks[m[1]] = [...(doc.checks[m[1]] ?? []), norm(m[2])]
-    else if (head && section === '정리' && (m = line.match(/^문항\s+(.+)$/))) doc.wrapup.push(norm(m[1]))
-  }
-  return doc
-}
-
 const KEY = { 정답: 'answer', 갈림: 'split', 이해: 'understand', 상황: 'situation' }
 const files = existsSync(DIR) ? (await readdir(DIR)).filter((f) => /^(method|edu)-\d{2}\.md$/.test(f)) : []
 let docs = 0
@@ -55,7 +20,7 @@ let bad = 0
 for (const c of await loadCourses()) {
   for (const l of c.lessons) {
     /* 교육론 1강은 교수법 1강과 같다 (강의자 답 4) — 같은 문서를 대조한다 */
-    const name = c.courseId === 'edu' && l.id === '01' ? 'method-01.md' : `${c.courseId}-${l.id}.md`
+    const name = docNameOf(c.courseId, l.id)
     const at = where(l)
     if (!files.includes(name)) {
       fail('검토 문서', `${at} 의 검토 문서 ${DIR}/${name} 이 없다 — 문서가 먼저다 (10.1)`)
@@ -84,6 +49,16 @@ for (const c of await loadCourses()) {
       dc.points.forEach((p, j) => {
         if (norm(k.keyPoints[j]) !== p) miss(`카드 ${i + 1} 기준 ${j + 1}`, p)
       })
+      if (dc.check && !k.check) miss(`카드 ${i + 1} 잠깐 확인`, dc.check.prompt)
+      if (!dc.check && k.check) {
+        bad += 1
+        fail('문서 ↔ 코드', `${at} 카드 ${i + 1} 의 잠깐 확인이 코드에만 있다 — 문서가 먼저다`)
+      }
+      if (dc.check && k.check) {
+        if (norm(k.check.prompt) !== dc.check.prompt) miss(`카드 ${i + 1} 확인 물음`, dc.check.prompt)
+        for (let j = 0; j < 4; j++) if (norm(k.check.options?.[j]) !== (dc.check.options[j] ?? '')) miss(`카드 ${i + 1} 확인 보기 ${MARKS[j]}`, dc.check.options[j] ?? '(없음)')
+        if (k.check.answer !== dc.check.answer) miss(`카드 ${i + 1} 확인 정답`, dc.check.answer === null ? '(없음)' : MARKS[dc.check.answer])
+      }
     })
     const acts = activitiesOf(l)
     d.task.forEach((t, i) => {
@@ -106,5 +81,5 @@ for (const f of files) {
   if (!c?.lessons.some((l) => l.id === id)) console.log(`  · 문서만 있고 코드가 아직 없는 차시: ${f}`)
 }
 
-if (bad === 0) pass('문서 ↔ 코드', `검토 문서 ${docs}장의 중심 질문 · 학습목표 · 도입 · 카드 기준 · 과제 · 네 검사 · 정리 문항이 코드와 같다`)
+if (bad === 0) pass('문서 ↔ 코드', `검토 문서 ${docs}장의 중심 질문 · 학습목표 · 도입 · 카드 기준 · 잠깐 확인 · 과제 · 네 검사 · 정리 문항이 코드와 같다`)
 report('audit:draft')

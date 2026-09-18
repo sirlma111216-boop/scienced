@@ -7,8 +7,6 @@
     color-scheme: light;
     /* DESIGN.md는 다크 테마를 정의하지 않는다. 단색 흑백 프레임을 고정한다. */
     --focus-ring: #ff3d8b;
-    /* 발표 모드에서만 1.35배 (지시서 2.5) */
-    --present-scale: 1;
   }
 
   html {
@@ -18,7 +16,7 @@
   body {
     @apply bg-canvas text-ink font-sans text-body antialiased;
     margin: 0;
-    font-size: calc(18px * var(--present-scale));
+    font-size: 18px;
   }
 
   /* 지시서 15절 · 컨텍스트 19.10 — 키보드만으로 조작 가능해야 하고 포커스가 보여야 한다. */

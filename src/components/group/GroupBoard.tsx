@@ -14,17 +14,15 @@ export function GroupCell({
   shares,
   value,
   nameOf,
-  big = false,
 }: {
   group: GroupData
   field: FieldDef
   shares: GroupShare[]
   value: GroupValue | null
   nameOf: (uid: string) => string
-  big?: boolean
 }) {
   const members: MemberValue[] = shares.map((s) => ({ uid: s.uid, nickname: nameOf(s.uid), value: s.value, reason: s.reason }))
-  const textCls = big ? 'text-body-lg' : 'text-body-sm'
+  const textCls = 'text-body-sm'
 
   if (members.length === 0 && !value) {
     return (
@@ -109,7 +107,7 @@ export function GroupCell({
     case 'sentence': {
       const sentence = value && typeof value.value === 'string' ? value.value : ''
       return sentence ? (
-        <p className={big ? 'text-headline' : 'text-body'} style={{ margin: 0, whiteSpace: 'pre-line' }}>
+        <p className="text-body" style={{ margin: 0, whiteSpace: 'pre-line' }}>
           {sentence}
         </p>
       ) : (
@@ -120,7 +118,7 @@ export function GroupCell({
       const rows = sortTally(field, members)
       const bins = field.bins ?? []
       return (
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: big ? 18 : 14 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 14 }}>
           <thead>
             <tr>
               <th scope="col" className="caption" style={{ textAlign: 'left', padding: '4px 8px 4px 0' }}>
@@ -162,7 +160,6 @@ export function GroupBoard({
   shares,
   values,
   nameOf,
-  big = false,
 }: {
   group: GroupData
   field: FieldDef
@@ -170,7 +167,6 @@ export function GroupBoard({
   shares: GroupShare[]
   values: GroupValue[]
   nameOf: (uid: string) => string
-  big?: boolean
 }) {
   if (groups.length === 0) {
     return (
@@ -180,14 +176,14 @@ export function GroupBoard({
     )
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${big ? 320 : 240}px, 1fr))`, gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(240px, 1fr))`, gap: 16 }}>
       {groups.map((g) => (
         <section key={g.id} className="rounded-md" style={{ padding: 12, boxShadow: 'inset 0 0 0 1px #e6e6e6' }}>
           <div className="flex items-center gap-xs" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
             <Badge solid>{g.name}</Badge>
             <Caption>{shares.filter((s) => s.groupId === g.id).length}명</Caption>
           </div>
-          <GroupCell group={group} field={field} shares={shares.filter((s) => s.groupId === g.id)} value={values.find((v) => v.groupId === g.id) ?? null} nameOf={nameOf} big={big} />
+          <GroupCell group={group} field={field} shares={shares.filter((s) => s.groupId === g.id)} value={values.find((v) => v.groupId === g.id) ?? null} nameOf={nameOf} />
         </section>
       ))}
     </div>

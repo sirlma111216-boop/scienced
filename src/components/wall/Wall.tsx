@@ -326,7 +326,7 @@ export function WallDialog({
 
 /* ─────────────────────────── 카드 ─────────────────────────── */
 
-export function WallCard({ post, big = false }: { post: Post; big?: boolean }) {
+export function WallCard({ post }: { post: Post }) {
   return (
     <article
       className="bg-canvas rounded-lg"
@@ -346,7 +346,7 @@ export function WallCard({ post, big = false }: { post: Post; big?: boolean }) {
         </span>
         <Caption>{relativeTime(post.createdAt)}</Caption>
       </div>
-      <div className={big ? 'text-body-lg' : 'text-body'} style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+      <div className="text-body" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
         {postContent(post)}
       </div>
     </article>
