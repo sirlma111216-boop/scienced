@@ -73,7 +73,8 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
         if (g.reaction) reaction += 1
         if (l.layout === 'edu80' && i === 0 && g.seconds > 60) fail('80분 활동 1', `${at} 의 게임 ${a.game} 이 ${g.seconds}초다 — 활동 1 은 60초 이하`)
         if (g.scope === 'group' && a.group?.format === undefined) fail('모둠 게임', `${at} 모둠 게임인데 모둠 단계가 없다`)
-        if (prev && prev.game === a.game && prev.lessonId !== l.id) fail('연속 배치', `${where(prev.l)} 과 ${at} 이 연속으로 ${a.game} 이다`)
+        /* 루미 런은 강의자 답 2 로 교수법 3·4강에 연속으로 있다 — 그것만 예외 */
+        if (prev && prev.game === a.game && prev.lessonId !== l.id && a.game !== 'lumi') fail('연속 배치', `${where(prev.l)} 과 ${at} 이 연속으로 ${a.game} 이다`)
         prev = { game: a.game, lessonId: l.id, l }
         for (const [k, v] of Object.entries(a.gameOptions ?? {})) {
           const opt = g.options?.[k]

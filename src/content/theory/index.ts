@@ -5,6 +5,8 @@ import { t03 } from './t03'
 import { t04 } from './t04'
 import { t05 } from './t05'
 import { t06 } from './t06'
+import { t07 } from './t07'
+import { te02 } from './te02'
 
 /**
  * 이론 배경 (5차 작업 M · 8차에서는 정리 단계 끝 「더 읽기」).
@@ -16,6 +18,6 @@ import { t06 } from './t06'
  * 항목의 linkedConceptId 는 그 차시 개념 카드의 id 와 같아야 한다 (verify:theory).
  */
 export const THEORY: Record<CourseId, Partial<Record<LessonId, LessonTheory>>> = {
-  method: { '01': t01, '02': t02, '03': t03, '04': t04, '05': t05, '06': t06 },
-  edu: { '01': t01 },
+  method: { '01': t01, '02': t02, '03': t03, '04': t04, '05': t05, '06': t06, '07': t07 },
+  edu: { '01': t01, '02': te02 },
 }

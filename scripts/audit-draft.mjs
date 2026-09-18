@@ -21,6 +21,8 @@ function parseDoc(md) {
   for (const raw of lines) {
     const line = raw.trim()
     if (!line) continue
+    /* 줄머리 꼬리표(과제 · 문항 · 질문 · 선택지)는 첫 칸에서 시작한다. 들여쓴 줄은 자료 본문(「과제  가열 그래프…」)이다 */
+    const head = !/^\s/.test(raw)
     let m
     if ((m = line.match(/^## (도입|개념|활동|정리|이렇게 정했다)/))) {
       section = m[1]
@@ -35,12 +37,12 @@ function parseDoc(md) {
     if ((m = line.match(/^중심 질문\s+(.+)$/))) doc.centralQuestion = norm(m[1])
     else if ((m = line.match(/^학습목표\s+1\s+(.+)$/))) doc.objectives.push(norm(m[1]))
     else if (section === '' && (m = line.match(/^([23])\s+(.+)$/))) doc.objectives.push(norm(m[2]))
-    else if (section === '도입' && (m = line.match(/^질문\s+(.+)$/))) doc.introPrompt = norm(m[1])
-    else if (section === '도입' && (m = line.match(/^선택지\s+(.+)$/))) doc.options = m[1].split('/').map(norm)
+    else if (head && section === '도입' && (m = line.match(/^질문\s+(.+)$/))) doc.introPrompt = norm(m[1])
+    else if (head && section === '도입' && (m = line.match(/^선택지\s+(.+)$/))) doc.options = m[1].split('/').map(norm)
     else if (section === '개념' && card && (m = line.match(/^(?:기준\s+)?([123])\s+(.+)$/))) card.points.push(norm(m[2]))
-    else if (section === '활동' && (m = line.match(/^과제\s+(.+)$/))) doc.task.push(norm(m[1]))
+    else if (head && section === '활동' && (m = line.match(/^과제\s+(.+)$/))) doc.task.push(norm(m[1]))
     else if (section === '활동' && (m = line.match(/^(?:검사\s+)?(정답|갈림|이해|상황):\s*(.+)$/))) doc.checks[m[1]] = [...(doc.checks[m[1]] ?? []), norm(m[2])]
-    else if (section === '정리' && (m = line.match(/^문항\s+(.+)$/))) doc.wrapup.push(norm(m[1]))
+    else if (head && section === '정리' && (m = line.match(/^문항\s+(.+)$/))) doc.wrapup.push(norm(m[1]))
   }
   return doc
 }

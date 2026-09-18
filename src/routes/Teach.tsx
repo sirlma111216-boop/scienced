@@ -82,7 +82,7 @@ export function Teach() {
   }, [repo, classId, lessonId, step?.id])
 
   const students = useMemo(() => enrollments.filter((e) => e.status === 'active'), [enrollments])
-  const openSteps = session?.openSteps ?? []
+  const openSteps = useMemo(() => session?.openSteps ?? [], [session?.openSteps])
   const toggleStep = useCallback(
     async (sid: string) => {
       if (!repo) return

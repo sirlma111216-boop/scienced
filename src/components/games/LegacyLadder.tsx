@@ -188,7 +188,7 @@ export function LegacyLadder({
                 {user && winners.includes(user.uid) ? ' — 나다' : ''}
               </p>
             ) : null}
-            <Caption>씨앗 {state.seed}</Caption>
+            {kind === 'envelope' ? <Caption>씨앗 {state.seed}</Caption> : null}
           </div>
         </>
       )}

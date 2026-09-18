@@ -78,7 +78,7 @@ export function checkText(text, opts = {}) {
   const ss = sentences(t)
   ss.forEach((s, i) => {
     /* 「~처럼」 「~와 같다」 뒤에 설명 문장이 없으면 비유만 던진 것이다 */
-    if (/(처럼|와 같다|과 같다|와 같은|과 같은)/.test(s) && i === ss.length - 1) out.push(`설명 없는 비유 「${s.slice(0, 30)}…」 — 뒤에 풀어 주는 문장이 없다`)
+    if (ss.length > 1 && /((?<!좀)처럼|와 같다|과 같다|와 같은|과 같은)/.test(s) && i === ss.length - 1) out.push(`설명 없는 비유 「${s.slice(0, 30)}…」 — 뒤에 풀어 주는 문장이 없다`)
     if (/!$/.test(s) && !opts.allowExclaim) out.push(`느낌표 「${s.slice(0, 30)}」`)
     if (/^자, /.test(s)) out.push(`「자, 」로 시작 「${s.slice(0, 30)}」`)
     const e = endWord(s)
