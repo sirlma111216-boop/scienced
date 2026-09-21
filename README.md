@@ -106,7 +106,8 @@ src/
   components/marble/           교실 구슬 레이스 (교육론 2강 — 서버 없이 강사 화면에서)
   routes/Teach.tsx             강사 수업 화면 /teach/:classId/:lessonId
   routes/Lesson.tsx            학생 차시 화면 /lesson/:id
-  routes/instructor/Classes.tsx   강사 홈 — 클래스 → 차시 목록(공개 토글 · 수업 열기)
+  routes/instructor/Classes.tsx   강사 홈 — 차시 목록(이어서 할 차시 · 공개 토글 · 수업 열기)
+  routes/instructor/ClassSettings.tsx  클래스 관리 — 등록 · 보관 · 지우기 · 새 클래스
 docs/검토/                     차시별 검토 문서(시드) · 8차-결정.md(이렇게 정했다)
 functions/api/                 Cloudflare Pages Functions (groups/assign · picker/draw · game/time · lumi/* · ai/* · admin/*)
 functions/api/_lib/lumi-rules.ts   루미 런 발표 등수 — 번들에 없다
@@ -116,7 +117,11 @@ scripts/                       verify-*.mjs · audit-*.mjs · test-*.mjs
 
 ## 강사 화면
 
-강사 홈은 **클래스 목록 → 차시 목록 → 수업 화면** 세 단계다. 수업 화면은 학생 화면과 같은 블록을 그리고, 블록 옆에 조작부가 인라인으로 붙는다. 응답은 접혀 있다 — 「응답 12/28 ▸」.
+강사 홈(`/instructor/classes`)은 **지금 클래스의 차시 목록**이다. 맨 위에 이어서 할 차시 하나(마지막으로 연 차시)와 [수업 열기], 그 아래에 차시 표(공개 토글 · 수업 열기). 강사가 되면 두 번 안에 수업 화면에 닿는다.
+
+수업이 아닌 일은 **「클래스 관리」 한 곳**에 있다 (`/instructor/class/:classId/{students,groups,settings}` 탭 셋) — 수강생 명단 · 모둠 · 수강 등록 · 보관 · 지우기 · 새 클래스. 학기에 한 번 쓰는 것을 홈에 두면 매주 쓰는 것과 구분되지 않는다 (강의자 지시 2026-09-21).
+
+수업 화면은 학생 화면과 같은 블록을 그리고, 블록 옆에 조작부가 인라인으로 붙는다. 응답은 접혀 있다 — 「응답 12/28 ▸」.
 
 수업 중 누르는 것은 다섯 가지뿐이다: `단계 열기` · `자료 공개` · `모둠 나누기` · `게임 시작` · `응답 펼치기`. `verify:teach` 가 그 밖의 단추를 막는다.
 

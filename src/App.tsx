@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { AuthProvider, needsSetup, useAuth } from '@/lib/auth'
 import { Login } from '@/routes/Login'
 import { ResetPassword } from '@/routes/ResetPassword'
@@ -16,6 +16,7 @@ import { InstructorAiReview } from '@/routes/instructor/AiReview'
 import { InstructorClasses } from '@/routes/instructor/Classes'
 import { InstructorClassStudents } from '@/routes/instructor/ClassStudents'
 import { InstructorClassGroups } from '@/routes/instructor/ClassGroups'
+import { InstructorClassSettings } from '@/routes/instructor/ClassSettings'
 
 /**
  * 라우트 보호.
@@ -24,7 +25,8 @@ import { InstructorClassGroups } from '@/routes/instructor/ClassGroups'
  *  - 학생이 /instructor/* · /teach/* → 403 안내
  *  - 미공개 차시 내용은 전송하지 않는다 (차시 화면이 공개 여부를 본 뒤에만 import() · Firestore 규칙)
  *
- * 8차: 강사 홈은 클래스 목록이다. 클래스 → 차시 목록 → 수업 화면(/teach/:classId/:lessonId).
+ * 강사 홈(/instructor/classes)은 지금 클래스의 차시 목록이다 — 거기서 바로 수업 화면(/teach/:classId/:lessonId)으로 간다.
+ * 수업이 아닌 일(명단 · 모둠 · 설정)은 /instructor/class/:classId/* 탭 셋에 모여 있다 (강의자 지시 2026-09-21).
  * 옛 /instructor/lessons · /instructor/lesson/:id/live · 대시보드는 없다.
  */
 function Guard({
@@ -67,6 +69,12 @@ function Guard({
     )
   }
   return <>{children}</>
+}
+
+/** /instructor/class/:classId — 관리의 첫 탭(수강생 명단)으로 */
+function ClassAdminRedirect() {
+  const { classId } = useParams()
+  return <Navigate to={classId ? `/instructor/class/${classId}/students` : '/instructor/classes'} replace />
 }
 
 export function App() {
@@ -168,6 +176,15 @@ export function App() {
               </Guard>
             }
           />
+          <Route
+            path="/instructor/class/:classId/settings"
+            element={
+              <Guard instructorOnly classOptional>
+                <InstructorClassSettings />
+              </Guard>
+            }
+          />
+          <Route path="/instructor/class/:classId" element={<ClassAdminRedirect />} />
           <Route path="/instructor" element={<Navigate to="/instructor/classes" replace />} />
           <Route path="/instructor/lessons" element={<Navigate to="/instructor/classes" replace />} />
           <Route path="/instructor/lesson/:id/live" element={<Navigate to="/instructor/classes" replace />} />

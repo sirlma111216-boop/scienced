@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import type { LessonId } from '@/content/types'
 import { indexEntry } from '@/content/courses'
 import { FORMATION_QUESTION_BY_ID } from '@/content/formation-questions'
@@ -8,6 +8,7 @@ import { DEFAULT_CLASS_SIZE, feasibility, formationLessons, groupCountOf, histor
 import { courseOf } from '@/lib/lesson-data'
 import type { Enrollment, GroupRound, PairHistoryDoc } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
+import { ClassAdminHeader } from '@/components/instructor/ClassAdmin'
 import { FormationPanel, PairGrid } from '@/components/groups/FormationPanel'
 import { Badge, Button, Caption, Card, Notice, ScrollX } from '@/components/ui'
 
@@ -73,16 +74,7 @@ export function InstructorClassGroups() {
 
   return (
     <AppShell title="모둠 관리">
-      <p className="eyebrow">강사</p>
-      <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
-        모둠 나누기
-      </h1>
-      <p className="text-body-lg" style={{ marginTop: 12 }}>
-        {cls?.displayName ?? classId} ·{' '}
-        <Link to={`/instructor/class/${classId}/students`} className="text-link">
-          수강생 명단
-        </Link>
-      </p>
+      <ClassAdminHeader classId={classId} cls={cls ?? null} here="groups" />
 
       <div style={{ marginTop: 32 }}>
         <Card>

@@ -61,6 +61,8 @@
 
 ## 수업 화면 (8차)
 
+**강사 홈(`/instructor/classes`)은 지금 클래스의 차시 목록이다** — 이어서 할 차시 하나와 [수업 열기]가 가장 크고, 명단·모둠·등록·보관·지우기·새 클래스는 「클래스 관리」(`/instructor/class/:classId/{students,groups,settings}`) 탭 셋에 있다 (강의자 지시 2026-09-21). 학기에 한 번 쓰는 것을 홈에 두지 않는다.
+
 강사는 **`/teach/:classId/:lessonId` 화면 하나**로 가르친다. `src/components/lesson/LessonBody.tsx` 가 학생 화면과 강사 화면을 같은 블록으로 그리고, `src/lib/teach-registry.ts` 의 등록표가 블록 종류마다 조작부를 정한다. 강사용 화면을 따로 만들지 않는다.
 
 - 수업 중 누르는 것은 다섯 가지뿐이다: `단계 열기` · `자료 공개` · `모둠 나누기` · `게임 시작` · `응답 펼치기`. 그 밖의 단추는 `verify:teach` 가 막는다. 「응답 펼치기」는 `<summary>` 접기 요소다.

@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { buildSteps } from '@/content/steps'
 import { indexEntry } from '@/content/courses'
 import { useAuth } from '@/lib/auth'
+import { rememberTaught } from '@/lib/last-taught'
 import { formationLessons, historyFromDocs, questionForLesson, roundForLesson } from '@/lib/groups'
 import { courseOf, useLesson } from '@/lib/lesson-data'
 import type { AppUser, Enrollment, GroupInput, GroupRound, PairHistoryDoc, Participation, ResponseDoc, RosterEntry, SessionState } from '@/lib/types'
@@ -51,6 +52,11 @@ export function Teach() {
   useEffect(() => {
     if (classId) void selectClass(classId)
   }, [classId, selectClass])
+
+  /* 강사 홈의 「이어서 할 차시」 — 이 브라우저에만 남는다 */
+  useEffect(() => {
+    if (classId && lessonId) rememberTaught(classId, lessonId)
+  }, [classId, lessonId])
 
   useEffect(() => {
     if (!repo || !classId || !lessonId) return

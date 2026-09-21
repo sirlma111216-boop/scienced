@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
 import type { Enrollment, ResponseDoc, RosterEntry } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
+import { ClassAdminHeader } from '@/components/instructor/ClassAdmin'
 import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
 
 /**
@@ -157,13 +158,7 @@ export function InstructorClassStudents() {
 
   return (
     <AppShell title="수강생 명단">
-      <p className="eyebrow">강사</p>
-      <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
-        수강생
-      </h1>
-      <p className="text-body-lg" style={{ marginTop: 12 }}>
-        {cls?.displayName ?? classId}
-      </p>
+      <ClassAdminHeader classId={classId} cls={cls ?? null} here="students" />
 
       <div style={{ marginTop: 24 }}>
         <Notice tone="cream">
