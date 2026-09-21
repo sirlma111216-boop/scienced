@@ -4,12 +4,16 @@ import { gameSpec } from '@/content/games'
 import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { derive, participants, representativeOf, type Derived } from '@/lib/game-core'
+import { finalizeGame } from '@/lib/game-record'
 import { weightFromPresentCount, weightedDraw } from '@/lib/ladder'
 import { serverNow, syncServerTime } from '@/lib/server-time'
-import type { Enrollment, GameInput, GameResult, GameState, GroupRound, Participation, SessionState } from '@/lib/types'
+import type { Enrollment, GameInput, GameState, GroupRound, Participation, SessionState } from '@/lib/types'
 import { Badge, Button, Caption, ColorBlock, Notice } from '@/components/ui'
 import { LumiStudent } from '@/components/lumi/LumiStudent'
 import { LumiTeacher } from '@/components/lumi/LumiTeacher'
+import { MarbleStudent } from '@/components/marble/MarbleStudent'
+import { MarbleTeacher } from '@/components/marble/MarbleTeacher'
+import { GameResultCard } from './GameResultCard'
 import { StudentGameInput, TeacherGameView } from './GameInputs'
 import { LegacyLadder } from './LegacyLadder'
 
@@ -57,6 +61,20 @@ export function GameShell({
   const spec = gameSpec(kind)
   if (kind === 'lumi') {
     return teacher ? <LumiTeacher classId={classId} lessonId={lessonId} stepId={step.id} courseId={courseId} session={session} students={teacher.students} /> : <LumiStudent classId={classId} lessonId={lessonId} courseId={courseId} session={session} nicknames={nicknames} />
+  }
+  if (kind === 'marble') {
+    return (
+      <ColorBlock tone="lime">
+        <p className="eyebrow" style={{ margin: '0 0 8px' }}>
+          발표자 선정
+        </p>
+        {teacher ? (
+          <MarbleTeacher classId={classId} lessonId={lessonId} stepId={step.id} options={activity.gameOptions} session={session} students={teacher.students} participation={teacher.participation} nameOf={teacher.nameOf} />
+        ) : (
+          <MarbleStudent lessonId={lessonId} stepId={step.id} options={activity.gameOptions} session={session} nicknames={nicknames} />
+        )}
+      </ColorBlock>
+    )
   }
   if (kind === 'ladder' || kind === 'envelope') {
     return <LegacyLadder classId={classId} lessonId={lessonId} stepId={step.id} kind={kind} session={session} nicknames={nicknames} teacher={teacher} />
@@ -150,11 +168,7 @@ function LibraryGame({
   async function finalize(base: GameState, winnerUids: string[], reason: string, manual = false) {
     if (!repo || !user || !teacher) return
     const presentCount = Object.fromEntries(teacher.participation.map((p) => [p.uid, p.presentCount]))
-    const result: GameResult = { winnerUids, reason, candidateUids: joined.map((p) => p.uid), seed: base.seed, fairness: spec.reaction ? '반응 속도 게임입니다' : undefined, manual, at: Date.now() }
-    const clean = JSON.parse(JSON.stringify(result)) as GameResult
-    await repo.setGame(classId, lessonId, step.id, { ...base, phase: 'done', result: clean, updatedAt: Date.now() })
-    await repo.recordPick(classId, { id: `${gameId}-r${base.round}-${Date.now().toString(36)}`, lessonId, stepId: step.id, gameId, candidateUids: clean.candidateUids, excludedUids: [], weights: Object.fromEntries(clean.candidateUids.map((u) => [u, weightFromPresentCount(presentCount[u] ?? 0)])), winnerUids, seed: base.seed, runBy: user.uid, runAt: Date.now(), redrawOf: base.round > 1 ? `${gameId}-r${base.round - 1}` : null })
-    for (const w of winnerUids) await repo.bumpParticipation(classId, w, { presentCount: (presentCount[w] ?? 0) + 1, lastPresentedLessonId: lessonId })
+    await finalizeGame(repo, { classId, lessonId, stepId: step.id, gameId, base, winnerUids, reason, candidateUids: joined.map((p) => p.uid), presentCount, runBy: user.uid, fairness: spec.reaction ? '반응 속도 게임입니다' : undefined, manual })
   }
 
   /* 강사 — 끝난 게임을 확정한다 (한 판에 한 번) */
@@ -335,37 +349,7 @@ function LibraryGame({
       {teacher && state && state.phase === 'lobby' && joined.length > 0 ? <Caption>참가 · {joined.map((p) => nameOf(p.uid)).join(', ')}</Caption> : null}
 
       {/* 결과 — 모든 화면이 같은 것을 본다 */}
-      {result ? (
-        <div className="card" style={{ marginTop: 12 }} aria-live="polite">
-          <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-            <Caption>이번 발표자</Caption>
-            {result.manual ? <Badge>강사 지정</Badge> : null}
-            {result.fairness ? <Badge>{result.fairness}</Badge> : null}
-          </div>
-          {result.winnerUids.length === 0 ? (
-            <p className="text-body" style={{ margin: '8px 0 0' }}>
-              뽑힌 사람이 없다 — {result.reason}
-            </p>
-          ) : (
-            <ul className="flex flex-wrap gap-xs" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
-              {result.winnerUids.map((w) => (
-                <li key={w}>
-                  <span className="badge" style={w === uid ? { background: '#000', color: '#fff', boxShadow: 'none', fontSize: 15 } : { fontSize: 15 }}>
-                    {nameOf(w)}
-                    {w === uid ? ' (나)' : ''}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.8 }}>
-            {result.reason}
-          </p>
-          <Caption>
-            후보 {result.candidateUids.length}명 · 씨앗 {result.seed}
-          </Caption>
-        </div>
-      ) : null}
+      {result ? <GameResultCard result={result} nameOf={nameOf} uid={uid} /> : null}
     </ColorBlock>
   )
 }

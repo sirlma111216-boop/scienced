@@ -18,9 +18,12 @@
         "dev",
         "--",
         "--mode",
-        "offline"
+        "offline",
+        "--port",
+        "5310",
+        "--strictPort"
       ],
-      "autoPort": true
+      "port": 5310
     }
   ]
 }

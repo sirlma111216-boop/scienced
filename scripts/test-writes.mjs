@@ -245,6 +245,75 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   }
 }
 
+/* ── ⑥-c 구슬 레이스 결과: 활동 앱이 준 당첨자가 기존 구조 세 곳에 그대로 적히는가 (강의자 지시 2026-09-21) ── */
+{
+  const { finalizeGame } = await import('../src/lib/game-record.ts')
+  const { marbleWinnerUids, marbleSetup } = await import('../src/lib/marble.ts')
+  const teacher = createFirestoreRepo(env.authenticatedContext(TEACHER).firestore())
+  const STEP = 'activity'
+  /* 활동 앱이 local 모드에서 돌려주는 결과 그대로 — participantId 는 우리가 넣은 uid 다 */
+  const raw = {
+    roundId: 'local-round-1',
+    mapId: 'classic-wheel',
+    winners: [
+      { participantId: STUDENT, nickname: '이나나', selectionReason: '상위 2명 중 1위' },
+      { participantId: STUDENT2, nickname: '박두두', selectionReason: '상위 2명 중 2위' },
+      { participantId: 'not-in-class', nickname: '남', selectionReason: '상위 2명 중 3위' },
+    ],
+  }
+  try {
+    const setup = marbleSetup({ map: 'classic-wheel', pick: 'first2' })
+    const winners = marbleWinnerUids(raw, [STUDENT, STUDENT2])
+    const base = { kind: 'marble', stepId: STEP, phase: 'running', round: 1, seed: raw.roundId, startedAt: Date.now(), state: null, result: null, updatedAt: Date.now() }
+    await finalizeGame(teacher, {
+      classId: CID,
+      lessonId: '02',
+      stepId: STEP,
+      gameId: `02-${STEP}-marble`,
+      base,
+      winnerUids: winners,
+      reason: `${setup.mapName} · ${setup.pick.label}`,
+      candidateUids: [STUDENT, STUDENT2],
+      presentCount: { [STUDENT]: 1 },
+      runBy: TEACHER,
+      fairness: '화면에서 계산한 결과',
+    })
+    const saved = await new Promise((resolve) => {
+      const off = teacher.watchSession(CID, '02', (s) => {
+        if (s?.games?.[STEP]?.result) {
+          off()
+          resolve(s.games[STEP])
+        }
+      })
+    })
+    const picks = await new Promise((resolve) => {
+      const off = teacher.watchPicks(CID, (list) => {
+        const mine = list.filter((p) => p.gameId === `02-${STEP}-marble`)
+        if (mine.length > 0) {
+          off()
+          resolve(mine)
+        }
+      })
+    })
+    const counts = await new Promise((resolve) => {
+      const off = teacher.watchParticipation(CID, (list) => {
+        if (list.some((p) => p.uid === STUDENT)) {
+          off()
+          resolve(Object.fromEntries(list.map((p) => [p.uid, p.presentCount])))
+        }
+      })
+    })
+    if (winners.length !== 2 || winners.includes('not-in-class')) fail('구슬 레이스', `우리 학생이 아닌 id 가 걸러지지 않았다 — ${JSON.stringify(winners)}`)
+    else if (saved.result.winnerUids.join(',') !== `${STUDENT},${STUDENT2}` || saved.result.seed !== raw.roundId) fail('구슬 레이스', `세션에 적힌 결과가 다르다 — ${JSON.stringify(saved.result)}`)
+    else if (saved.result.fairness !== '화면에서 계산한 결과') fail('구슬 레이스', '확인해 줄 서버가 없다는 표시가 결과에 없다')
+    else if (picks[0].winnerUids.length !== 2 || picks[0].seed !== raw.roundId) fail('구슬 레이스', `뽑기 기록이 다르다 — ${JSON.stringify(picks[0])}`)
+    else if (counts[STUDENT] !== 2 || counts[STUDENT2] !== 1) fail('구슬 레이스', `발표 횟수가 맞지 않다 — ${JSON.stringify(counts)}`)
+    else pass('구슬 레이스', `활동 앱의 당첨자 두 명이 세션·뽑기 기록·발표 횟수에 그대로 적히고(${saved.result.reason}), 우리 학생이 아닌 id 는 걸러진다`)
+  } catch (err) {
+    fail('구슬 레이스', `막힌다 — ${err.message}`)
+  }
+}
+
 /* ── ⑦ 모둠 데이터(8차 4.6): 제출한 사람의 값이 모둠에 모이고 평균이 맞는가 ── */
 {
   const repo2 = createFirestoreRepo(env.authenticatedContext(STUDENT2).firestore())

@@ -19,7 +19,7 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
 /* ── 라이브러리 ── */
 {
   const kinds = Object.keys(GAME_LIBRARY)
-  if (LIBRARY_KINDS.length !== 13) fail('라이브러리', `새 게임이 ${LIBRARY_KINDS.length}종이다 (12 + 루미 런 = 13)`)
+  if (LIBRARY_KINDS.length !== 14) fail('라이브러리', `새 게임이 ${LIBRARY_KINDS.length}종이다 (12 + 루미 런 + 구슬 레이스 = 14)`)
   for (const k of [...LIBRARY_KINDS, ...LEGACY_KINDS]) if (!kinds.includes(k)) fail('라이브러리', `${k} 가 GAME_LIBRARY 에 없다`)
   for (const [k, g] of Object.entries(GAME_LIBRARY)) {
     if (!g.rule?.trim() || g.rule.split(/(?<=[.다])\s+/).length > 3) fail('규칙 한 줄', `${k} 의 규칙이 없거나 세 문장을 넘는다`)
@@ -28,14 +28,14 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
     if (!['individual', 'group'].includes(g.scope)) fail('범위', `${k} 의 scope 가 ${g.scope} 다`)
     if (/정답|오답|점수|correct/.test(g.winner + g.rule) && !/정답이 아니/.test(g.rule)) fail('정답 기준 금지', `${k} 가 정답·점수로 발표자를 정한다`)
   }
-  pass('라이브러리', `게임 ${kinds.length}종(새 12 + 루미 런 + 옛 2) 모두 규칙 한 줄 · 발표 규칙 · 3분 이하`)
+  pass('라이브러리', `게임 ${kinds.length}종(새 12 + 루미 런 · 구슬 레이스 + 옛 2) 모두 규칙 한 줄 · 발표 규칙 · 3분 이하`)
 
   /* 계산이 실제로 있는가 — game-core 의 DERIVE 표 */
   const core = (await readFile('src/lib/game-core.ts', 'utf8')).replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
   const table = core.match(/const DERIVE.*?=\s*\{([^}]*)\}/)?.[1] ?? ''
   const implemented = new Set(table.split(',').map((s) => s.trim()).filter(Boolean))
   for (const k of LIBRARY_KINDS) {
-    if (k === 'lumi') continue
+    if (k === 'lumi' || k === 'marble') continue /* 밖에서 붙인 게임 — 계산도 입력도 활동 앱 안에 있다 */
     if (!implemented.has(k)) fail('계산', `${k} 의 상태 계산이 game-core DERIVE 표에 없다`)
   }
   for (const k of implemented) if (!LIBRARY_KINDS.includes(k)) fail('계산', `game-core 에 라이브러리에 없는 게임 ${k} 가 있다`)
@@ -44,7 +44,7 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
 
   const inputs = await readFile('src/components/games/GameInputs.tsx', 'utf8')
   for (const k of LIBRARY_KINDS) {
-    if (k === 'lumi') continue
+    if (k === 'lumi' || k === 'marble') continue /* 밖에서 붙인 게임 — 계산도 입력도 활동 앱 안에 있다 */
     if (!new RegExp(`case '${k}'`).test(inputs)) fail('학생 입력', `${k} 의 학생 입력 화면이 GameInputs 에 없다`)
   }
   pass('학생 입력', '새 게임 12종이 각각 학생 입력 화면을 가진다')
@@ -91,6 +91,29 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
   const clash = Object.entries(byWeek).filter(([, w]) => w.method && w.edu && w.method === w.edu && w.method !== 'ladder').map(([wk, w]) => `${wk}주 ${w.method}`)
   if (clash.length > 0) fail('같은 주 같은 게임', `두 과목이 같은 주에 같은 게임을 쓴다 — ${clash.join(', ')} (8.3)`)
   pass('배치', '옛 게임은 1·2강, 루미 런은 3·4강에만 있고 반응 속도 게임은 과목당 2회 이하다')
+}
+
+/* ── 구슬 레이스 — 서버 없이 강사 화면 하나에서 (강의자 지시 2026-09-21) ── */
+{
+  let used = 0
+  for (const c of await loadCourses()) {
+    for (const l of c.lessons) {
+      for (const [i, a] of activitiesOf(l).entries()) {
+        if (a.game !== 'marble') continue
+        used += 1
+        const at = `${where(l)} 활동${i ? ' 2' : ''}`
+        for (const k of ['map', 'pick']) if (!a.gameOptions?.[k]) fail('구슬 레이스', `${at} 이 구슬 레이스의 ${k} 를 적지 않았다 — 맵과 발표자 규칙은 차시가 정한다`)
+      }
+    }
+  }
+  const lib = await readFile('src/lib/marble.ts', 'utf8')
+  const stage = await readFile('src/components/marble/MarbleStage.tsx', 'utf8')
+  const teacher = await readFile('src/components/marble/MarbleTeacher.tsx', 'utf8')
+  if (!/mode: 'local'/.test(stage)) fail('구슬 레이스', 'MarbleStage 가 local 모드로 열지 않는다 — 이 게임은 서버도 티켓도 쓰지 않는다')
+  if (/apiPost|fetch\(|\/api\//.test(lib + stage + teacher)) fail('구슬 레이스', '구슬 레이스가 우리 서버를 부른다 — 서버 없이 도는 게임이다')
+  if (!/serverVerified/.test(teacher)) fail('구슬 레이스', '강사 화면이 serverVerified 를 보지 않는다 — 확인해 줄 서버가 없다고 결과에 적어야 한다')
+  if (!/finalizeGame/.test(teacher)) fail('구슬 레이스', '결과를 기존 구조(세션·뽑기 기록·발표 횟수)에 적지 않는다')
+  if (used > 0) pass('구슬 레이스', `구슬 레이스 ${used}곳이 맵과 발표자 규칙을 차시에 적었고, 결과는 기존 구조에 들어가며 우리 서버를 부르지 않는다`)
 }
 
 /* ── 서버 시각 · 단추 ── */

@@ -11,7 +11,7 @@
 1. **한 번 쓴 것은 다시 쓰지 않는다.** 차시마다 쓰는 칸은 셋(80분은 넷)이고, 제출하면 잠긴다. 지우지 않는다.
 2. **읽는 것은 읽기로 끝난다.** 의견 광장에 반응·댓글·정렬이 없다.
 3. **활동은 「교사가 결정해야 하는 순간」이다.** 정답이 있으면 활동이 아니다 (네 검사 — 정답·갈림·이해·상황).
-4. **강사는 화면 하나로 가르친다.** `/teach/:classId/:lessonId`. 학생 화면과 같은 부품이 그리고, 누르는 것은 여섯 가지뿐이다.
+4. **강사는 화면 하나로 가르친다.** `/teach/:classId/:lessonId`. 학생 화면과 같은 부품이 그리고, 누르는 것은 다섯 가지뿐이다.
 5. **학생 순위를 만들지 않는다.** 발표자는 게임(서버 시드)이 뽑고, 발표 횟수가 적은 사람에게 가중치가 간다.
 
 ## 지금 할 수 있는 일
@@ -41,7 +41,7 @@ npm run dev          # http://localhost:5173
 
 **모둠 나누기**(5절)는 아이스브레이킹 질문 하나로 한다 (`src/content/formation-questions.ts`, 24개). 같은 답끼리 모으되 동석 최소화(`shared/groups-core.ts`)는 그대로 돈다. 모둠 이름은 답이다 — 「일본 모둠」.
 
-**게임**(6절)은 라이브러리 13종(새 12 + 루미 런) + 옛 게임 2종(1강 사다리 · 2강 봉투). 상태는 (서버 시드 · 참가 · 입력 · 서버 시각)의 함수라 모든 화면이 같은 것을 계산한다 (`src/lib/game-core.ts`). 학생은 [참가] 하나, 강사는 [게임 시작] 하나.
+**게임**(6절)은 라이브러리 14종(새 12 + 밖에서 붙인 루미 런 · 교실 구슬 레이스) + 옛 게임 2종(1강 사다리 · 2강 봉투). 상태는 (서버 시드 · 참가 · 입력 · 서버 시각)의 함수라 모든 화면이 같은 것을 계산한다 (`src/lib/game-core.ts`). 학생은 [참가] 하나, 강사는 [게임 시작] 하나.
 
 ## 배포 전 검증
 
@@ -60,7 +60,7 @@ npm run lint
 | `audit:draft` | `docs/검토/<과목>-<nn>.md` 의 문장이 코드에 그대로 있는지 — 문서가 시드다 |
 | `verify:wording` | 어미 「~다 / ~하세요」 · 문장 60자 · 문단 4문장 · 비유·구호·다짐·장식 기호 · 연수 어휘 · 화면의 「○분」 |
 | `verify:content` | 교재 OCR 오독 · 반복 템플릿 · 차시 사이 문장 중복 |
-| `verify:games` | 라이브러리 15종 · 계산이 실제로 있는지 · 배치(옛 게임은 1·2강, 루미 런은 3·4강, 반응 속도 ≤2회) · 서버 시각 · 단추 |
+| `verify:games` | 라이브러리 16종 · 계산이 실제로 있는지 · 배치(옛 게임은 1·2강, 루미 런은 3·4강, 구슬 레이스는 맵·규칙 명시) · 서버 시각 · 단추 |
 | `verify:groups` | 질문 은행 ≥20 · 과학 낱말 없음 · 형식 연속 중복 없음 · 배분 ≤3 · 모의 실행 · 접근성 |
 | `verify:teach` | 등록표 ↔ 본문 · 강사와 학생이 같은 부품 · 수업 중 단추 다섯 이외 없음 · 실명 가리기 · 잠깐 확인의 정답은 접혀 있음 · 발표 모드·단계 시간 없음 · `/live` 없음 |
 | `verify:classes` | 학기 간 자료 격리 · 실명이 강사 전용 경로에만 · 보안 규칙 |
@@ -89,12 +89,12 @@ src/
     index.ts                   COURSES = { method, edu } · loadLesson (import() 로 따로 내려온다)
     method/lessonNN.ts         교과교수법 18차시
     edu/lessonNN.ts            과학교육론 12차시 (1강은 교수법 1강 그대로)
-  content/games.ts             게임 라이브러리 15종
+  content/games.ts             게임 라이브러리 16종
   content/formation-questions.ts  모둠 나누기 질문 은행
   content/theory/              이론 배경 (정리 끝 「더 읽기」)
   lib/game-core.ts             게임 상태 계산 — React 도 Firestore 도 Math.random() 도 없다
   lib/group-math.ts            모둠 데이터 계산 — 학생·강사·검사가 같은 함수
-  lib/teach-registry.ts        블록 종류 → 조작부 등록표 · 수업 중 단추 여섯
+  lib/teach-registry.ts        블록 종류 → 조작부 등록표 · 수업 중 단추 다섯
   lib/groups.ts · shared/groups-core.ts   모둠 나누기
   lib/repo.ts                  저장 계층 (Firestore / 로컬)
   components/lesson/LessonBody.tsx   한 단계의 본문 — 학생 화면과 강사 화면이 같은 부품
@@ -102,7 +102,8 @@ src/
   components/group/            GroupStep(학생 ④ 모둠) · GroupBoard(강사 모둠별 나란히)
   components/formation/        아이스브레이킹 질문 (학생)
   components/groups/           FormationPanel (강사 — 배정·미리보기·확정)
-  components/lumi/             루미 런 (3·4강)
+  components/lumi/             루미 런 (교수법 3·4강)
+  components/marble/           교실 구슬 레이스 (교육론 2강 — 서버 없이 강사 화면에서)
   routes/Teach.tsx             강사 수업 화면 /teach/:classId/:lessonId
   routes/Lesson.tsx            학생 차시 화면 /lesson/:id
   routes/instructor/Classes.tsx   강사 홈 — 클래스 → 차시 목록(공개 토글 · 수업 열기)
@@ -203,7 +204,7 @@ AI 분류 요청 (AI 검토 화면 안)  →  addAiProposal (status: pending)  �
 | A 걷어내기 (형성평가·재응답·반응·댓글·판·여섯 층 카드) | 배포됨 |
 | B 골격 · 저장 계층 · 규칙 · 두 과목 색인 | 완료 |
 | C 강사 수업 화면 `/teach` | 완료 |
-| D 게임 라이브러리 13종 + 옛 2종 | 완료 |
+| D 게임 라이브러리 14종 + 옛 2종 | 완료 |
 | E 교과교수법 1강 본보기 (검토 문서 → 코드 → 검증 19종 → 에뮬레이터 5종) | 완료 |
 | F 교과교수법 2~18강 (7강 우선) · G 과학교육론 2~12강 | 진행 중 — `docs/검토/` 에 검토 문서가 먼저 온다 |
 

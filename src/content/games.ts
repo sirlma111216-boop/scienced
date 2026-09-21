@@ -1,3 +1,4 @@
+import { MARBLE_DEFAULT_MAP, MARBLE_DEFAULT_PICK, MARBLE_MAPS, MARBLE_PICKS } from '@/lib/marble'
 import type { GameKind } from './types'
 
 /**
@@ -146,6 +147,18 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
     landscape: true,
     options: { map: { label: '코스', values: ['1', '2', '3', '4', '5'], default: '1' } },
   },
+  marble: {
+    kind: 'marble',
+    name: '교실 구슬 레이스',
+    rule: '수강생 모두가 구슬이 되어 앞 화면에서 함께 달립니다. 차시가 정한 도착 순서에 든 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 60,
+    winner: '차시가 정한 도착 순서 — 먼저 온 몇 명 또는 늦게 온 몇 명',
+    options: {
+      map: { label: '맵', values: Object.keys(MARBLE_MAPS), default: MARBLE_DEFAULT_MAP },
+      pick: { label: '발표자', values: Object.keys(MARBLE_PICKS), default: MARBLE_DEFAULT_PICK },
+    },
+  },
   ladder: {
     kind: 'ladder',
     name: '사다리타기',
@@ -166,8 +179,8 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
   },
 }
 
-/** 6.2 의 새 게임 12 + 루미 런 — 라이브러리 13종. 사다리·봉투는 1·2강에 유지되는 옛 게임이다 */
-export const LIBRARY_KINDS: GameKind[] = ['bomb', 'closest', 'doors', 'mine', 'late', 'rps', 'sync', 'sum', 'relay', 'bingo', 'estimate', 'flash', 'lumi']
+/** 6.2 의 새 게임 12 + 밖에서 붙인 게임 2(루미 런 · 구슬 레이스) — 라이브러리 14종. 사다리·봉투는 1·2강에 유지되는 옛 게임이다 */
+export const LIBRARY_KINDS: GameKind[] = ['bomb', 'closest', 'doors', 'mine', 'late', 'rps', 'sync', 'sum', 'relay', 'bingo', 'estimate', 'flash', 'lumi', 'marble']
 export const LEGACY_KINDS: GameKind[] = ['ladder', 'envelope']
 
 export function gameSpec(kind: GameKind): GameSpec {

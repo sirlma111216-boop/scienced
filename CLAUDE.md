@@ -76,6 +76,15 @@
 - 반응 시각은 `serverNow()` (참가 때 `/api/game/time` 으로 잰 오프셋).
 - 새 게임: `content/games.ts` 라이브러리 · `game-core.ts` 의 `DERIVE` 표 · `GameInputs.tsx` 의 `case`. `verify:games` 가 셋을 대조한다.
 - 1강 사다리·2강 봉투는 옛 엔진(`ladder.ts`) 그대로 (`components/games/LegacyLadder.tsx`).
+- 결과를 적는 자리는 하나다 — `src/lib/game-record.ts` 의 `finalizeGame`(세션 · 뽑기 기록 · 발표 횟수). 게임을 새로 붙여도 여기로 보낸다.
+
+## 교실 구슬 레이스 — 교육론 2강 (강의자 지시 2026-09-21)
+
+따로 배포된 활동 앱(`https://classroom-marble-race.sirlma.workers.dev`)을 iframe 으로 붙인다. 루미 런과 달리 **서버·티켓·webhook 이 없다** (`mode: 'local'`) — 강사 화면(프로젝터) 하나에서 돌고 학생 기기는 참가하지 않는다.
+- 화면 `src/lib/marble.ts` · `src/components/marble/`. 명단은 수강생 전원(uid + 닉네임), 당첨자의 `participantId` 가 그 uid 다.
+- 맵 id 와 규칙 꼴은 **배포된 활동 앱 기준**이다 — 붙이는 안내서의 `ext-*` 맵과 `firstN`·`lastN` 규칙은 그 앱에 없다. 포털 연구소는 `mix-portal`, 「먼저 n명」은 `{kind:'topK', k:n}`, 「늦게 n명」은 `{kind:'bottomK', k:n}`.
+- 활동 앱은 `frame-ancestors` 로 자기 주소와 `scienced.labbitory.com` 에서만 열린다. **localhost 에서는 화면이 뜨지 않는다** — 8초 뒤 그 이유를 화면에 적는다. 확인은 배포 주소에서 한다.
+- 결과는 서버가 확인해 주지 않는다(`serverVerified: false`). 결과에 「화면에서 계산한 결과」를 적고 성적에 쓰지 않는다.
 
 ## 모둠 나누기 (6차 · 8차)
 
