@@ -84,6 +84,10 @@ export function ShareBar({
 
   return (
     <>
+      {/* 무엇을 올리라는 말이 먼저다 — 단추 옆에 흐리게 두지 않는다 (강의자 지시 2026-09-21) */}
+      <p className="text-body" style={{ margin: '0 0 10px' }}>
+        {prompt}
+      </p>
       <div className="flex flex-wrap items-center gap-md no-print">
         {myPost ? (
           <Caption>내 글이 올라가 있습니다</Caption>
@@ -93,9 +97,6 @@ export function ShareBar({
         <Button variant="secondary" onClick={() => setOpen(true)}>
           다른 사람 생각 보기 ({posts.length})
         </Button>
-        <span className="text-body-sm" style={{ opacity: 0.66 }}>
-          {prompt}
-        </span>
       </div>
 
       {composing ? (
@@ -257,7 +258,7 @@ function ComposeDialog({
 
   return (
     <Dialog title="내 생각 공유하기" onClose={onClose}>
-      <p className="text-body-sm" style={{ opacity: 0.72, marginBottom: 12 }}>
+      <p className="text-body" style={{ marginBottom: 12 }}>
         {prompt}
       </p>
       {text.trim() ? (

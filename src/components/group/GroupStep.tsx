@@ -103,7 +103,7 @@ export function GroupStep({
         </h3>
         <Caption>{members.length} / {myGroup.memberUids.length}명 냈다</Caption>
       </div>
-      <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.8 }}>
+      <p className="text-body" style={{ margin: '8px 0 0' }}>
         {group.prompt}
       </p>
 
@@ -145,7 +145,9 @@ export function GroupStep({
       ) : null}
       {group.format === 'vote' ? (
         <div style={{ marginTop: 16 }}>
-          <Caption>{group.repPrompt ?? '모둠을 대표할 이유 하나를 고르세요'}</Caption>
+          <p className="text-body-sm" style={{ margin: 0, fontWeight: 480 }}>
+            {group.repPrompt ?? '모둠을 대표할 이유 하나를 고르세요'}
+          </p>
           <ul className="flex flex-wrap gap-xs" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
             {members
               .filter((m) => (m.reason ?? '').trim())
