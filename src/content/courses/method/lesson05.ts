@@ -178,6 +178,7 @@ export const lesson: Lesson = {
         key: 'move',
         kind: 'choice',
         label: '다음에 할 일',
+        help: '지우의 말에서 맞은 대목과 어긋난 대목을 가른 뒤 고른다.',
         required: true,
         options: [
           '온도계를 바꿔 지우가 직접 다시 재게 한다',
@@ -190,6 +191,7 @@ export const lesson: Lesson = {
         key: 'reason',
         kind: 'longtext',
         label: '왜 그것이 먼저인가',
+        help: '지우의 어느 말을 근거로 삼았는지 적는다.',
         required: true,
         sentenceStarters: ['___부터 하지 않으면 그다음 어떤 것도 소용없다', '지우의 말 「___」에서 ___가 보였기 때문이다'],
       },

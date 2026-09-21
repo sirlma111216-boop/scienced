@@ -6,6 +6,7 @@
  *   · 선택형이면 선택지 3개 이상
  *   · 상황 자료가 있고 200~400자 · 「수업용으로 만든 가상 자료」 꼬리표 또는 출처
  *   · 과제문은 명령형 한 문장 — 물음표로 끝나지 않는다
+ *   · 칸마다 안내(help) 한 줄 — 화면의 과제 블록이 「무엇을 쓰나」로 그대로 보인다
  */
 import { readFile } from 'node:fs/promises'
 import { fail, pass, report } from './_report.mjs'
@@ -82,6 +83,19 @@ for (const course of await loadCourses()) {
         bad += 1
       }
 
+      /* 칸마다 안내 한 줄 — 과제 블록이 이 줄을 「무엇을 쓰나」에 그대로 보인다 (강의자 지시 2026-09-21) */
+      for (const f of a.fields) {
+        /* 어미·문장 길이는 verify:wording 이 본다. 여기서는 있는지와 한 줄인지만 본다 */
+        const help = String(f.help ?? '').trim()
+        if (!help) {
+          fail('칸 안내', `${at} 「${f.label}」 에 안내(help)가 없다 — 무엇을 보고 무엇을 쓰는지 한 줄로 적는다`)
+          bad += 1
+        } else if ([...help].length > 90) {
+          fail('칸 안내', `${at} 「${f.label}」 의 안내가 ${[...help].length}자다 — 90자 이하 한 줄`)
+          bad += 1
+        }
+      }
+
       /* 선택형 */
       for (const f of a.fields) {
         if ((f.kind === 'choice' || f.kind === 'multi') && (f.options?.length ?? 0) < 3) {
@@ -99,5 +113,5 @@ for (const course of await loadCourses()) {
 }
 
 if (activities === 0) fail('활동', '활동이 하나도 없다')
-if (bad === 0) pass('활동', `${activities}개 활동이 네 검사 · 상황 200~400자 · 명령형 과제 · 선택지 3개 이상을 갖췄다`)
+if (bad === 0) pass('활동', `${activities}개 활동이 네 검사 · 상황 200~400자 · 명령형 과제 · 칸마다 안내 한 줄 · 선택지 3개 이상을 갖췄다`)
 report('audit:activity')

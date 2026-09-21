@@ -166,6 +166,7 @@ export const lesson: Lesson = {
         key: 'move',
         kind: 'choice',
         label: '다음에 할 일',
+        help: '모둠3의 모형이 밤에 무엇을 예측하는지 따진 뒤 고른다.',
         required: true,
         options: [
           '밤 자료를 지금 공개하고 모둠3의 모형과 비교하게 한다',

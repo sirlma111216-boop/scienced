@@ -296,6 +296,7 @@ export const lesson: Lesson = {
         key: 'ground',
         kind: 'choice',
         label: '내 답이 기댄 근거',
+        help: '위에 쓴 두 문장이 실제로 기대고 있는 것 하나를 고른다.',
         required: true,
         options: [
           '고쳐질 수 있어야 과학이다',

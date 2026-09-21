@@ -177,6 +177,7 @@ export const lesson: Lesson = {
         key: 'reason',
         kind: 'longtext',
         label: '그 산출물이 목표의 동사를 보여 주는 이유',
+        help: '그 산출물을 걷어서 보면 목표의 동사가 드러나는지 적는다.',
         required: true,
         sentenceStarters: ['___를 보면 학생이 ___했는지 드러나기 때문이다'],
       },

@@ -11,6 +11,8 @@ import { buildSteps } from '@/content/steps'
  */
 
 export type BlockKind =
+  | 'prompt' // 도입·정리의 물음 — 단계 맨 앞, 조작부 없음
+  | 'task' // 과제문 — 활동 단계 맨 앞, 조작부 없음
   | 'stimulus' // 읽을 것·볼 것 — 조작부 없음
   | 'stimulusReveal' // 강사가 공개해야 열리는 자료 — 자료 공개 / 되돌리기
   | 'field' // 학생이 쓰는 칸 — 응답 n/N ▸ 분포 또는 목록
@@ -24,6 +26,8 @@ export type BlockKind =
 export type ControlId = 'reveal' | 'responses' | 'wall' | 'group' | 'game'
 
 export const CONTROLS: Record<BlockKind, ControlId[]> = {
+  prompt: [],
+  task: [],
   stimulus: [],
   stimulusReveal: ['reveal'],
   field: ['responses'],
@@ -53,11 +57,14 @@ export interface Block {
   controls: ControlId[]
 }
 
-/** 한 단계의 블록을 학생 화면 순서로. 활동 단계는 ①과제 ②쓰기 ③공유 ④모둠 ⑤게임 */
+/** 한 단계의 블록을 학생 화면 순서로. 활동 단계는 ①과제 ②상황 ③쓰기 ④공유 ⑤모둠 ⑥게임 */
 export function stepBlocks(step: Step, lesson: Lesson): Block[] {
   const out: Block[] = []
   const mk = (kind: BlockKind, key: string, label: string, extra: Partial<Block> = {}): Block => ({ id: `${step.id}:${kind}:${key}`, kind, stepId: step.id, label, controls: CONTROLS[kind], ...extra })
 
+  /* 묻는 것이 먼저다 — 자료보다 앞에 둔다 (강의자 지시 2026-09-21) */
+  if (step.prompt) out.push(mk('prompt', 'prompt', `물음 · ${step.prompt}`))
+  if (step.activity) out.push(mk('task', 'task', `과제 · ${step.activity.task}`))
   for (const m of step.material) {
     if (m.gate?.type === 'afterReveal') out.push(mk('stimulusReveal', m.id, `자료 · ${m.title}`, { material: m, gateId: m.gate.of }))
     else out.push(mk('stimulus', m.id, `자료 · ${m.title}`, { material: m }))

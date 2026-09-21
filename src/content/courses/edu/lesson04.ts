@@ -160,6 +160,7 @@ export const lesson: Lesson = {
         key: 'root',
         kind: 'choice',
         label: '이 생각을 받치고 있는 것',
+        help: '틀린 지식이 아니라 그 생각을 버티게 하는 것을 고른다.',
         required: true,
         options: [
           '난로는 가까울수록 뜨겁다는 일상 경험',

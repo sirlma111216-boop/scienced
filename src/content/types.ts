@@ -319,6 +319,8 @@ export interface Step {
   material: Stimulus[]
   fields: FieldDef[]
   concepts: KeyConcept[]
+  /** 도입·정리처럼 단계 자체가 묻는 물음. 화면 맨 앞에 크게 나온다 (강의자 지시 2026-09-21) */
+  prompt?: string
   /** 활동 단계면 그 활동 */
   activity?: Activity
   /** 정리 단계면 다시 보일 기준들 */

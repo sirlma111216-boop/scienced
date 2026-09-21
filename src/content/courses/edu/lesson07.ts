@@ -145,6 +145,7 @@ export const lesson: Lesson = {
         key: 'pick',
         kind: 'choice',
         label: '통째로 뺄 단계',
+        help: '남은 한 차시에서 무엇을 지킬지 정한 뒤 뺄 단계를 고른다.',
         required: true,
         options: ['참여', '탐색', '설명', '정교화', '평가'],
       },

@@ -27,9 +27,9 @@ export const INTRO_KEY = 'choice'
 export function introFields(lesson: Lesson): FieldDef[] {
   const i = lesson.intro
   if (i.kind === 'line') {
-    return [{ key: INTRO_KEY, kind: 'text', label: i.prompt, required: true, requiresStimulus: [i.stimulus.id] }]
+    return [{ key: INTRO_KEY, kind: 'text', label: '내 한 줄', help: i.prompt, required: true, requiresStimulus: [i.stimulus.id] }]
   }
-  return [{ key: INTRO_KEY, kind: 'choice', label: i.prompt, required: true, options: i.options ?? [], requiresStimulus: [i.stimulus.id] }]
+  return [{ key: INTRO_KEY, kind: 'choice', label: '내 선택', help: i.prompt, required: true, options: i.options ?? [], requiresStimulus: [i.stimulus.id] }]
 }
 
 function activityStep(id: string, order: number, a: Activity, n: 1 | 2): Step {
@@ -70,6 +70,7 @@ export function buildSteps(lesson: Lesson): Step[] {
       material: [lesson.intro.stimulus],
       fields: introFields(lesson),
       concepts: [],
+      prompt: lesson.intro.prompt,
     },
     conceptStep('concepts', 2, lesson.concepts, 1),
     activityStep('activity', 3, lesson.activity, 1),
@@ -85,8 +86,9 @@ export function buildSteps(lesson: Lesson): Step[] {
     title: '정리',
     shortTitle: '정리',
     material: [],
-    fields: [{ key: WRAPUP_KEY, kind: 'longtext', label: lesson.wrapup.prompt, required: true }],
+    fields: [{ key: WRAPUP_KEY, kind: 'longtext', label: '오늘의 정리', help: lesson.wrapup.prompt, required: true }],
     concepts: [],
+    prompt: lesson.wrapup.prompt,
     recap: [...lesson.concepts, ...(lesson.concepts2 ?? [])],
   })
   return steps

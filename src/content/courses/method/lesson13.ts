@@ -168,6 +168,7 @@ export const lesson: Lesson = {
         key: 'move',
         kind: 'choice',
         label: '먼저 할 일',
+        help: '사실을 묻는 물음과 가치를 묻는 물음을 가른 뒤 고른다.',
         required: true,
         options: [
           '내 입장과 그 근거를 밝히고 학생이 반박하게 한다',

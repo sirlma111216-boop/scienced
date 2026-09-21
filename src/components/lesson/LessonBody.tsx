@@ -8,6 +8,8 @@ import type { Enrollment, GroupRound, GroupShare, GroupValue, Participation, Pos
 import { Badge, Button, Caption, ScrollX } from '@/components/ui'
 import { ConceptCard, KeyPoints } from '@/components/concept/ConceptCard'
 import { StudentConceptCards } from '@/components/concept/ConceptCheck'
+import { StepPrompt } from './StepPrompt'
+import { TaskCard } from './TaskCard'
 import { LockedCard, StimulusView } from '@/components/stimulus/StimulusView'
 import { DistributionView } from '@/components/response/DistributionView'
 import { ResponseCollector } from '@/components/response/ResponseCollector'
@@ -22,7 +24,7 @@ import { payloadOf, submitted as isSubmitted } from '@/components/teach/names'
  * 한 단계의 본문 — 학생 화면과 강사 수업 화면이 같은 부품이다 (8차 7절).
  *
  * 블록 순서는 teach-registry 의 stepBlocks() 하나가 정한다. 강사(teacher prop)면 블록 옆에 등록표가 정한 조작부만 붙는다:
- *   stimulusReveal → [자료 공개] · concepts → 잠깐 확인 「응답 n/N ▸」 · field → 「응답 n/N ▸」 · wall → 「올라온 글 n ▸」 · group → 「모둠별 ▸」 · game → [게임 시작]
+ *   prompt → 도입·정리의 물음 · task → 과제문(조작부 없음) · stimulusReveal → [자료 공개] · concepts → 잠깐 확인 「응답 n/N ▸」 · field → 「응답 n/N ▸」 · wall → 「올라온 글 n ▸」 · group → 「모둠별 ▸」 · game → [게임 시작]
  * 학생의 쓰는 칸은 강사가 「단계 열기」를 누른 뒤에만 열린다 (session.openSteps).
  */
 export interface TeacherView extends TeacherGameProps {
@@ -66,6 +68,10 @@ export function LessonBody({
     <div className="flex flex-col" style={{ gap: 24 }}>
       {blocks.map((b, i) => {
         switch (b.kind) {
+          case 'prompt':
+            return <StepPrompt key={b.id} step={step} />
+          case 'task':
+            return step.activity ? <TaskCard key={b.id} activity={step.activity} step={step} /> : null
           case 'stimulus':
             return <StimulusView key={b.id} stimulus={b.material!} />
           case 'stimulusReveal': {

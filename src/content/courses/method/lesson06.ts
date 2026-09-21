@@ -187,6 +187,7 @@ export const lesson: Lesson = {
         key: 'reason',
         kind: 'longtext',
         label: '맨 뒤에 둔 활동을 빼도 되는 이유',
+        help: '성취기준의 동사에 닿는지로 가른다. 뺀 뒤 무엇으로 대신하는지 적는다.',
         required: true,
         sentenceStarters: ['___는 성취기준의 동사 「___」에 닿지 않기 때문에 뺀다', '___를 빼도 학생은 ___로 같은 것을 할 수 있다'],
       },

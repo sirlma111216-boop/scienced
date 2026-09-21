@@ -141,7 +141,6 @@ export function Lesson() {
 
         <h2 className="text-headline" style={{ margin: '0 0 16px' }}>
           {step.title}
-          {step.activity ? <span className="caption" style={{ marginLeft: 10 }}>{step.activity.task}</span> : null}
         </h2>
 
         <LessonBody classId={classId!} courseId={courseId} lesson={lesson} step={step} session={session} round={activeRound} nicknames={nicknames} />

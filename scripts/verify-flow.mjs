@@ -18,7 +18,7 @@ const { formatMatchesField } = await import('../src/lib/group-math.ts')
 const { stepBlocks } = await import('../src/lib/teach-registry.ts')
 
 const CARD_RANGE = { method: [3, 4], edu80: [3, 4], edu40: [2, 3] }
-const ORDER = ['stimulus', 'field', 'wall', 'group', 'game']
+const ORDER = ['task', 'stimulus', 'field', 'wall', 'group', 'game']
 
 let lessons = 0
 for (const course of await loadCourses()) {
@@ -88,7 +88,7 @@ for (const course of await loadCourses()) {
     for (const s of steps.filter((x) => x.kind === 'activity')) {
       const kinds = stepBlocks(s, l).map((b) => (b.kind === 'stimulusReveal' ? 'stimulus' : b.kind)).filter((k) => ORDER.includes(k))
       const seq = kinds.filter((k, i) => kinds[i - 1] !== k)
-      if (seq.join(',') !== ORDER.join(',')) fail('활동 순서', `${at} ${s.id} 블록이 [${seq.join(' → ')}] 다 — 과제 → 쓰기 → 공유 → 모둠 → 게임`)
+      if (seq.join(',') !== ORDER.join(',')) fail('활동 순서', `${at} ${s.id} 블록이 [${seq.join(' → ')}] 다 — 과제 → 상황 → 쓰기 → 공유 → 모둠 → 게임`)
     }
 
     /* 정리 문항 꼴 */

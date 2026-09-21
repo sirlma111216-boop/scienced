@@ -216,7 +216,6 @@ export function Teach() {
                     </Button>
                   ) : null}
                   {step.kind === 'intro' && isFormationLesson ? <Caption>{roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : `질문 답 ${groupInputs.filter((i) => i.questionId === question.id).length}/${students.length}`}</Caption> : null}
-                  {step.activity ? <Caption>{step.activity.task}</Caption> : null}
                 </div>
 
                 <LessonBody classId={classId} courseId={courseId} lesson={lesson} step={step} session={session} round={activeRound} nicknames={nicknames} tally={tally} teacher={{ students, participation, docs, onReveal, nameOf: (uid) => nicknames[uid] ?? '이름 없음' }} />
