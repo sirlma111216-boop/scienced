@@ -164,4 +164,51 @@ function buttonLabels(src) {
   pass('/live 경로', '옛 진행 콘솔 · 차시 목록 · 대시보드가 없고 학생 화면에 강사 전용 요소가 없다')
 }
 
+/* ── 강사는 학생과 같은 화면을 본다 (강의자 지시 2026-09-22) ── */
+{
+  const teach = await read('src/routes/Teach.tsx')
+  const lesson = await read('src/routes/Lesson.tsx')
+  const body = await read('src/components/lesson/LessonBody.tsx')
+  let bad = 0
+  /* 블록은 LessonBody 에만 있다 — 경로 파일이 블록 부품을 따로 그리면 두 화면이 갈라진다 (오늘의 질문이 그렇게 학생 화면에만 있었다) */
+  const PARTS = ['FormationQuestionView', 'StimulusView', 'ResponseCollector', 'StudentConceptCards', 'ConceptCheckView', 'GameShell', 'ShareBar', 'GroupStep', 'TaskCard', 'StepPrompt', 'FieldRenderer']
+  for (const [name, src] of [['Teach.tsx', teach], ['Lesson.tsx', lesson]]) {
+    const hit = PARTS.filter((p) => new RegExp(`<${p}\\b`).test(src))
+    if (hit.length > 0) {
+      bad += 1
+      fail('같은 화면', `${name} 이 블록 부품(${hit.join(' · ')})을 LessonBody 밖에서 그린다 — 강사와 학생이 다른 것을 보게 된다`)
+    }
+    if (!/<LessonHeader/.test(src) || !/<LessonBody/.test(src)) {
+      bad += 1
+      fail('같은 화면', `${name} 이 차시 머리(LessonHeader)와 본문(LessonBody)을 같은 부품으로 그리지 않는다`)
+    }
+  }
+  /* 강사 분기는 학생이 지금 보는 것을 먼저 그린다 — 잠김 카드 · 칸 · 질문 · 잠깐 확인 */
+  const seg = (kind) => {
+    const at = body.indexOf(`case '${kind}'`)
+    if (at < 0) return ''
+    const next = body.indexOf("\n          case '", at + 10)
+    return body.slice(at, next < 0 ? undefined : next)
+  }
+  const rules = [
+    ['field', /LockedCard/, '쓰는 칸의 강사 분기가 학생의 잠김 카드를 그리지 않는다 — 단계를 열기 전 학생이 무엇을 보는지 강사가 모른다'],
+    ['field', /FieldRenderer/, '쓰는 칸의 강사 분기가 학생의 칸(FieldRenderer)을 그리지 않는다 — 접힌 응답만 보인다'],
+    ['stimulusReveal', /LockedCard/, '자료 공개의 강사 분기가 공개 전 학생의 잠김 카드를 그리지 않는다'],
+    ['question', /<FormationQuestionView/, '오늘의 질문 블록이 강사 화면에서 학생과 같은 부품(FormationQuestionView)을 쓰지 않는다'],
+    ['question', /모둠 나누기/, '[모둠 나누기]가 오늘의 질문 블록 옆에 없다'],
+  ]
+  for (const [kind, re, msg] of rules) {
+    if (!re.test(seg(kind))) {
+      bad += 1
+      fail('같은 화면', msg)
+    }
+  }
+  const check = body.slice(body.indexOf('function TeacherCheck'), body.indexOf('/* ─', body.indexOf('function TeacherCheck')))
+  if (!/<ConceptCheckView[^>]*\bpreview\b/.test(check)) {
+    bad += 1
+    fail('같은 화면', '잠깐 확인의 강사 분기가 학생이 보는 문항(ConceptCheckView preview)을 그리지 않는다')
+  }
+  if (bad === 0) pass('같은 화면', '강사 화면은 블록마다 학생이 보는 것 → 단추 → 접힌 답 순서이고, 블록 부품은 LessonBody 에만 있다 (경로 파일 둘은 머리와 본문만 그린다)')
+}
+
 report('verify:teach')

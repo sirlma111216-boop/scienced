@@ -8,8 +8,7 @@ import { courseOf, useLesson } from '@/lib/lesson-data'
 import type { AppUser, Enrollment, GroupRound, SessionState } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { LessonBody } from '@/components/lesson/LessonBody'
-import { FormationQuestionView } from '@/components/formation/FormationQuestion'
-import { Rich } from '@/components/theory/Rich'
+import { LessonHeader } from '@/components/lesson/LessonHeader'
 import { TheoryProvider } from '@/components/theory/TheoryContext'
 import { Button, Caption, ColorBlock } from '@/components/ui'
 
@@ -18,11 +17,12 @@ import { Button, Caption, ColorBlock } from '@/components/ui'
  *
  * 차시 머리는 제목·중심 질문·학습목표 셋뿐이다 (원칙 11). 단계는 도입 → 개념 → 활동 → 정리.
  * 내용은 공개된 차시일 때만 import() 로 내려온다 (부록 ①). 강사가 단계를 열기 전에는 쓰는 칸이 잠겨 있다.
- * 모둠을 새로 나누는 차시면 도입 단계 위에 아이스브레이킹 질문이 온다 (5절).
+ * 오늘의 질문 · 모둠 · 모든 블록은 LessonBody 가 그린다 — 이 파일은 블록을 하나도 직접 그리지 않는다.
+ * 그래야 강사의 수업 화면(/teach)이 이 화면과 같은 것을 본다 (강의자 지시 2026-09-22 · verify:teach).
  */
 export function Lesson() {
   const { id } = useParams()
-  const { repo, user, isInstructor, classId, currentClass } = useAuth()
+  const { repo, isInstructor, classId, currentClass } = useAuth()
   const courseId = courseOf(currentClass)
   const [published, setPublished] = useState<LessonId[] | null>(null)
   const [session, setSession] = useState<SessionState | null>(null)
@@ -85,7 +85,6 @@ export function Lesson() {
   }
 
   const isFormationLesson = formationLessons(currentClass, courseId).includes(lesson.id)
-  const roundHere = groupRounds.find((r) => r.lessonId === lesson.id) ?? null
   const activeRound = roundForLesson(lesson.id, groupRounds)
   const question = questionForLesson(currentClass, lesson.id)
   const navItems = steps.map((s) => ({ id: s.id, label: s.title, shortLabel: s.shortTitle, instructorHere: session?.instructorAt === s.id, done: (session?.openSteps ?? []).includes(s.id) }))
@@ -101,50 +100,13 @@ export function Lesson() {
           if (i >= 0) setStepIndex(i)
         }}
       >
-        {stepIndex === 0 ? (
-          <section style={{ marginBottom: 40 }}>
-            <p className="eyebrow">{Number(lesson.id)}강</p>
-            <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
-              {lesson.title}
-            </h1>
-            <p className="text-subhead" style={{ marginTop: 24, maxWidth: 760 }}>
-              {lesson.centralQuestion}
-            </p>
-            <div style={{ marginTop: 24 }}>
-              <Caption>학습목표</Caption>
-              <ol style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                {lesson.objectives.map((o, i) => (
-                  <li key={i} className="text-body" style={{ marginBottom: 6 }}>
-                    <Rich text={o} />
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </section>
-        ) : null}
-
-        {/* 오늘의 질문은 매 차시 뜬다 — 답하면 그날 출석이다 (강의자 지시 2026-09-22) */}
-        {stepIndex === 0 && classId ? <FormationQuestionView classId={classId} lessonId={lesson.id} question={question} forGroups={isFormationLesson} round={isFormationLesson ? roundHere : null} rounds={groupRounds} nicknames={nicknames} /> : null}
-
-        {activeRound && user ? (
-          (() => {
-            const g = activeRound.groups.find((x) => x.memberUids.includes(user.uid))
-            return g ? (
-              <p className="flex items-center gap-xs text-body-sm" style={{ margin: '0 0 16px', flexWrap: 'wrap' }}>
-                <span className="text-card-title" style={{ padding: '2px 14px', borderRadius: 999, background: '#111', color: '#fff', lineHeight: 1.5 }}>
-                  {g.name}
-                </span>
-                <span>{g.memberUids.map((u) => nicknames[u] ?? '이름 없음').join(' · ')}</span>
-              </p>
-            ) : null
-          })()
-        ) : null}
+        {stepIndex === 0 ? <LessonHeader lesson={lesson} /> : null}
 
         <h2 className="text-headline" style={{ margin: '0 0 16px' }}>
           {step.title}
         </h2>
 
-        <LessonBody classId={classId!} courseId={courseId} lesson={lesson} step={step} session={session} round={activeRound} nicknames={nicknames} />
+        <LessonBody classId={classId!} courseId={courseId} lesson={lesson} step={step} session={session} round={activeRound} groupRounds={groupRounds} formationLesson={isFormationLesson} question={question} nicknames={nicknames} />
 
         <nav className="flex items-center gap-md no-print" style={{ marginTop: 48, paddingTop: 24, boxShadow: 'inset 0 1px 0 #f1f1f1' }}>
           <Button variant="secondary" disabled={stepIndex === 0} onClick={() => setStepIndex((i) => Math.max(0, i - 1))}>

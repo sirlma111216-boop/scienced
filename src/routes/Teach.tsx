@@ -9,10 +9,10 @@ import { formationLessons, historyFromDocs, questionForLesson, roundForLesson } 
 import { courseOf, useLesson } from '@/lib/lesson-data'
 import type { AppUser, Enrollment, GroupInput, GroupRound, PairHistoryDoc, Participation, ResponseDoc, RosterEntry, SessionState } from '@/lib/types'
 import { LessonBody } from '@/components/lesson/LessonBody'
+import { LessonHeader } from '@/components/lesson/LessonHeader'
 import { FormationPanel } from '@/components/groups/FormationPanel'
 import { MusicToggle } from '@/components/teach/MusicToggle'
 import { NamesProvider, Overlay, useNames } from '@/components/teach/names'
-import { Rich } from '@/components/theory/Rich'
 import { TheoryProvider } from '@/components/theory/TheoryContext'
 import { Button, Caption } from '@/components/ui'
 
@@ -138,7 +138,6 @@ export function Teach() {
   if (!entry) return <Navigate to="/instructor/classes" replace />
 
   const isFormationLesson = formationLessons(cls, courseId).includes(lessonId)
-  const roundHere = groupRounds.find((r) => r.lessonId === lessonId) ?? null
   const activeRound = roundForLesson(lessonId, groupRounds)
   const question = questionForLesson(cls, lessonId)
   const tally = question.options.map((o) => ({ option: o, count: groupInputs.filter((i) => i.questionId === question.id && i.choice === o).length }))
@@ -200,26 +199,11 @@ export function Teach() {
             {error ? <p className="text-body" role="alert">{error}</p> : null}
             {lesson && step ? (
               <div role="tabpanel" id={`step-panel-${step.id}`} aria-labelledby={`step-tab-${step.id}`}>
-                {step.kind === 'intro' ? (
-                  <section style={{ marginBottom: 24 }}>
-                    <h1 className="text-display-lg" style={{ margin: 0 }}>
-                      {lesson.title}
-                    </h1>
-                    <p className="text-subhead" style={{ marginTop: 12, maxWidth: 760 }}>
-                      {lesson.centralQuestion}
-                    </p>
-                    <ol style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                      {lesson.objectives.map((o, i) => (
-                        <li key={i} className="text-body-sm">
-                          <Rich text={o} />
-                        </li>
-                      ))}
-                    </ol>
-                  </section>
-                ) : null}
+                {/* 차시 머리 — 학생과 같은 부품 */}
+                {step.kind === 'intro' ? <LessonHeader lesson={lesson} /> : null}
 
-                {/* 단계 머리 — 단계 열기 · (도입) 모둠 나누기 */}
-                <div className="flex items-center gap-xs no-print" style={{ flexWrap: 'wrap', marginBottom: 16 }}>
+                {/* 단계 머리 — 단계 열기. 모둠 나누기는 본문의 오늘의 질문 블록 옆에 있다 */}
+                <div className="flex items-center gap-xs no-print" style={{ flexWrap: 'wrap', marginBottom: 4 }}>
                   <h2 className="text-headline" style={{ margin: 0 }}>
                     {step.title}
                   </h2>
@@ -229,15 +213,25 @@ export function Teach() {
                     </Button>
                   ) : null}
                   {step.fields.length > 0 ? <Caption>{openSteps.includes(step.id) ? '학생이 쓸 수 있다' : '누르면 이 단계의 칸이 열린다'}</Caption> : null}
-                  {step.kind === 'intro' && isFormationLesson ? (
-                    <Button variant="secondary" onClick={() => setFormationOpen(true)}>
-                      모둠 나누기
-                    </Button>
-                  ) : null}
-                  {step.kind === 'intro' ? <Caption>{isFormationLesson && roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : `출석 ${students.length}/${enrolled.length} — 오늘의 질문에 답하면 출석이다`}</Caption> : null}
                 </div>
+                <p className="text-body-sm no-print" style={{ margin: '0 0 16px', opacity: 0.72 }}>
+                  아래는 학생 화면 그대로다. 잠긴 것은 학생에게도 잠겨 있다. 단추와 「… ▸」 접기만 강사에게 보인다.
+                </p>
 
-                <LessonBody classId={classId} courseId={courseId} lesson={lesson} step={step} session={session} round={activeRound} nicknames={nicknames} tally={tally} teacher={{ students, participation, docs, onReveal, nameOf: (uid) => nicknames[uid] ?? '이름 없음' }} />
+                <LessonBody
+                  classId={classId}
+                  courseId={courseId}
+                  lesson={lesson}
+                  step={step}
+                  session={session}
+                  round={activeRound}
+                  groupRounds={groupRounds}
+                  formationLesson={isFormationLesson}
+                  question={question}
+                  nicknames={nicknames}
+                  tally={tally}
+                  teacher={{ students, participation, docs, inputs: groupInputs, enrolled: enrolled.length, onReveal, onFormation: () => setFormationOpen(true), nameOf: (uid) => nicknames[uid] ?? '이름 없음' }}
+                />
               </div>
             ) : null}
           </main>

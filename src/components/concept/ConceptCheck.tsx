@@ -57,8 +57,11 @@ export function StudentConceptCards({ classId, lessonId, step }: { classId: stri
   )
 }
 
-/** 물음 하나 · 보기 넷 · 확인. 고르면 잠기고 맞았는지와 정답 자리를 바로 보여 준다 */
-export function ConceptCheckView({ check, chosen, onAnswer }: { check: ConceptCheck; chosen: Choice | undefined; onAnswer: (c: Choice) => Promise<unknown> }) {
+/**
+ * 물음 하나 · 보기 넷 · 확인. 고르면 잠기고 맞았는지와 정답 자리를 바로 보여 준다.
+ * preview 면 강사 화면이다 — 학생이 보는 그대로이되 고를 수 없고 [확인]이 없다. 정답은 여기 없다 (강사 화면은 접기 안에 둔다).
+ */
+export function ConceptCheckView({ check, chosen, onAnswer, preview = false }: { check: ConceptCheck; chosen: Choice | undefined; onAnswer?: (c: Choice) => Promise<unknown>; preview?: boolean }) {
   const name = useId()
   const [pick, setPick] = useState<Choice | null>(null)
   const [busy, setBusy] = useState(false)
@@ -66,7 +69,7 @@ export function ConceptCheckView({ check, chosen, onAnswer }: { check: ConceptCh
   const done = chosen !== undefined
 
   async function submit() {
-    if (pick === null || busy) return
+    if (pick === null || busy || !onAnswer) return
     setBusy(true)
     setError(null)
     try {
@@ -80,7 +83,7 @@ export function ConceptCheckView({ check, chosen, onAnswer }: { check: ConceptCh
 
   return (
     <section aria-label="잠깐 확인" className="bg-canvas rounded-md" style={{ padding: '14px 18px', marginTop: 20, boxShadow: 'inset 0 0 0 2px #000' }}>
-      <fieldset aria-describedby={`${name}-q`} style={{ border: 0, padding: 0, margin: 0 }}>
+      <fieldset aria-describedby={`${name}-q`} disabled={preview} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <legend className="caption" style={{ padding: 0 }}>
           잠깐 확인
         </legend>
@@ -111,7 +114,9 @@ export function ConceptCheckView({ check, chosen, onAnswer }: { check: ConceptCh
           })}
         </div>
       </fieldset>
-      {done ? (
+      {preview ? (
+        <Caption>학생은 여기서 하나를 고르고 [확인]을 누른다. 한 번 고르면 바꿀 수 없다.</Caption>
+      ) : done ? (
         <p role="status" className="text-body-sm" style={{ margin: '10px 0 0', fontWeight: 480 }}>
           {chosen === check.answer ? '✓ 맞았다.' : `✕ 정답은 ${OPTION_MARK[check.answer]}이다. 카드의 기준으로 다시 읽어 보세요.`}
         </p>

@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { CourseId, FieldDef, KeyConcept, Lesson, LessonId, Step } from '@/content/types'
+import type { FormationQuestion } from '@/content/formation-questions'
 import { useAuth } from '@/lib/auth'
 import { allocationAverage, rankSum, sortTally, voteCounts, type MemberValue } from '@/lib/group-math'
 import { OPTION_MARK, checkTally } from '@/lib/concept-check'
 import { stepBlocks, type Block } from '@/lib/teach-registry'
-import type { Enrollment, GroupRound, GroupShare, GroupValue, Participation, Post, ResponseDoc, SessionState } from '@/lib/types'
+import type { Enrollment, GroupInput, GroupRound, GroupShare, GroupValue, Participation, Post, ResponseDoc, SessionState } from '@/lib/types'
 import { Badge, Button, Caption, ScrollX } from '@/components/ui'
 import { ConceptCard, KeyPoints } from '@/components/concept/ConceptCard'
-import { StudentConceptCards } from '@/components/concept/ConceptCheck'
+import { ConceptCheckView, StudentConceptCards } from '@/components/concept/ConceptCheck'
+import { FormationQuestionView } from '@/components/formation/FormationQuestion'
 import { StepPrompt } from './StepPrompt'
 import { TaskCard } from './TaskCard'
 import { LockedCard, StimulusView } from '@/components/stimulus/StimulusView'
 import { DistributionView } from '@/components/response/DistributionView'
+import { FieldRenderer } from '@/components/response/fields'
 import { ResponseCollector } from '@/components/response/ResponseCollector'
 import { ShareBar, WallCard } from '@/components/wall/Wall'
 import { GroupBoard } from '@/components/group/GroupBoard'
@@ -23,14 +26,24 @@ import { payloadOf, submitted as isSubmitted } from '@/components/teach/names'
 /**
  * 한 단계의 본문 — 학생 화면과 강사 수업 화면이 같은 부품이다 (8차 7절).
  *
- * 블록 순서는 teach-registry 의 stepBlocks() 하나가 정한다. 강사(teacher prop)면 블록 옆에 등록표가 정한 조작부만 붙는다:
- *   prompt → 도입·정리의 물음 · task → 과제문(조작부 없음) · stimulusReveal → [자료 공개] · concepts → 잠깐 확인 「응답 n/N ▸」 · field → 「응답 n/N ▸」 · wall → 「올라온 글 n ▸」 · group → 「모둠별 ▸」 · game → [게임 시작]
- * 학생의 쓰는 칸은 강사가 「단계 열기」를 누른 뒤에만 열린다 (session.openSteps).
+ * 블록 순서는 teach-registry 의 stepBlocks() 하나가 정한다.
+ *
+ * ★ 강사(teacher prop)는 **학생이 지금 보는 그대로**를 먼저 보고, 그 옆에 단추, 그 아래에 접힌 학생 답을 본다 (강의자 지시 2026-09-22).
+ *   블록마다 ① 학생 화면 그대로(잠김이면 잠김 카드, 열렸으면 그 칸) → ② 조작부 → ③ 「… n/N ▸」 접기 순서다.
+ *   강사 화면이 학생 것을 다른 것으로 바꿔 끼우지 않는다 — 그렇게 했더니 강사가 학생이 무엇을 보는지 모른 채 물어보며 진행해야 했다.
+ *   question → [모둠 나누기] · stimulusReveal → [자료 공개] · concepts → 잠깐 확인 「응답 n/N ▸」 · field → 「응답 n/N ▸」 · wall → 「올라온 글 n ▸」 · group → 「모둠별 ▸」 · game → [게임 시작]
+ * 학생의 쓰는 칸은 강사가 「단계 열기」를 누른 뒤에만 열린다 (session.openSteps). 강사 화면도 그 전에는 잠김 카드를 본다.
  */
 export interface TeacherView extends TeacherGameProps {
   /** 이 단계의 응답 전부 */
   docs: ResponseDoc[]
+  /** 이 차시의 오늘의 질문 답 전부 */
+  inputs: GroupInput[]
+  /** 명단(수강생) 수 — 출석 n/N 의 N */
+  enrolled: number
   onReveal: (gateId: string, open: boolean) => void
+  /** [모둠 나누기] — 배정 덮개를 연다 */
+  onFormation: () => void
 }
 
 export function LessonBody({
@@ -40,6 +53,9 @@ export function LessonBody({
   step,
   session,
   round,
+  groupRounds,
+  formationLesson,
+  question,
   nicknames,
   teacher,
   tally,
@@ -49,7 +65,13 @@ export function LessonBody({
   lesson: Lesson
   step: Step
   session: SessionState | null
+  /** 이 차시에서 쓰는 모둠 (이전 회차 포함) */
   round: GroupRound | null
+  /** 확정된 회차 전부 — 「처음 만나는 분」과 이 차시 회차를 여기서 찾는다 */
+  groupRounds: GroupRound[]
+  /** 이 차시에서 오늘의 질문으로 모둠을 새로 나누는가 */
+  formationLesson: boolean
+  question: FormationQuestion
   nicknames: Record<string, string>
   teacher?: TeacherView | null
   tally?: Array<{ option: string; count: number }>
@@ -57,17 +79,62 @@ export function LessonBody({
   const { user, isInstructor } = useAuth()
   const blocks = useMemo(() => stepBlocks(step, lesson), [step, lesson])
   const revealed = session?.revealed ?? []
-  const stepOpen = Boolean(teacher) || (session?.openSteps ?? []).includes(step.id)
+  /* 학생 화면 기준 — 강사도 같은 것을 본다 */
+  const stepOpen = (session?.openSteps ?? []).includes(step.id)
   const isOpen = (gate: { type: string; of: string }) => (gate.type === 'afterSubmit' ? true : revealed.includes(gate.of))
   const firstField = blocks.findIndex((b) => b.kind === 'field')
   const groups = round?.groups ?? []
   const myGroup = user ? (groups.find((g) => g.memberUids.includes(user.uid)) ?? null) : null
   const groupField = step.activity ? step.fields.find((f) => f.key === step.activity!.group.fieldKey) : undefined
+  const roundHere = groupRounds.find((r) => r.lessonId === lesson.id) ?? null
+  const nameOf = (uid: string) => (teacher ? teacher.nameOf(uid) : (nicknames[uid] ?? '이름 없음'))
 
   return (
     <div className="flex flex-col" style={{ gap: 24 }}>
       {blocks.map((b, i) => {
         switch (b.kind) {
+          case 'question': {
+            /* 오늘의 질문 — 두 화면이 같은 블록. 강사는 보기마다 답한 수와 [모둠 나누기]를 본다 */
+            const control = teacher ? (
+              <>
+                <Button variant="secondary" onClick={teacher.onFormation}>
+                  모둠 나누기
+                </Button>
+                <Caption>{formationLesson ? (roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : '답한 사람만 모둠에 들어간다') : '이 차시는 지난 회차의 모둠을 그대로 쓴다 — 출석만 받는다'}</Caption>
+              </>
+            ) : null
+            return (
+              <FormationQuestionView
+                key={b.id}
+                classId={classId}
+                lessonId={lesson.id}
+                question={question}
+                forGroups={formationLesson}
+                round={formationLesson ? roundHere : null}
+                rounds={groupRounds}
+                nicknames={nicknames}
+                teacher={teacher ? { tally: tally ?? [], inputs: teacher.inputs, enrolled: teacher.enrolled, nameOf: teacher.nameOf, control } : null}
+              />
+            )
+          }
+          case 'roundBanner': {
+            /* 학생은 내 모둠 하나, 강사는 모든 모둠 — 같은 자리, 같은 알약 */
+            if (!round) return null
+            const shown = teacher ? groups : myGroup ? [myGroup] : []
+            if (shown.length === 0) return null
+            return (
+              <div key={b.id} className="flex flex-col gap-xs" style={{ margin: '-8px 0 0' }}>
+                {shown.map((g) => (
+                  <p key={g.id} className="flex items-center gap-xs text-body-sm" style={{ margin: 0, flexWrap: 'wrap' }}>
+                    <span className="text-card-title" style={{ padding: '2px 14px', borderRadius: 999, background: '#111', color: '#fff', lineHeight: 1.5 }}>
+                      {g.name}
+                    </span>
+                    <span>{g.memberUids.map(nameOf).join(' · ')}</span>
+                  </p>
+                ))}
+              </div>
+            )
+          }
           case 'prompt':
             return <StepPrompt key={b.id} step={step} />
           case 'task':
@@ -76,6 +143,7 @@ export function LessonBody({
             return <StimulusView key={b.id} stimulus={b.material!} />
           case 'stimulusReveal': {
             const open = revealed.includes(b.gateId!)
+            const locked = <LockedCard key={b.id} title={b.material!.title} message={b.material!.gate?.lockedMessage ?? '강사가 공개하면 열린다.'} />
             if (teacher) {
               return (
                 <div key={b.id}>
@@ -83,13 +151,28 @@ export function LessonBody({
                     <Button variant={open ? 'primary' : 'secondary'} aria-pressed={open} onClick={() => teacher.onReveal(b.gateId!, !open)}>
                       자료 공개
                     </Button>
-                    <Caption>{open ? '학생 화면에 열려 있다' : '누르면 학생 화면에 열린다'}</Caption>
+                    <Caption>{open ? '학생 화면에 열려 있다 — 아래가 학생이 보는 자료다' : '학생은 아직 아래 잠김 카드를 본다. 누르면 열린다'}</Caption>
                   </Control>
-                  <StimulusView stimulus={b.material!} />
+                  {/* ① 학생이 지금 보는 것 그대로. 공개 전에는 강사만 접힌 「미리 읽기」로 본다 */}
+                  {open ? (
+                    <StimulusView stimulus={b.material!} />
+                  ) : (
+                    <>
+                      {locked}
+                      <details className="no-print" style={{ marginTop: 8 }}>
+                        <summary className="text-body-sm" style={{ cursor: 'pointer', fontWeight: 480 }}>
+                          강사만 미리 읽기 ▸
+                        </summary>
+                        <div style={{ marginTop: 8 }}>
+                          <StimulusView stimulus={b.material!} />
+                        </div>
+                      </details>
+                    </>
+                  )}
                 </div>
               )
             }
-            return open ? <StimulusView key={b.id} stimulus={b.material!} /> : <LockedCard key={b.id} title={b.material!.title} message={b.material!.gate?.lockedMessage ?? '강사가 공개하면 열린다.'} />
+            return open ? <StimulusView key={b.id} stimulus={b.material!} /> : locked
           }
           case 'concepts':
             if (!teacher) return <StudentConceptCards key={b.id} classId={classId} lessonId={lesson.id} step={step} />
@@ -113,8 +196,28 @@ export function LessonBody({
                 </div>
               </section>
             )
-          case 'field':
-            if (teacher) return <TeacherResponses key={b.id} block={b} field={b.field!} docs={teacher.docs} students={teacher.students} nameOf={teacher.nameOf} />
+          case 'field': {
+            if (teacher) {
+              /* ① 학생이 지금 보는 칸 그대로 (단계를 열기 전엔 잠김 카드) → ③ 접힌 답 */
+              const f = b.field!
+              const gateOpen = !f.gate || (f.gate.type === 'afterReveal' && revealed.includes(f.gate.of))
+              return (
+                <div key={b.id} className="flex flex-col" style={{ gap: 12 }}>
+                  {!stepOpen ? (
+                    i === firstField ? (
+                      <LockedCard title={step.fields.map((x) => x.label).join(' · ')} message="강사가 이 단계를 열면 쓸 수 있다." />
+                    ) : null
+                  ) : gateOpen ? (
+                    <fieldset disabled aria-label={`${f.label} — 학생이 보는 칸`} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                      <FieldRenderer def={f} value={undefined} error={null} disabled onChange={() => undefined} />
+                    </fieldset>
+                  ) : (
+                    <LockedCard title={f.label} message={f.gate?.lockedMessage ?? ''} />
+                  )}
+                  <TeacherResponses block={b} field={f} docs={teacher.docs} students={teacher.students} nameOf={teacher.nameOf} />
+                </div>
+              )
+            }
             if (i !== firstField) return null
             return (
               <div key={b.id}>
@@ -135,7 +238,9 @@ export function LessonBody({
                 )}
               </div>
             )
+          }
           case 'wall':
+            /* 학생은 제출한 뒤 여기서 [공유하기]·[다른 사람 생각 보기]를 본다. 강사는 같은 자리에서 올라온 글을 본다 */
             return teacher ? <TeacherWall key={b.id} classId={classId} lessonId={lesson.id} stepId={step.id} prompt={step.activity?.share.prompt ?? ''} /> : null
           case 'group':
             return teacher && step.activity && groupField ? <TeacherGroups key={b.id} classId={classId} lessonId={lesson.id} stepId={step.id} group={step.activity.group} field={groupField} groups={groups} nameOf={teacher.nameOf} /> : null
@@ -170,25 +275,15 @@ function Control({ children }: { children: ReactNode }) {
 
 /* ─────────────────────────── 강사 — 잠깐 확인 응답 n/N ▸ ─────────────────────────── */
 
-/** 물음과 보기는 펼쳐 두고, 정답과 분포는 접어 둔다 — 띄운 화면에 정답이 먼저 나오지 않게 */
+/** ① 학생이 보는 잠깐 확인 그대로(정답 없음) → ③ 정답과 분포는 접어 둔다 — 띄운 화면에 정답이 먼저 나오지 않게 */
 function TeacherCheck({ concept, docs, students, nameOf }: { concept: KeyConcept; docs: ResponseDoc[]; students: Enrollment[]; nameOf: (uid: string) => string }) {
   const check = concept.check
   if (!check) return null
   const t = checkTally(docs, concept.id)
   return (
-    <section aria-label="잠깐 확인" className="bg-canvas rounded-md" style={{ padding: '14px 18px', marginTop: 20, boxShadow: 'inset 0 0 0 2px #000' }}>
-      <Caption>잠깐 확인</Caption>
-      <p className="text-body" style={{ margin: '6px 0 8px', fontWeight: 480 }}>
-        {check.prompt}
-      </p>
-      <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {check.options.map((o, i) => (
-          <li key={i} className="text-body" style={{ marginBottom: 4 }}>
-            <span className="font-mono">{OPTION_MARK[i]}</span> {o}
-          </li>
-        ))}
-      </ol>
-      <details style={{ marginTop: 12 }}>
+    <>
+      <ConceptCheckView check={check} chosen={undefined} preview />
+      <details style={{ marginTop: 8 }}>
         <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 480 }}>
           응답 {t.answered}/{students.length} ▸
         </summary>
@@ -204,7 +299,7 @@ function TeacherCheck({ concept, docs, students, nameOf }: { concept: KeyConcept
           ))}
         </ul>
       </details>
-    </section>
+    </>
   )
 }
 
@@ -341,13 +436,16 @@ function TeacherWall({ classId, lessonId, stepId, prompt }: { classId: string; l
   }, [repo, classId, lessonId, stepId])
   const list = useMemo(() => [...posts].sort((a, b) => b.createdAt - a.createdAt), [posts])
   return (
-    <details className="card">
+    <div>
+      {/* ① 학생이 제출한 뒤 보는 것 — 무엇을 올리라는 말과 [공유하기] · [다른 사람 생각 보기] */}
+      <p className="text-body" style={{ margin: '0 0 4px' }}>
+        {prompt}
+      </p>
+      <Caption>학생은 제출한 뒤 여기서 [공유하기] · [다른 사람 생각 보기]를 본다.</Caption>
+      <details className="card" style={{ marginTop: 8 }}>
       <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 480 }}>
         공유 — 올라온 글 {list.length} ▸
       </summary>
-      <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.7 }}>
-        {prompt}
-      </p>
       {list.length === 0 ? (
         <p className="text-body-sm" style={{ opacity: 0.6, marginTop: 8 }}>
           아직 올라온 글이 없다.
@@ -359,7 +457,8 @@ function TeacherWall({ classId, lessonId, stepId, prompt }: { classId: string; l
           ))}
         </div>
       )}
-    </details>
+      </details>
+    </div>
   )
 }
 
@@ -379,14 +478,21 @@ function TeacherGroups({ classId, lessonId, stepId, group, field, groups, nameOf
     }
   }, [repo, classId, lessonId, stepId])
   return (
-    <details className="card">
-      <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 480 }}>
-        모둠별 ▸ <span className="caption">{shares.length}명 냈다</span>
-      </summary>
-      <div style={{ marginTop: 12 }}>
-        <GroupBoard group={group} field={field} groups={groups} shares={shares} values={values} nameOf={nameOf} />
-      </div>
-    </details>
+    <div>
+      {/* ① 학생이 제출한 뒤 보는 것 — 모둠 안내와 자기 모둠의 값 */}
+      <p className="text-body" style={{ margin: '0 0 4px' }}>
+        {group.prompt}
+      </p>
+      <Caption>학생은 제출한 뒤 여기서 자기 모둠의 값만 본다. 아래는 모든 모둠이다.</Caption>
+      <details className="card" style={{ marginTop: 8 }}>
+        <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 480 }}>
+          모둠별 ▸ <span className="caption">{shares.length}명 냈다</span>
+        </summary>
+        <div style={{ marginTop: 12 }}>
+          <GroupBoard group={group} field={field} groups={groups} shares={shares} values={values} nameOf={nameOf} />
+        </div>
+      </details>
+    </div>
   )
 }
 

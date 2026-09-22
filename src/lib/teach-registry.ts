@@ -11,21 +11,25 @@ import { buildSteps } from '@/content/steps'
  */
 
 export type BlockKind =
-  | 'prompt' // 도입·정리의 물음 — 단계 맨 앞, 조작부 없음
+  | 'question' // 오늘의 질문 (출석 · 모둠 나누기) — 도입 단계 맨 앞, 모둠 나누기
+  | 'roundBanner' // 내 모둠 (학생) · 모든 모둠 (강사) — 모둠이 정해진 뒤 단계마다, 조작부 없음
+  | 'prompt' // 도입·정리의 물음 — 조작부 없음
   | 'task' // 과제문 — 활동 단계 맨 앞, 조작부 없음
   | 'stimulus' // 읽을 것·볼 것 — 조작부 없음
   | 'stimulusReveal' // 강사가 공개해야 열리는 자료 — 자료 공개 / 되돌리기
   | 'field' // 학생이 쓰는 칸 — 응답 n/N ▸ 분포 또는 목록
   | 'concepts' // 개념 카드 — 카드마다 잠깐 확인 응답 n/N ▸
   | 'wall' // ③ 공유 — 올라온 글 n ▸
-  | 'group' // ④ 모둠 — 모둠별 ▸ (모둠 나누기는 도입 단계 머리에)
+  | 'group' // ④ 모둠 — 모둠별 ▸ (모둠 나누기는 도입의 오늘의 질문 블록 옆에)
   | 'game' // ⑤ 게임 — 게임 시작 · 참가 n/N
   | 'recap' // 정리 — 기준 다시 보기, 조작부 없음
   | 'more' // 더 읽기 (이론 배경) — 조작부 없음
 
-export type ControlId = 'reveal' | 'responses' | 'wall' | 'group' | 'game'
+export type ControlId = 'formation' | 'reveal' | 'responses' | 'wall' | 'group' | 'game'
 
 export const CONTROLS: Record<BlockKind, ControlId[]> = {
+  question: ['formation'],
+  roundBanner: [],
   prompt: [],
   task: [],
   stimulus: [],
@@ -62,6 +66,9 @@ export function stepBlocks(step: Step, lesson: Lesson): Block[] {
   const out: Block[] = []
   const mk = (kind: BlockKind, key: string, label: string, extra: Partial<Block> = {}): Block => ({ id: `${step.id}:${kind}:${key}`, kind, stepId: step.id, label, controls: CONTROLS[kind], ...extra })
 
+  /* 오늘의 질문은 도입 맨 앞 — 답하면 출석이다. 두 화면이 같은 자리에 같은 블록을 그린다 (강의자 지시 2026-09-22) */
+  if (step.kind === 'intro') out.push(mk('question', 'question', '오늘의 질문 — 출석 · 모둠 나누기'))
+  out.push(mk('roundBanner', 'round', '모둠'))
   /* 묻는 것이 먼저다 — 자료보다 앞에 둔다 (강의자 지시 2026-09-21) */
   if (step.prompt) out.push(mk('prompt', 'prompt', `물음 · ${step.prompt}`))
   if (step.activity) out.push(mk('task', 'task', `과제 · ${step.activity.task}`))

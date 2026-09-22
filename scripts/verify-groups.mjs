@@ -116,9 +116,13 @@ const SCIENCE = ['과학', '실험', '원자', '분자', '세포', '광합성', 
   else if (!/absentUids: absentees\.map/.test(panel)) fail('출석 배정', '확정한 회차에 결석자가 기록되지 않는다')
   else pass('출석 배정', '모둠 배정 대상은 오늘의 질문에 답한 사람이고, 나머지는 회차에 결석으로 남는다')
 
-  if (/isFormationLesson && classId \? <FormationQuestionView/.test(lessonPage) || !/<FormationQuestionView/.test(lessonPage)) {
-    fail('매 차시 질문', '학생 화면이 모둠을 나누는 차시에만 오늘의 질문을 보인다 — 다른 차시는 출석을 잴 수 없다')
-  } else pass('매 차시 질문', '학생 화면 첫 단계에 오늘의 질문이 매 차시 뜬다 (모둠을 나누는 차시에만 모둠 설명이 붙는다)')
+  /* 오늘의 질문은 등록표가 도입 단계마다 넣고, LessonBody 가 두 화면에 같이 그린다 — 경로 파일이 조건을 걸면 안 된다 */
+  const registry = await readFile('src/lib/teach-registry.ts', 'utf8')
+  const body = await readFile('src/components/lesson/LessonBody.tsx', 'utf8')
+  if (/<FormationQuestionView/.test(lessonPage)) fail('매 차시 질문', 'Lesson.tsx 가 오늘의 질문을 LessonBody 밖에서 그린다 — 강사 화면에는 없게 된다')
+  else if (!/step\.kind === 'intro'\) out\.push\(mk\('question'/.test(registry)) fail('매 차시 질문', '등록표가 도입 단계마다 오늘의 질문 블록을 넣지 않는다 — 모둠을 나누지 않는 차시는 출석을 잴 수 없다')
+  else if (!/case 'question'/.test(body) || !/<FormationQuestionView/.test(body)) fail('매 차시 질문', 'LessonBody 가 오늘의 질문 블록을 그리지 않는다')
+  else pass('매 차시 질문', '도입 단계마다 오늘의 질문 블록이 등록표에서 나오고, LessonBody 가 학생·강사 화면에 같이 그린다')
 }
 
 /* ── 모의 실행 (6차 P.4 그대로) ── */
