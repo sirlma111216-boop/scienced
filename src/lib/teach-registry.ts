@@ -1,4 +1,4 @@
-import type { FieldDef, Lesson, Step, Stimulus } from '@/content/types'
+import { hasGroupAndGame, type FieldDef, type Lesson, type Step, type Stimulus } from '@/content/types'
 import { buildSteps } from '@/content/steps'
 
 /**
@@ -86,8 +86,11 @@ export function stepBlocks(step: Step, lesson: Lesson): Block[] {
   for (const f of step.fields) out.push(mk('field', f.key, f.label, { field: f, reasonKey: f.kind === 'choice' ? reasonOf(f) : undefined }))
   if (step.activity) {
     out.push(mk('wall', 'wall', '공유 — 의견 광장'))
-    out.push(mk('group', 'group', `모둠 — ${GROUP_FORMAT_LABEL[step.activity.group.format]}`))
-    out.push(mk('game', step.activity.game, '게임 — 발표자 선정'))
+    /* 교수법 활동 1 은 공유까지다 — 모둠·게임이 없다 (강의자 지시 2026-09-22) */
+    if (hasGroupAndGame(step.activity)) {
+      out.push(mk('group', 'group', `모둠 — ${GROUP_FORMAT_LABEL[step.activity.group.format]}`))
+      out.push(mk('game', step.activity.game, '게임 — 발표자 선정'))
+    }
   }
   if (step.kind === 'wrapup' && lesson.theory) out.push(mk('more', 'theory', '더 읽기 — 이론 배경'))
   return out

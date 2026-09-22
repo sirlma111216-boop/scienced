@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { lessonIndex } from '@/content/courses'
-import { stepIdsOf } from '@/content/steps'
+import { stepIdsOf, stepLabel } from '@/content/steps'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
 import type { Enrollment, Participation, Post, ResponseDoc } from '@/lib/types'
@@ -23,8 +23,6 @@ interface Row {
   docs: ResponseDoc[]
   posts: Post[]
 }
-
-const STEP_LABEL: Record<string, string> = { intro: '도입', concepts: '개념', activity: '활동', 'concepts-2': '개념 2부', 'activity-2': '활동 2', wrapup: '정리' }
 
 export function InstructorAnalytics() {
   const { repo, isInstructor, classId, currentClass } = useAuth()
@@ -49,7 +47,7 @@ export function InstructorAnalytics() {
     for (const l of lessonIndex(courseId)) {
       for (const s of stepIdsOf(l.layout)) {
         const key = `${l.id}/${s}`
-        const title = `${Number(l.id)}강 ${STEP_LABEL[s] ?? s}`
+        const title = `${Number(l.id)}강 ${stepLabel(l.layout, s)}`
         unsubs.push(
           repo.watchAllResponses(classId, l.id, s, (docs: ResponseDoc[]) =>
             setRows((prev) => ({ ...prev, [key]: { lessonId: l.id, stepId: s, title, docs, posts: prev[key]?.posts ?? [] } })),

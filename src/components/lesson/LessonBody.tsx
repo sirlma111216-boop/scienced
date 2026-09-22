@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { CourseId, FieldDef, KeyConcept, Lesson, LessonId, Step } from '@/content/types'
+import { hasGroupAndGame, type CourseId, type FieldDef, type GroupData, type KeyConcept, type Lesson, type LessonId, type Step } from '@/content/types'
 import type { FormationQuestion } from '@/content/formation-questions'
 import { useAuth } from '@/lib/auth'
 import { allocationAverage, rankSum, sortTally, voteCounts, type MemberValue } from '@/lib/group-math'
@@ -85,7 +85,7 @@ export function LessonBody({
   const firstField = blocks.findIndex((b) => b.kind === 'field')
   const groups = round?.groups ?? []
   const myGroup = user ? (groups.find((g) => g.memberUids.includes(user.uid)) ?? null) : null
-  const groupField = step.activity ? step.fields.find((f) => f.key === step.activity!.group.fieldKey) : undefined
+  const groupField = step.activity?.group ? step.fields.find((f) => f.key === step.activity!.group!.fieldKey) : undefined
   const roundHere = groupRounds.find((r) => r.lessonId === lesson.id) ?? null
   const nameOf = (uid: string) => (teacher ? teacher.nameOf(uid) : (nicknames[uid] ?? '이름 없음'))
 
@@ -227,8 +227,13 @@ export function LessonBody({
                       step.activity && submitted ? (
                         <div className="flex flex-col" style={{ gap: 24, marginTop: 24 }}>
                           <ShareBar classId={classId} lessonId={lesson.id} stepId={step.id} prompt={step.activity.share.prompt} unlocked={submitted} fields={step.fields} groupId={myGroup?.id ?? null} />
-                          {groupField ? <GroupStep classId={classId} lessonId={lesson.id} stepId={step.id} group={step.activity.group} field={groupField} myValues={payloadOf(doc)} myGroup={myGroup} /> : null}
-                          <GameShell classId={classId} lessonId={lesson.id} courseId={courseId} step={step} activity={step.activity} session={session} round={round} nicknames={nicknames} tally={tally} />
+                          {/* 교수법 활동 1 은 공유까지다 — 모둠·게임이 없다 */}
+                          {hasGroupAndGame(step.activity) ? (
+                            <>
+                              {groupField ? <GroupStep classId={classId} lessonId={lesson.id} stepId={step.id} group={step.activity.group} field={groupField} myValues={payloadOf(doc)} myGroup={myGroup} /> : null}
+                              <GameShell classId={classId} lessonId={lesson.id} courseId={courseId} step={step} activity={step.activity} session={session} round={round} nicknames={nicknames} tally={tally} />
+                            </>
+                          ) : null}
                         </div>
                       ) : null
                     }
@@ -243,9 +248,9 @@ export function LessonBody({
             /* 학생은 제출한 뒤 여기서 [공유하기]·[다른 사람 생각 보기]를 본다. 강사는 같은 자리에서 올라온 글을 본다 */
             return teacher ? <TeacherWall key={b.id} classId={classId} lessonId={lesson.id} stepId={step.id} prompt={step.activity?.share.prompt ?? ''} /> : null
           case 'group':
-            return teacher && step.activity && groupField ? <TeacherGroups key={b.id} classId={classId} lessonId={lesson.id} stepId={step.id} group={step.activity.group} field={groupField} groups={groups} nameOf={teacher.nameOf} /> : null
+            return teacher && step.activity?.group && groupField ? <TeacherGroups key={b.id} classId={classId} lessonId={lesson.id} stepId={step.id} group={step.activity.group} field={groupField} groups={groups} nameOf={teacher.nameOf} /> : null
           case 'game':
-            return teacher && step.activity ? <GameShell key={b.id} classId={classId} lessonId={lesson.id} courseId={courseId} step={step} activity={step.activity} session={session} round={round} nicknames={nicknames} teacher={teacher} tally={tally} /> : null
+            return teacher && step.activity && hasGroupAndGame(step.activity) ? <GameShell key={b.id} classId={classId} lessonId={lesson.id} courseId={courseId} step={step} activity={step.activity} session={session} round={round} nicknames={nicknames} teacher={teacher} tally={tally} /> : null
           case 'more':
             return (
               <details key={b.id} className="card">
@@ -464,7 +469,7 @@ function TeacherWall({ classId, lessonId, stepId, prompt }: { classId: string; l
 
 /* ─────────────────────────── 강사 — 모둠별 ▸ ─────────────────────────── */
 
-function TeacherGroups({ classId, lessonId, stepId, group, field, groups, nameOf }: { classId: string; lessonId: LessonId; stepId: string; group: NonNullable<Step['activity']>['group']; field: FieldDef; groups: Array<{ id: string; name: string }>; nameOf: (uid: string) => string }) {
+function TeacherGroups({ classId, lessonId, stepId, group, field, groups, nameOf }: { classId: string; lessonId: LessonId; stepId: string; group: GroupData; field: FieldDef; groups: Array<{ id: string; name: string }>; nameOf: (uid: string) => string }) {
   const { repo } = useAuth()
   const [shares, setShares] = useState<GroupShare[]>([])
   const [values, setValues] = useState<GroupValue[]>([])

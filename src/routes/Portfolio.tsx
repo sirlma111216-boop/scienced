@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { lessonIndex } from '@/content/courses'
-import { isConceptStepId, stepIdsOf } from '@/content/steps'
+import { isConceptStepId, stepIdsOf, stepLabel } from '@/content/steps'
 import type { LessonId } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
@@ -15,8 +15,6 @@ import { Badge, Button, Caption, ColorBlock } from '@/components/ui'
  * 개념 단계는 뺀다 — 잠깐 확인의 답(보기 자리)만 있어 내용 없이는 읽을 수 없다.
  * 공개된 차시만 구독한다 — 규칙이 미공개 차시의 응답 읽기를 막으므로 헛된 구독을 만들지 않는다.
  */
-const STEP_LABEL: Record<string, string> = { intro: '도입', concepts: '개념', activity: '활동', 'concepts-2': '개념 2부', 'activity-2': '활동 2', wrapup: '정리' }
-
 export function Portfolio() {
   const { user, repo, classId, currentClass, isInstructor } = useAuth()
   const courseId = courseOf(currentClass)
@@ -109,7 +107,7 @@ export function Portfolio() {
                 </div>
                 {rows.map(({ stepId, doc }) => (
                   <div key={stepId} style={{ paddingTop: 16, marginTop: 16, boxShadow: 'inset 0 1px 0 #f1f1f1' }}>
-                    <Caption>{STEP_LABEL[stepId] ?? `옛 단계 · ${stepId}`}</Caption>
+                    <Caption>{stepIdsOf(l.layout).includes(stepId) ? stepLabel(l.layout, stepId) : `옛 단계 · ${stepId}`}</Caption>
                     <p className="text-body-sm" style={{ marginTop: 8, whiteSpace: 'pre-line' }}>
                       {Object.values((doc.versions[doc.versions.length - 1]?.payload ?? {}) as Record<string, unknown>)
                         .map((v) => (typeof v === 'string' ? v.trim() : Array.isArray(v) ? v.join(', ') : v && typeof v === 'object' ? Object.entries(v as Record<string, unknown>).map(([k, x]) => `${k} ${String(x)}`).join(' · ') : ''))

@@ -29,9 +29,19 @@ export async function stepsOf(lesson) {
   return buildSteps(lesson)
 }
 
-/** 활동 목록 — edu80 은 둘 */
+/** 활동 목록 — 교수법은 [활동 1, 활동 2], edu80 은 [활동 1, 활동 2], edu40 은 하나 */
 export function activitiesOf(lesson) {
-  return [lesson.activity, lesson.activity2].filter(Boolean)
+  return [lesson.activity1, lesson.activity, lesson.activity2].filter(Boolean)
+}
+
+/** 활동 이름 — activitiesOf 의 i 번째 */
+export function activityLabel(lesson, i) {
+  return activitiesOf(lesson).length > 1 ? `활동 ${i + 1}` : '활동'
+}
+
+/** 모둠·게임이 있는 활동인가 (교수법 활동 1 은 없다) */
+export function isLight(activity) {
+  return !activity.group && !activity.game
 }
 
 /** 개념 카드 — edu80 은 두 부 */

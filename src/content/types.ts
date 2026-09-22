@@ -205,11 +205,25 @@ export interface Activity {
   fields: FieldDef[]
   /** 광장 안내 한 줄 */
   share: { prompt: string }
-  group: GroupData
-  game: GameKind
+  /** 모둠 데이터 — 활동 1(교수법)에는 없다 */
+  group?: GroupData
+  /** 발표자 선정 게임 — 활동 1(교수법)에는 없다 */
+  game?: GameKind
   /** 게임별 옵션 — 승자 규칙 등. 라이브러리가 정한 것만 */
   gameOptions?: Record<string, unknown>
   checks: ActivityChecks
+}
+
+/**
+ * 교수법 활동 1 — 「질문하고, 고르거나 쓰고, 서로의 답을 본다」까지 (강의자 지시 2026-09-22).
+ * 개념 문항보다는 생각할 거리가 있되 활동 2처럼 중립적인 문제는 아니다 — 비교적 답이 있다.
+ * 모둠 데이터와 게임이 없다. `checks.answer` 에는 「정답은 없다」가 아니라 그 답을 적는다.
+ */
+export type LightActivity = Omit<Activity, 'group' | 'game' | 'gameOptions'> & { group?: undefined; game?: undefined; gameOptions?: undefined }
+
+/** 모둠·게임이 있는 활동인가 — 활동 2(교수법) · 교육론의 모든 활동 */
+export function hasGroupAndGame(a: Activity | LightActivity): a is Activity & { group: GroupData; game: GameKind } {
+  return Boolean(a.group && a.game)
 }
 
 /* ─────────────────────────── 도입 · 정리 ─────────────────────────── */
@@ -281,6 +295,12 @@ export interface Lesson {
   concepts: KeyConcept[]
   /** edu80 전용 — 개념 2부 */
   concepts2?: KeyConcept[]
+  /**
+   * 교수법 전용 — 활동 1 (강의자 지시 2026-09-22 · 단계 id `activity-1`).
+   * 개념 다음, 활동 2 앞. 모둠·게임이 없다. 교육론에는 없다.
+   */
+  activity1?: LightActivity
+  /** 모둠·게임이 있는 활동 — 교수법에서는 화면 이름이 「활동 2」다 (단계 id 는 그대로 `activity`) */
   activity: Activity
   /** edu80 전용 — 활동 2 */
   activity2?: Activity
@@ -322,7 +342,8 @@ export interface Step {
   /** 도입·정리처럼 단계 자체가 묻는 물음. 화면 맨 앞에 크게 나온다 (강의자 지시 2026-09-21) */
   prompt?: string
   /** 활동 단계면 그 활동 */
-  activity?: Activity
+  /** 활동 단계면 그 활동 — 교수법 활동 1 은 모둠·게임이 없다 (hasGroupAndGame 으로 가른다) */
+  activity?: Activity | LightActivity
   /** 정리 단계면 다시 보일 기준들 */
   recap?: KeyConcept[]
 }

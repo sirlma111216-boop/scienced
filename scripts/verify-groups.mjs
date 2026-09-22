@@ -42,7 +42,8 @@ const SCIENCE = ['과학', '실험', '원자', '분자', '세포', '광합성', 
   const courses = await loadCourses()
   for (const c of courses) {
     const seq = []
-    for (const l of c.lessons) for (const a of activitiesOf(l)) seq.push({ l, format: a.group.format })
+    /* 교수법 활동 1 은 모둠 데이터가 없다 (강의자 지시 2026-09-22) — 형식의 연속은 모둠이 있는 활동끼리 본다 */
+    for (const l of c.lessons) for (const a of activitiesOf(l)) if (a.group) seq.push({ l, format: a.group.format })
     for (let i = 1; i < seq.length; i++) {
       if (seq[i].format === seq[i - 1].format && seq[i].l.id !== seq[i - 1].l.id) {
         fail('형식 연속', `${where(seq[i - 1].l)} 과 ${where(seq[i].l)} 이 연속으로 ${seq[i].format} 이다`)

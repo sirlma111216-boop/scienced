@@ -10,7 +10,7 @@
  */
 import { readFile } from 'node:fs/promises'
 import { fail, pass, report } from './_report.mjs'
-import { activitiesOf, loadCourses, where } from './_courses.mjs'
+import { activitiesOf, activityLabel, loadCourses, where } from './_courses.mjs'
 
 const KEYS = [
   ['answer', '정답'],
@@ -40,7 +40,7 @@ for (const course of await loadCourses()) {
 
     for (const [i, a] of activitiesOf(l).entries()) {
       activities += 1
-      const at = `${where(l)} 활동${i ? ' 2' : ''}`
+      const at = `${where(l)} ${activityLabel(l, i)}`
 
       for (const [key, label] of KEYS) {
         const v = String(a.checks?.[key] ?? '').trim()

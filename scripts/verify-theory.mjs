@@ -22,7 +22,7 @@ function blankComments(src) {
 function plainAreas(lesson) {
   const out = [...lesson.objectives, lesson.intro.prompt, lesson.wrapup.prompt]
   for (const c of conceptsOf(lesson)) out.push(c.what, c.why, c.inClass, ...c.keyPoints, c.confusedWith ?? '', c.more?.body ?? '')
-  for (const a of [lesson.activity, lesson.activity2].filter(Boolean)) out.push(a.task, a.share.prompt, a.group.prompt)
+  for (const a of [lesson.activity1, lesson.activity, lesson.activity2].filter(Boolean)) out.push(a.task, a.share.prompt, a.group?.prompt ?? '')
   return out.join('\n')
 }
 

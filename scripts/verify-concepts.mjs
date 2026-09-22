@@ -16,6 +16,7 @@
  *   · 정답 자리는 과목 전체에서 자리마다 15~35%, 한 차시 안에서 모두 같지 않다
  *   · 물음과 보기가 카드 문장을 그대로 옮기지 않는다(16자 이상 연속) — 기준을 장면에 써야 풀린다
  *   · 카드 이름이 정답 보기에만 들어 있지 않다 — 이름 맞히기가 되지 않게
+ *   · 교수법: 물음에 「가장」·「알맞은」을 쓰지 않는다 — 정도 차이가 아니라 하나만 맞는 물음이어야 한다 (강의자 지시 2026-09-22)
  */
 import { fail, pass, report } from './_report.mjs'
 import { conceptsOf, loadCourses, where } from './_courses.mjs'
@@ -44,7 +45,9 @@ const NEGATIVE_ASK = /(옳지 않은|알맞지 않은|적절하지 않은|맞지
 const LAZY_OPTION = /(모두 옳다|모두 맞다|모두 틀리다|정답 없음|정답이 없다|위의 것|보기 모두|둘 다 맞다)/
 
 /** 한 문항의 어긋난 곳 */
-function checkIssues(c) {
+const DEGREE_ASK = /가장|알맞은|적절한|바람직한/
+
+function checkIssues(c, courseId) {
   const k = c.check
   const out = []
   if (!k) return ['잠깐 확인이 없다 — 카드마다 4지선다 하나']
@@ -53,7 +56,9 @@ function checkIssues(c) {
   if (prompt && !/\?$/.test(prompt)) out.push('물음이 물음표로 끝나지 않는다')
   if ([...prompt].length > 140) out.push(`물음이 ${[...prompt].length}자다 — 140자 이하`)
   if (DEFINITION_ASK.test(prompt)) out.push('정의를 되묻는다 — 장면을 주고 기준으로 판단하게 묻는다')
-  if (NEGATIVE_ASK.test(prompt)) out.push('부정으로 묻는다 — 「가장 ~한 것은?」 꼴로 묻는다')
+  if (NEGATIVE_ASK.test(prompt)) out.push('부정으로 묻는다 — 「~인 것은?」 꼴로 묻는다')
+  /* 교수법은 개념을 확인하는 답이 하나뿐인 물음이다 — 「가장 알맞은」은 정도 차이를 묻는 말이라 답이 흐려진다 (강의자 지시 2026-09-22) */
+  if (courseId === 'method' && DEGREE_ASK.test(prompt)) out.push(`물음에 「${prompt.match(DEGREE_ASK)[0]}」 — 교수법의 확인은 답이 하나뿐인 물음이다. 「~인 것은?」 「~에 해당하는 것은?」으로 묻는다`)
   const opts = Array.isArray(k.options) ? k.options.map((o) => String(o ?? '').trim()) : []
   if (opts.length !== 4) {
     out.push(`보기가 ${opts.length}개다 — 넷`)
@@ -161,7 +166,7 @@ for (const course of await loadCourses()) {
       if (c.more && (!c.more.title?.trim() || !c.more.body?.trim())) fail('더 읽기', `${at} 의 more 에 제목이나 본문이 없다`)
 
       /* 잠깐 확인 — 교육론 1강은 교수법 1강과 같은 문항이다. 과목 통계에는 둘 다 넣는다 */
-      for (const issue of checkIssues(c)) {
+      for (const issue of checkIssues(c, course.courseId)) {
         fail('잠깐 확인', `${at} ${issue}`)
         bad += 1
       }

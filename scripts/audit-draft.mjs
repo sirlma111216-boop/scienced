@@ -8,7 +8,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { fail, pass, report } from './_report.mjs'
-import { activitiesOf, conceptsOf, loadCourses, where } from './_courses.mjs'
+import { activitiesOf, activityLabel, conceptsOf, loadCourses, where } from './_courses.mjs'
 import { MARKS, docNameOf, norm, parseDoc } from './_draft-doc.mjs'
 
 const DIR = 'docs/검토'
@@ -62,11 +62,11 @@ for (const c of await loadCourses()) {
     })
     const acts = activitiesOf(l)
     d.task.forEach((t, i) => {
-      if (norm(acts[i]?.task) !== t) miss(`활동${i ? ' 2' : ''} 과제`, t)
+      if (norm(acts[i]?.task) !== t) miss(`${activityLabel(l, i)} 과제`, t)
     })
     for (const [label, key] of Object.entries(KEY)) {
       ;(d.checks[label] ?? []).forEach((v, i) => {
-        if (norm(acts[i]?.checks?.[key]) !== v) miss(`활동${i ? ' 2' : ''} ${label} 검사`, v)
+        if (norm(acts[i]?.checks?.[key]) !== v) miss(`${activityLabel(l, i)} ${label} 검사`, v)
       })
       if (!(d.checks[label] ?? []).length) fail('문서 형식', `${at} 문서에 ${label} 검사가 없다`)
     }

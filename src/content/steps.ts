@@ -1,20 +1,23 @@
-import type { Activity, FieldDef, KeyConcept, Layout, Lesson, Step } from './types'
+import type { Activity, FieldDef, KeyConcept, Layout, Lesson, LightActivity, Step } from './types'
 
 /**
  * 골격 하나로 세 layout 을 그린다 (8차 4.1 · 4.2 · B-2).
  *
- *   method  도입 · 개념 · 활동 · 정리
+ *   method  도입 · 개념 · 활동 1 · 활동 2 · 정리   (강의자 지시 2026-09-22 — 3시간에 두 차시라 가운데 활동을 더했다)
  *   edu80   도입 · 개념 · 활동 · 개념 2부 · 활동 2 · 정리
  *   edu40   도입 · 개념 · 활동 · 정리
  *
  * 단계마다 시간을 정해 두지 않는다 — 진행 속도는 강의자가 그 자리에서 정한다 (강의자 지시 2026-09-18 · 3차 D).
  *
- * 단계 id 는 고정이다: intro · concepts · activity · concepts-2 · activity-2 · wrapup.
+ * 단계 id 는 고정이다: intro · concepts · activity-1 · activity · concepts-2 · activity-2 · wrapup.
  * 응답은 이 id 아래에 저장된다. 옛 골격(step-open …)과 겹치지 않는다.
+ *
+ * ★ 교수법의 새 활동 1 은 id 가 `activity-1` 이고, 원래 있던 활동은 id `activity` 그대로 「활동 2」로 불린다.
+ *   이미 가르친 차시(1~4강)의 응답이 `activity` 아래에 있으므로 id 를 옮기지 않았다. 이름과 id 가 어긋나 보여도 그대로 둔다.
  */
 
 export const STEP_IDS: Record<Layout, string[]> = {
-  method: ['intro', 'concepts', 'activity', 'wrapup'],
+  method: ['intro', 'concepts', 'activity-1', 'activity', 'wrapup'],
   edu80: ['intro', 'concepts', 'activity', 'concepts-2', 'activity-2', 'wrapup'],
   edu40: ['intro', 'concepts', 'activity', 'wrapup'],
 }
@@ -24,6 +27,14 @@ export const WRAPUP_KEY = 'reflection'
 /** 도입 칸의 key */
 export const INTRO_KEY = 'choice'
 
+/** 화면에 보이는 단계 이름 — 골격마다 다르다 (교수법의 `activity` 는 「활동 2」) */
+export function stepLabel(layout: Layout, stepId: string): string {
+  if (stepId === 'activity-1') return '활동 1'
+  if (stepId === 'activity') return layout === 'method' ? '활동 2' : layout === 'edu80' ? '활동 1' : '활동'
+  const fixed: Record<string, string> = { intro: '도입', concepts: '개념', 'concepts-2': '개념 2부', 'activity-2': '활동 2', wrapup: '정리' }
+  return fixed[stepId] ?? stepId
+}
+
 export function introFields(lesson: Lesson): FieldDef[] {
   const i = lesson.intro
   if (i.kind === 'line') {
@@ -32,13 +43,13 @@ export function introFields(lesson: Lesson): FieldDef[] {
   return [{ key: INTRO_KEY, kind: 'choice', label: '내 선택', help: i.prompt, required: true, options: i.options ?? [], requiresStimulus: [i.stimulus.id] }]
 }
 
-function activityStep(id: string, order: number, a: Activity, n: 1 | 2): Step {
+function activityStep(id: string, order: number, a: Activity | LightActivity, title: string): Step {
   return {
     id,
     kind: 'activity',
     order,
-    title: n === 1 ? '활동' : '활동 2',
-    shortTitle: n === 1 ? '활동' : '활동 2',
+    title,
+    shortTitle: title,
     material: [a.situation],
     fields: a.fields,
     concepts: [],
@@ -60,6 +71,7 @@ function conceptStep(id: string, order: number, cs: KeyConcept[], n: 1 | 2): Ste
 }
 
 export function buildSteps(lesson: Lesson): Step[] {
+  const L = lesson.layout
   const steps: Step[] = [
     {
       id: 'intro',
@@ -73,11 +85,12 @@ export function buildSteps(lesson: Lesson): Step[] {
       prompt: lesson.intro.prompt,
     },
     conceptStep('concepts', 2, lesson.concepts, 1),
-    activityStep('activity', 3, lesson.activity, 1),
   ]
-  if (lesson.layout === 'edu80') {
-    steps.push(conceptStep('concepts-2', 4, lesson.concepts2 ?? [], 2))
-    if (lesson.activity2) steps.push(activityStep('activity-2', 5, lesson.activity2, 2))
+  if (L === 'method' && lesson.activity1) steps.push(activityStep('activity-1', steps.length + 1, lesson.activity1, stepLabel(L, 'activity-1')))
+  steps.push(activityStep('activity', steps.length + 1, lesson.activity, stepLabel(L, 'activity')))
+  if (L === 'edu80') {
+    steps.push(conceptStep('concepts-2', steps.length + 1, lesson.concepts2 ?? [], 2))
+    if (lesson.activity2) steps.push(activityStep('activity-2', steps.length + 1, lesson.activity2, stepLabel(L, 'activity-2')))
   }
   steps.push({
     id: 'wrapup',
@@ -94,7 +107,7 @@ export function buildSteps(lesson: Lesson): Step[] {
   return steps
 }
 
-/** 이 차시의 활동 단계들 (edu80 은 둘) */
+/** 이 차시의 활동 단계들 (교수법 · edu80 은 둘) */
 export function activitySteps(lesson: Lesson): Step[] {
   return buildSteps(lesson).filter((s) => s.kind === 'activity')
 }

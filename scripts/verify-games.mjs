@@ -12,7 +12,7 @@
 import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { fail, pass, report } from './_report.mjs'
-import { activitiesOf, loadCourses, where } from './_courses.mjs'
+import { activitiesOf, activityLabel, isLight, loadCourses, where } from './_courses.mjs'
 
 const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/content/games.ts')
 
@@ -59,7 +59,9 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
     let prev = null
     for (const l of c.lessons) {
       for (const [i, a] of activitiesOf(l).entries()) {
-        const at = `${where(l)} 활동${i ? ' 2' : ''}`
+        const at = `${where(l)} ${activityLabel(l, i)}`
+        /* 교수법 활동 1 은 게임이 없다 (강의자 지시 2026-09-22) — 배치표 검사는 모둠·게임이 있는 활동만 본다 */
+        if (isLight(a)) continue
         const g = GAME_LIBRARY[a.game]
         if (!g) {
           fail('배치', `${at} 의 게임 ${a.game} 이 라이브러리에 없다`)
@@ -101,7 +103,7 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
       for (const [i, a] of activitiesOf(l).entries()) {
         if (a.game !== 'marble') continue
         used += 1
-        const at = `${where(l)} 활동${i ? ' 2' : ''}`
+        const at = `${where(l)} ${activityLabel(l, i)}`
         for (const k of ['map', 'pick']) if (!a.gameOptions?.[k]) fail('구슬 레이스', `${at} 이 구슬 레이스의 ${k} 를 적지 않았다 — 맵과 발표자 규칙은 차시가 정한다`)
       }
     }

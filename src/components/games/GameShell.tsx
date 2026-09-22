@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Activity, CourseId, LessonId, Step } from '@/content/types'
+import type { Activity, CourseId, GameKind, GroupData, LessonId, Step } from '@/content/types'
 import { gameSpec } from '@/content/games'
 import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -16,6 +16,9 @@ import { MarbleTeacher } from '@/components/marble/MarbleTeacher'
 import { GameResultCard } from './GameResultCard'
 import { StudentGameInput, TeacherGameView } from './GameInputs'
 import { LegacyLadder } from './LegacyLadder'
+
+/** 모둠·게임이 있는 활동만 여기 온다 — 교수법 활동 1 은 GameShell 을 그리지 않는다 */
+type GameActivity = Activity & { game: GameKind; group: GroupData }
 
 /**
  * 발표자 선정 게임의 공통 껍데기 (8차 6.1).
@@ -49,7 +52,7 @@ export function GameShell({
   lessonId: LessonId
   courseId: CourseId
   step: Step
-  activity: Activity
+  activity: GameActivity
   session: SessionState | null
   round: GroupRound | null
   nicknames: Record<string, string>
@@ -104,7 +107,7 @@ function LibraryGame({
   classId: string
   lessonId: LessonId
   step: Step
-  activity: Activity
+  activity: GameActivity
   session: SessionState | null
   round: GroupRound | null
   nicknames: Record<string, string>
