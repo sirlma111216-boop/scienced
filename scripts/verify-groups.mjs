@@ -11,7 +11,8 @@ import { readFile } from 'node:fs/promises'
 import { fail, pass, report } from './_report.mjs'
 import { activitiesOf, loadCourses, where } from './_courses.mjs'
 
-const { FORMATION_QUESTIONS, nextFormationQuestion } = await import('../src/content/formation-questions.ts')
+const { FORMATION_QUESTIONS, questionForLessonNumber } = await import('../src/content/formation-questions.ts')
+const { answeredUids, attendanceEdit, attendingStudents, withAttendance, attendanceByLesson } = await import('../src/lib/attendance.ts')
 const { assignGroups, applyRound, feasibility, groupSizes } = await import('../shared/groups-core.ts')
 const { lessonIndex } = await import('../src/content/courses/index.ts')
 /** src/lib/groups.ts 의 defaultFormationLessons 와 같은 규칙 — 그 파일은 firebase 를 끌어와 node 에서 못 부른다 */
@@ -54,19 +55,70 @@ const SCIENCE = ['과학', '실험', '원자', '분자', '세포', '광합성', 
   }
   pass('모둠 데이터 형식', '연속 차시에 같은 형식이 없고 배분은 학기당 3회 이하다')
 
-  /* 두 과목의 기본 질문이 같은 회차에 겹치지 않는다 — 8.3 */
-  const seqOf = (courseId) => {
-    const used = []
-    return defaultFormationLessons(courseId).map(() => {
-      const q = nextFormationQuestion(used)
-      used.push(q.id)
-      return q.id
-    })
+  /* 질문은 매 차시 뜬다(출석) — 한 과목 안에서 차시마다 다르고, 두 과목이 같은 주에 겹치지 않는다 (8.3) */
+  const seqOf = (courseId) => lessonIndex(courseId).map((l) => questionForLessonNumber(Number(l.id), courseId).id)
+  for (const courseId of ['method', 'edu']) {
+    const seq = seqOf(courseId)
+    const dup = seq.find((id, i) => seq.indexOf(id) !== i)
+    if (dup) fail('차시마다 다른 질문', `${courseId} 에서 「${dup}」 질문이 두 차시에 나온다 — 질문은 매 차시 뜨므로 겹치면 학기 안에 되풀이된다`)
   }
   const m = seqOf('method')
   const e = seqOf('edu')
   const same = m.filter((id, i) => e[i] === id).length
-  if (same > 1) console.log(`  · 경고 두 과목의 기본 질문이 ${same}회차에서 같다 — 강사가 질문을 골라 어긋나게 둔다 (클래스 문서에 기록됨)`)
+  if (same > 0) fail('과목 어긋내기', `두 과목이 같은 주에 같은 질문을 ${same}번 쓴다 — 두 과목을 같이 듣는 학생이 같은 질문을 두 번 받는다 (8.3)`)
+  else pass('차시마다 다른 질문', `교수법 ${m.length}차시 · 교육론 ${e.length}차시가 저마다 다른 질문을 받고, 같은 주에 두 과목이 겹치지 않는다`)
+}
+
+/* ── 출석 — 답한 사람만 모둠에 들어간다 (강의자 지시 2026-09-22) ── */
+{
+  const students = ['a', 'b', 'c', 'd'].map((uid) => ({ uid, nickname: uid, status: 'active' }))
+  const inputs = [
+    { uid: 'a', lessonId: '01', questionId: 'country', choice: '일본', updatedAt: 1 },
+    { uid: 'b', lessonId: '01', questionId: 'country', choice: '호주', updatedAt: 1 },
+  ]
+  const none = attendanceEdit(undefined)
+  const here = attendingStudents(students, inputs, none).map((s) => s.uid)
+  if (here.join(',') !== 'a,b') fail('출석 기준', `답한 사람만 와야 하는데 ${here.join(',') || '아무도 없음'} 이 나왔다`)
+  else pass('출석 기준', '오늘의 질문에 답한 사람만 오늘의 대상이 된다 (답 2명 / 명단 4명)')
+
+  /* 손질 — 못 누른 사람 넣기 · 답했지만 자리에 없는 사람 빼기 */
+  let edit = withAttendance(none, 'c', false, true)
+  edit = withAttendance(edit, 'a', true, false)
+  const fixed = attendingStudents(students, inputs, edit).map((s) => s.uid)
+  if (fixed.join(',') !== 'b,c') fail('출석 손질', `강사가 고친 뒤 b,c 여야 하는데 ${fixed.join(',') || '아무도 없음'} 이다`)
+  /* 되돌리면 손질이 남지 않는다 — 기준은 언제나 학생이 남긴 답이다 */
+  const back = withAttendance(withAttendance(edit, 'c', false, false), 'a', true, true)
+  if (back.in.length !== 0 || back.out.length !== 0) fail('출석 손질', `되돌렸는데 손질이 남았다 — in [${back.in}] · out [${back.out}]`)
+  else pass('출석 손질', '못 누른 사람을 넣고 자리에 없는 사람을 뺄 수 있고, 되돌리면 손질이 남지 않는다')
+
+  /* 출석부 — 차시마다 누가 왔나. 아무도 없는 차시는 아직 안 한 차시다 */
+  const byLesson = attendanceByLesson(
+    [...inputs, { uid: 'a', lessonId: '02', questionId: 'drink', choice: '물', updatedAt: 2 }],
+    [{ lessonId: '02', attendance: { in: ['d'], out: [] } }],
+  )
+  if (byLesson.size !== 2 || byLesson.get('02').size !== 2 || !byLesson.get('02').has('d')) {
+    fail('출석부', `차시 2개 · 2강 출석 2명이어야 하는데 ${byLesson.size}차시 · ${byLesson.get('02')?.size}명이다`)
+  } else pass('출석부', '학기 출석부가 차시마다 답한 사람과 강사 손질을 합쳐 센다')
+  if (answeredUids(inputs).size !== 2) fail('출석 기준', '답한 사람 수를 잘못 센다')
+}
+
+/* ── 화면이 그 기준을 쓰는가 ── */
+{
+  const teach = await readFile('src/routes/Teach.tsx', 'utf8')
+  const panel = await readFile('src/components/groups/FormationPanel.tsx', 'utf8')
+  const lessonPage = await readFile('src/routes/Lesson.tsx', 'utf8')
+
+  if (!/attendingStudents\(enrolled, groupInputs/.test(teach)) fail('출석 기준', '수업 화면이 응답·게임의 분모로 출석한 사람을 쓰지 않는다 — 결석자가 늘 미제출로 남는다')
+  else if (!/teacher=\{\{ students,/.test(teach)) fail('출석 기준', '수업 화면이 LessonBody 에 출석자 목록(students)을 주지 않는다')
+  else pass('출석 기준', '수업 화면의 응답 n/N · 게임 참가 · 발표자 뽑기가 모두 출석한 사람을 분모로 쓴다')
+
+  if (!/attendingStudents\(students, inputs/.test(panel)) fail('출석 배정', '모둠 나누기가 출석한 사람만 배정하지 않는다')
+  else if (!/absentUids: absentees\.map/.test(panel)) fail('출석 배정', '확정한 회차에 결석자가 기록되지 않는다')
+  else pass('출석 배정', '모둠 배정 대상은 오늘의 질문에 답한 사람이고, 나머지는 회차에 결석으로 남는다')
+
+  if (/isFormationLesson && classId \? <FormationQuestionView/.test(lessonPage) || !/<FormationQuestionView/.test(lessonPage)) {
+    fail('매 차시 질문', '학생 화면이 모둠을 나누는 차시에만 오늘의 질문을 보인다 — 다른 차시는 출석을 잴 수 없다')
+  } else pass('매 차시 질문', '학생 화면 첫 단계에 오늘의 질문이 매 차시 뜬다 (모둠을 나누는 차시에만 모둠 설명이 붙는다)')
 }
 
 /* ── 모의 실행 (6차 P.4 그대로) ── */

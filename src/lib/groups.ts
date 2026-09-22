@@ -1,6 +1,6 @@
 import type { CourseId, LessonId } from '@/content/types'
-import { lessonIndex } from '@/content/courses'
-import { FORMATION_QUESTION_BY_ID, nextFormationQuestion, type FormationQuestion } from '@/content/formation-questions'
+import { courseIdFromTitle, lessonIndex } from '@/content/courses'
+import { FORMATION_QUESTION_BY_ID, questionForLessonNumber, type FormationQuestion } from '@/content/formation-questions'
 import { assignGroups, pairKey, pairKeysOf, type AssignInput, type AssignResult, type PairRecord } from '@shared/groups-core'
 import { apiPost } from './api'
 import type { ClassDoc, GroupInput, GroupRound, GroupRoundGroup, PairHistoryDoc } from './types'
@@ -44,16 +44,23 @@ export function roundForLesson(lessonId: LessonId, rounds: GroupRound[]): GroupR
 }
 
 /**
- * 이 차시의 질문. 강사가 정해 둔 것(클래스 문서)이 있으면 그것, 없으면 아직 안 쓴 첫 질문.
+ * 이 차시의 질문. 강사가 정해 둔 것(클래스 문서)이 있으면 그것, 없으면 차시 번호 자리의 질문.
+ *
+ * 질문은 모둠을 나누는 차시만이 아니라 **매 차시** 뜬다 — 답하면 그날 출석이다 (강의자 지시 2026-09-22).
+ * 그래서 「아직 안 쓴 첫 질문」으로 고르면 아직 안 나눈 차시들이 모두 같은 질문을 보인다.
+ * 차시 번호로 자리를 정하고 이미 쓴 질문만 건너뛴다 — 열여덟 차시가 서로 다른 질문을 받는다.
  * 확정할 때 클래스 문서에 기록해 학기 안에 되풀이하지 않는다.
  */
 export function questionForLesson(cls: ClassDoc | null | undefined, lessonId: LessonId): FormationQuestion {
   const chosen = cls?.formationQuestions?.[lessonId]
   if (chosen && FORMATION_QUESTION_BY_ID[chosen]) return FORMATION_QUESTION_BY_ID[chosen]
-  const used = Object.entries(cls?.formationQuestions ?? {})
-    .filter(([lid]) => lid !== lessonId)
-    .map(([, qid]) => qid)
-  return nextFormationQuestion(used)
+  const used = new Set(
+    Object.entries(cls?.formationQuestions ?? {})
+      .filter(([lid]) => lid !== lessonId)
+      .map(([, qid]) => qid),
+  )
+  const courseId = cls?.courseId ?? courseIdFromTitle(cls?.courseTitle)
+  return questionForLessonNumber(Number(lessonId), courseId, used)
 }
 
 export function historyFromDocs(docs: PairHistoryDoc[]): Record<string, PairRecord> {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { LessonId } from '@/content/types'
 import { FORMATION_QUESTIONS } from '@/content/formation-questions'
+import { answeredUids, attendanceEdit, attendingStudents, withAttendance } from '@/lib/attendance'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
 import {
@@ -18,15 +19,19 @@ import {
   runAssignment,
 } from '@/lib/groups'
 import type { PairRecord } from '@shared/groups-core'
-import type { ClassDoc, Enrollment, GroupInput, GroupRound, GroupRoundGroup } from '@/lib/types'
+import type { ClassDoc, Enrollment, GroupInput, GroupRound, GroupRoundGroup, SessionState } from '@/lib/types'
 import { Badge, Button, Caption, Card, ScrollX } from '@/components/ui'
 
 /**
  * 강사 — 한 차시의 모둠 나누기: 질문 → 학생 선택 → 서버 배정 → 미리보기·옮기기 → 확정 (8차 5.2).
  *
  * 수업 화면(/teach)의 「모둠 나누기」와 모둠 관리 화면이 같은 부품을 쓴다.
- * 결석자 체크·늦게 온 학생·동석 기록은 6차 그대로. 게임만 질문으로 바뀌었다.
+ * 늦게 온 학생·동석 기록은 6차 그대로. 게임만 질문으로 바뀌었다.
  * 「반드시 같이/따로」 고정 규칙은 강의자 지시로 뺐다 (2026-09-18).
+ *
+ * 배정 대상은 **오늘의 질문에 답한 사람**이다 (강의자 지시 2026-09-22 · lib/attendance.ts).
+ * 결석자를 하나씩 빼던 자리가 출석 체크로 바뀌었다 — 답한 사람이 켜져 있고, 못 누른 사람만 손으로 넣는다.
+ * 그 손질은 세션 문서에 남아 수업 화면의 분모와 같은 값을 쓴다.
  */
 
 type Preview = {
@@ -61,7 +66,7 @@ export function FormationPanel({
 }) {
   const { repo, user } = useAuth()
   const [inputs, setInputs] = useState<GroupInput[]>([])
-  const [absent, setAbsent] = useState<Set<string>>(new Set())
+  const [session, setSession] = useState<SessionState | null>(null)
   const [preview, setPreview] = useState<Preview | null>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -70,7 +75,8 @@ export function FormationPanel({
 
   useEffect(() => {
     if (!repo || !classId || !lessonId) return
-    return repo.watchGroupInputs(classId, lessonId, setInputs)
+    const offs = [repo.watchGroupInputs(classId, lessonId, setInputs), repo.watchSession(classId, lessonId, setSession)]
+    return () => offs.forEach((off) => off())
   }, [repo, classId, lessonId])
 
   const nameOf = useMemo(() => Object.fromEntries(students.map((s) => [s.uid, s.nickname || '이름 없음'])) as Record<string, string>, [students])
@@ -80,8 +86,21 @@ export function FormationPanel({
   const question = questionForLesson(cls, lessonId)
   const round = rounds.find((r) => r.lessonId === lessonId) ?? null
   const roundNo = roundNumberOf(lessonId, lessons)
-  const attendees = students.filter((s) => !absent.has(s.uid))
-  const inputCount = inputs.filter((i) => attendees.some((a) => a.uid === i.uid)).length
+  /* 출석 = 오늘의 질문에 답한 사람 + 강사가 손으로 넣은 사람 (lib/attendance.ts) */
+  const edit = attendanceEdit(session?.attendance)
+  const answered = answeredUids(inputs)
+  const attendees = attendingStudents(students, inputs, edit)
+  const absentees = students.filter((s) => !attendees.some((a) => a.uid === s.uid))
+
+  async function setAttending(uid: string, attending: boolean) {
+    if (!repo) return
+    try {
+      await repo.setSession(classId, lessonId, { attendance: withAttendance(edit, uid, answered.has(uid), attending) })
+    } catch (err) {
+      console.error('[출석] 고치지 못했다:', err)
+      setNote(`출석을 고치지 못했습니다 — ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   async function saveGroupCount(raw: string) {
     setCountDraft(null)
@@ -134,7 +153,7 @@ export function FormationPanel({
         round: roundNo,
         seed: res.seed,
         groups: nameGroups(question, res.groups, inputs),
-        absentUids: [...absent],
+        absentUids: absentees.map((s) => s.uid),
         cost: res.repeats,
         plannedNext: res.plannedNext,
         followedPlan: res.followedPlan,
@@ -242,7 +261,7 @@ export function FormationPanel({
           ))}
         </select>
         <span className="text-body-sm" role="status">
-          학생 선택 <strong>{inputCount} / {attendees.length}명</strong>. 아직 안 고른 사람은 분류 없이 배정됩니다.
+          답한 사람 <strong>{answered.size} / {students.length}명</strong>. 답한 사람이 오늘 출석이고, 그 사람들만 모둠에 들어갑니다.
         </span>
       </div>
 
@@ -269,7 +288,7 @@ export function FormationPanel({
           }}
         />
         <span className="text-body-sm" style={{ opacity: 0.8 }}>
-          참석 {attendees.length}명 → 모둠 크기 {sizeText}
+          출석 {attendees.length}명 → 모둠 크기 {sizeText}
           {round && round.groups.length !== groupCount ? ` · 확정된 모둠은 ${round.groups.length}개 — 바꾸려면 다시 나눕니다` : ''}
         </span>
       </div>
@@ -277,35 +296,39 @@ export function FormationPanel({
       {round && !preview ? <RoundSummary round={round} nameOf={nameOf} /> : null}
 
       <div style={{ marginTop: 20 }}>
-        <Caption>참석자 — 결석자는 체크를 풉니다</Caption>
+        <Caption>출석 — 오늘의 질문에 답하면 켜집니다. 못 누른 사람은 여기서 넣습니다</Caption>
         <ul className="flex flex-wrap gap-xs" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
-          {students.map((s) => (
-            <li key={s.uid}>
-              <label className="text-body-sm flex items-center gap-xxs" style={{ padding: '4px 8px', boxShadow: 'inset 0 0 0 1px #e6e6e6', borderRadius: 999 }}>
-                <input
-                  type="checkbox"
-                  checked={!absent.has(s.uid)}
-                  onChange={(e) =>
-                    setAbsent((prev) => {
-                      const next = new Set(prev)
-                      if (e.target.checked) next.delete(s.uid)
-                      else next.add(s.uid)
-                      return next
-                    })
-                  }
-                />
-                {s.nickname || '이름 없음'}
-                {inputs.some((i) => i.uid === s.uid) ? <span aria-label="골랐음" style={{ opacity: 0.6 }}>✓</span> : null}
-              </label>
-            </li>
-          ))}
+          {students.map((s) => {
+            const here = attendees.some((a) => a.uid === s.uid)
+            return (
+              <li key={s.uid}>
+                <label className="text-body-sm flex items-center gap-xxs" style={{ padding: '4px 8px', boxShadow: `inset 0 0 0 1px ${here ? '#111' : '#e6e6e6'}`, borderRadius: 999, opacity: here ? 1 : 0.6 }}>
+                  <input type="checkbox" checked={here} onChange={(e) => void setAttending(s.uid, e.target.checked)} />
+                  {s.nickname || '이름 없음'}
+                  {answered.has(s.uid) ? (
+                    <span aria-label="답함" style={{ opacity: 0.6 }}>
+                      ✓
+                    </span>
+                  ) : null}
+                </label>
+              </li>
+            )
+          })}
         </ul>
+        <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.75 }}>
+          ✓ 는 스스로 답한 사람입니다. 체크만 된 사람은 강사가 넣은 사람입니다. 지금 배정 대상 {attendees.length}명 · 빠지는 사람 {absentees.length}명.
+        </p>
       </div>
 
       <div className="flex items-center gap-md" style={{ marginTop: 20, flexWrap: 'wrap' }}>
         <Button onClick={() => void run()} disabled={busy || attendees.length < 2}>
           {busy ? '배정 중' : preview ? '다시 배정' : round ? '다시 나누기' : '배정 실행'}
         </Button>
+        {attendees.length < 2 ? (
+          <span className="text-body-sm" style={{ opacity: 0.75 }}>
+            아직 답한 사람이 {attendees.length}명입니다. 학생 화면 첫 단계의 질문에 답하면 여기에 쌓입니다.
+          </span>
+        ) : null}
         {round && !preview ? (
           <span className="text-body-sm" style={{ opacity: 0.7 }}>
             다시 나누면 확정된 모둠과 동석 기록이 새 결과로 바뀝니다.

@@ -3,9 +3,10 @@ import { Navigate, useParams } from 'react-router-dom'
 import { lessonIndex } from '@/content/courses'
 import { isConceptStepId, stepIdsOf } from '@/content/steps'
 import { apiPost } from '@/lib/api'
+import { attendanceByLesson } from '@/lib/attendance'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
-import type { Enrollment, ResponseDoc, RosterEntry } from '@/lib/types'
+import type { Enrollment, GroupInput, ResponseDoc, RosterEntry, SessionState } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { ClassAdminHeader } from '@/components/instructor/ClassAdmin'
 import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
@@ -27,6 +28,8 @@ export function InstructorClassStudents() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [roster, setRoster] = useState<RosterEntry[]>([])
   const [submitted, setSubmitted] = useState<Record<string, number>>({})
+  const [groupInputs, setGroupInputs] = useState<GroupInput[]>([])
+  const [sessions, setSessions] = useState<SessionState[]>([])
   const [sort, setSort] = useState<SortKey>('studentId')
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
@@ -62,13 +65,21 @@ export function InstructorClassStudents() {
 
   useEffect(() => {
     if (!repo || !classId) return
-    const a = repo.watchEnrollments(classId, setEnrollments)
-    const b = repo.watchRoster(classId, setRoster)
-    return () => {
-      a()
-      b()
-    }
+    const offs = [repo.watchEnrollments(classId, setEnrollments), repo.watchRoster(classId, setRoster), repo.watchAllGroupInputs(classId, setGroupInputs), repo.watchSessions(classId, setSessions)]
+    return () => offs.forEach((off) => off())
   }, [repo, classId])
+
+  /** 출석 — 차시마다 「오늘의 질문」에 답한 사람 + 강사가 손으로 고친 것 (lib/attendance.ts) */
+  const attendance = useMemo(() => attendanceByLesson(groupInputs, sessions), [groupInputs, sessions])
+  const heldLessons = attendance.size
+  const attendedOf = useCallback(
+    (uid: string) => {
+      let n = 0
+      for (const set of attendance.values()) if (set.has(uid)) n += 1
+      return n
+    },
+    [attendance],
+  )
 
   /** 제출 현황 — 단계마다 몇 개를 냈는가 */
   useEffect(() => {
@@ -96,7 +107,7 @@ export function InstructorClassStudents() {
 
   const rows = useMemo(() => {
     const list = enrollments.filter((e) => e.status === 'active')
-    const withName = list.map((e) => ({ e, name: nameOf(e.uid), count: submitted[e.uid] ?? 0 }))
+    const withName = list.map((e) => ({ e, name: nameOf(e.uid), count: submitted[e.uid] ?? 0, attended: attendedOf(e.uid) }))
     switch (sort) {
       case 'name':
         return withName.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
@@ -105,7 +116,7 @@ export function InstructorClassStudents() {
       default:
         return withName.sort((a, b) => (a.e.studentId ?? '').localeCompare(b.e.studentId ?? '', 'ko'))
     }
-  }, [enrollments, nameOf, submitted, sort])
+  }, [enrollments, nameOf, submitted, sort, attendedOf])
 
   const missingNames = rows.filter((r) => !r.name.trim()).length
 
@@ -238,7 +249,7 @@ export function InstructorClassStudents() {
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 940, marginTop: 24 }}>
             <thead>
               <tr>
-                {['학번', '이름', '닉네임', '모둠', '등록일', '최근 접속', '제출', '관리'].map((h) => (
+                {['학번', '이름', '닉네임', '모둠', '등록일', '최근 접속', '출석', '제출', '관리'].map((h) => (
                   <th key={h} scope="col" className="caption" style={{ textAlign: 'left', padding: '8px 16px 8px 0' }}>
                     {h}
                   </th>
@@ -246,7 +257,7 @@ export function InstructorClassStudents() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ e, name, count }) => {
+              {rows.map(({ e, name, count, attended }) => {
                 const draft = drafts[e.uid]
                 const empty = !name.trim() && !draft?.trim()
                 return (
@@ -287,6 +298,9 @@ export function InstructorClassStudents() {
                       {e.lastSeenAt ? new Date(e.lastSeenAt).toLocaleDateString('ko-KR') : '—'}
                     </td>
                     <td className="font-mono text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
+                      {heldLessons === 0 ? '—' : `${attended}/${heldLessons}`}
+                    </td>
+                    <td className="font-mono text-body-sm" style={{ padding: '10px 16px 10px 0' }}>
                       {count}
                     </td>
                     <td style={{ padding: '10px 0' }}>
@@ -318,6 +332,9 @@ export function InstructorClassStudents() {
       )}
 
       <p className="text-body-sm" style={{ marginTop: 24, opacity: 0.72 }}>
+        출석은 그 차시 첫 화면의 「오늘의 질문」에 답한 기록입니다. 분모는 한 사람이라도 답한 차시 수({heldLessons}차시)입니다. 답을 못 누른 사람은 수업 화면의 명단 서랍에서 강사가 넣을 수 있고, 그 손질도 여기에 반영됩니다.
+      </p>
+      <p className="text-body-sm" style={{ marginTop: 8, opacity: 0.72 }}>
         제출 수는 순위가 아닙니다. 아직 손대지 않은 단계를 찾는 데 씁니다.
       </p>
     </AppShell>

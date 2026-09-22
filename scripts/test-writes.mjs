@@ -765,5 +765,73 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
   else pass('모둠 자리 잠금', '학생은 자기 등록의 모둠 자리를 옮기지 못한다')
 }
 
+/* ── ⑭ 출석: 오늘의 질문에 답한 사람만 모둠에 들어가는가 (강의자 지시 2026-09-22) ── */
+{
+  const { answeredUids, attendanceEdit, attendingStudents, withAttendance } = await import('../src/lib/attendance.ts')
+  const { assignGroups, encodePlan } = await import('../shared/groups-core.ts')
+  const teacherRepo = createFirestoreRepo(env.authenticatedContext(TEACHER).firestore())
+  const CID3 = 'c-w4'
+  const uids = ['h-a', 'h-b', 'h-c', 'h-d', 'h-e', 'h-f', 'h-g', 'h-h']
+  const OPTIONS = ['봄', '여름', '가을', '겨울']
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    await db.doc(`classes/${CID3}`).set({
+      id: CID3, ownerUid: TEACHER, status: 'active', enrollmentOpen: true,
+      requireJoinCode: false, displayName: '출석 검사', courseTitle: '과학교육론', groupCount: 2,
+    })
+    for (const u of uids) await db.doc(`classes/${CID3}/enrollments/${u}`).set({ uid: u, status: 'active', nickname: u })
+  })
+
+  try {
+    /* 여덟 명 중 다섯 명이 학생 화면의 그 함수로 답한다 */
+    for (const [i, u] of uids.slice(0, 5).entries()) {
+      const r = createFirestoreRepo(env.authenticatedContext(u).firestore())
+      await r.setGroupInput(CID3, { uid: u, lessonId: '05', questionId: 'season', choice: OPTIONS[i % 4], updatedAt: Date.now() })
+    }
+    /* 강사 화면이 쓰는 구독으로 읽는다 */
+    const inputs = await new Promise((resolve) => {
+      const off = teacherRepo.watchGroupInputs(CID3, '05', (list) => { if (list.length >= 5) { off(); resolve(list) } })
+      setTimeout(() => { off(); resolve([]) }, 5000)
+    })
+    const students = uids.map((u) => ({ uid: u, nickname: u, status: 'active' }))
+    const before = attendingStudents(students, inputs, attendanceEdit(null))
+
+    /* 강사가 못 누른 사람 하나를 넣고, 답했지만 자리에 없는 사람 하나를 뺀다 — 손질은 세션에 남는다 */
+    let edit = withAttendance(attendanceEdit(null), 'h-f', false, true)
+    edit = withAttendance(edit, 'h-a', true, false)
+    await teacherRepo.setSession(CID3, '05', { attendance: edit })
+    const session = await new Promise((resolve) => {
+      const off = teacherRepo.watchSession(CID3, '05', (s) => { if (s?.attendance) { off(); resolve(s) } })
+      setTimeout(() => { off(); resolve(null) }, 5000)
+    })
+    const here = attendingStudents(students, inputs, attendanceEdit(session?.attendance))
+    const away = students.filter((s) => !here.some((h) => h.uid === s.uid))
+
+    /* 그 사람들만 배정해 확정한다 — 화면(FormationPanel)이 보내는 모양 그대로 */
+    const res = assignGroups({ uids: here.map((s) => s.uid), groupCount: 2, history: {}, round: 1, roundsAhead: 1, seed: 'writes::attend' })
+    const round = {
+      id: `${CID3}-05`, round: 1, lessonId: '05', questionId: 'season',
+      groups: res.groups.map((m, i) => ({ id: String(i + 1), name: `${OPTIONS[i]} 모둠`, memberUids: m })),
+      absentUids: away.map((s) => s.uid), seed: res.seed, cost: res.repeats, createdBy: TEACHER, createdAt: Date.now(),
+      manualEdits: [], plannedNext: encodePlan(res.plannedNext), followedPlan: res.followedPlan, lateJoins: [],
+    }
+    await teacherRepo.confirmGroupRound(CID3, round)
+    const placed = round.groups.flatMap((g) => g.memberUids)
+    const enr = await new Promise((resolve) => {
+      const off = teacherRepo.watchEnrollments(CID3, (list) => { if (list.some((e) => e.currentRoundId === round.id)) { off(); resolve(list) } })
+      setTimeout(() => { off(); resolve([]) }, 5000)
+    })
+    const seat = Object.fromEntries(enr.map((e) => [e.uid, e.currentGroupId ?? null]))
+
+    if (answeredUids(inputs).size !== 5 || before.length !== 5) fail('출석', `답한 사람이 5명이어야 하는데 ${before.length}명이다`)
+    else if (placed.length !== 5 || placed.includes('h-a') || !placed.includes('h-f')) fail('출석', `모둠에 든 사람이 ${placed.join(',')} 다 — 답한 사람 + 강사 손질이어야 한다`)
+    else if (seat['h-a'] !== null || seat['h-f'] === null) fail('출석', `결석자의 모둠 자리가 비지 않았다 — ${JSON.stringify(seat)}`)
+    else if (round.absentUids.length !== 3) fail('출석', `결석 기록이 ${round.absentUids.length}명이다 (3명이어야 한다)`)
+    else pass('출석', `명단 8명 중 답한 5명 · 강사가 하나 넣고 하나 빼 5명이 모둠에 들어가고 3명은 결석으로 남는다 (앱의 attendance.ts + groups-core)`)
+  } catch (err) {
+    fail('출석', `막힌다 — ${err.message}`)
+  }
+}
+
 await env.cleanup()
 report('test:writes')

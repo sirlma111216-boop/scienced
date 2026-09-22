@@ -271,6 +271,11 @@ export interface SessionState {
   ladders: Partial<Record<string, LadderState>>
   /** 강사가 공개한 자료 블록 id */
   revealed?: string[]
+  /**
+   * 출석 손질 (lib/attendance.ts). 출석은 「오늘의 질문」에 답한 사람이고,
+   * 여기에는 그 기준에서 강사가 손으로 넣거나 뺀 사람만 남는다.
+   */
+  attendance?: { in: string[]; out: string[] }
   pinnedPostRef: { stepId: string; postId: string } | null
   instructorAt: string | null
   /** 8차 게임 (단계별로 하나) */

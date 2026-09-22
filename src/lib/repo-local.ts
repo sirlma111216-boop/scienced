@@ -89,6 +89,13 @@ const kPairHistory = (c: string) => `c.${c}.pairHistory`
 const kGroupRounds = (c: string) => `c.${c}.groupRounds`
 const kGroupInputs = (c: string, l: string) => `c.${c}.groupInputs.${l}`
 
+/** 모든 과목의 차시 id — 학기 전체를 훑을 때 (출석부) */
+function allLessonIds(): LessonId[] {
+  const out = new Set<LessonId>()
+  for (const cid of COURSE_IDS) for (const l of lessonIndex(cid)) out.add(l.id)
+  return [...out]
+}
+
 /** 모든 과목의 (차시, 단계) — 응답·글·자리를 훑을 때 */
 function allStepPaths(): Array<[string, string]> {
   const out: Array<[string, string]> = []
@@ -280,6 +287,9 @@ export function createLocalRepo(): Repo {
     watchSession(classId, lessonId, cb) {
       return subscribe(() => cb(read<SessionState | null>(kSession(classId, lessonId), null)))
     },
+    watchSessions(classId, cb) {
+      return subscribe(() => cb(allLessonIds().flatMap((l) => read<SessionState | null>(kSession(classId, l), null) ?? [])))
+    },
     async setSession(classId, lessonId, patch) {
       const key = kSession(classId, lessonId)
       const cur = read<SessionState | null>(key, null)
@@ -404,6 +414,9 @@ export function createLocalRepo(): Repo {
     },
     watchGroupInputs(classId, lessonId, cb) {
       return subscribe(() => cb(read<GroupInput[]>(kGroupInputs(classId, lessonId), [])))
+    },
+    watchAllGroupInputs(classId, cb) {
+      return subscribe(() => cb(allLessonIds().flatMap((l) => read<GroupInput[]>(kGroupInputs(classId, l), []))))
     },
     watchMyGroupInput(classId, lessonId, uid, cb) {
       return subscribe(() => cb(read<GroupInput[]>(kGroupInputs(classId, lessonId), []).find((i) => i.uid === uid) ?? null))

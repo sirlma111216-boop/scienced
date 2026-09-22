@@ -1,3 +1,5 @@
+import type { CourseId } from './types'
+
 /**
  * 모둠 나누기 — 아이스브레이킹 질문 은행 (8차 5.1).
  *
@@ -42,7 +44,22 @@ export const FORMATION_QUESTIONS: FormationQuestion[] = [
 
 export const FORMATION_QUESTION_BY_ID = Object.fromEntries(FORMATION_QUESTIONS.map((q) => [q.id, q])) as Record<string, FormationQuestion>
 
-/** 아직 안 쓴 질문 중 첫 것. 다 썼으면 처음부터 다시 돈다 */
-export function nextFormationQuestion(used: string[]): FormationQuestion {
-  return FORMATION_QUESTIONS.find((q) => !used.includes(q.id)) ?? FORMATION_QUESTIONS[used.length % FORMATION_QUESTIONS.length]
+/**
+ * 그 차시의 질문 — 차시 번호 자리에서 시작해 이미 쓴 질문만 건너뛴다.
+ *
+ * 질문은 모둠을 나누는 차시만이 아니라 매 차시 뜬다 (답하면 출석이다 · 강의자 지시 2026-09-22).
+ * 그래서 「아직 안 쓴 첫 질문」으로 고르면 아직 안 나눈 차시가 모두 같은 질문을 보인다.
+ * 두 과목을 같이 듣는 학생이 같은 주에 같은 질문을 두 번 받지 않도록 과목마다 시작 자리를 어긋나게 둔다 (8.3).
+ * 이 함수는 firebase 를 부르지 않는다 — verify:groups 가 그대로 불러 본다.
+ */
+export function questionForLessonNumber(lessonNo: number, courseId: CourseId, used: Iterable<string> = []): FormationQuestion {
+  const n = FORMATION_QUESTIONS.length
+  const taken = new Set(used)
+  const offset = courseId === 'method' ? Math.floor(n / 2) : 0
+  const start = (offset + Math.max(0, (Number.isFinite(lessonNo) ? lessonNo : 1) - 1)) % n
+  for (let k = 0; k < n; k++) {
+    const q = FORMATION_QUESTIONS[(start + k) % n]
+    if (!taken.has(q.id)) return q
+  }
+  return FORMATION_QUESTIONS[start]
 }

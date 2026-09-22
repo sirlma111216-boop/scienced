@@ -371,6 +371,16 @@ export function createFirestoreRepo(db: Firestore): Repo {
         },
       )
     },
+    watchSessions(classId, cb) {
+      return onSnapshot(
+        cc(db, classId, 'sessions'),
+        (snap) => cb(snap.docs.map((s) => s.data() as SessionState)),
+        (err) => {
+          console.warn('[session] 학기 전체를 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
+      )
+    },
     async setSession(classId, lessonId, patch) {
       await setDoc(cd(db, classId, 'sessions', lessonId), { lessonId, ...patch, updatedAt: Date.now() }, { merge: true })
     },
@@ -530,6 +540,16 @@ export function createFirestoreRepo(db: Firestore): Repo {
         (snap) => cb(snap.docs.map((s) => s.data() as GroupInput)),
         (err) => {
           console.warn('[groupInputs] 읽지 못했다:', err.code, err.message)
+          cb([])
+        },
+      )
+    },
+    watchAllGroupInputs(classId, cb) {
+      return onSnapshot(
+        cc(db, classId, 'groupInputs'),
+        (snap) => cb(snap.docs.map((s) => s.data() as GroupInput)),
+        (err) => {
+          console.warn('[groupInputs] 학기 전체를 읽지 못했다:', err.code, err.message)
           cb([])
         },
       )

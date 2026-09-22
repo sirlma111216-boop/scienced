@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { buildSteps } from '@/content/steps'
 import { indexEntry } from '@/content/courses'
+import { answeredUids, attendanceEdit, attendingStudents, withAttendance } from '@/lib/attendance'
 import { useAuth } from '@/lib/auth'
 import { rememberTaught } from '@/lib/last-taught'
 import { formationLessons, historyFromDocs, questionForLesson, roundForLesson } from '@/lib/groups'
@@ -86,7 +87,25 @@ export function Teach() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo, classId, lessonId, step?.id])
 
-  const students = useMemo(() => enrollments.filter((e) => e.status === 'active'), [enrollments])
+  const enrolled = useMemo(() => enrollments.filter((e) => e.status === 'active'), [enrollments])
+  /**
+   * 오늘의 기준은 출석한 사람이다 — 「오늘의 질문」에 답한 사람 (강의자 지시 2026-09-22).
+   * 아래 화면 전부(응답 n/N · 게임 참가 · 발표자 뽑기 · 모둠)가 이 목록을 분모로 쓴다.
+   */
+  const attendEdit = useMemo(() => attendanceEdit(session?.attendance), [session?.attendance])
+  const students = useMemo(() => attendingStudents(enrolled, groupInputs, attendEdit), [enrolled, groupInputs, attendEdit])
+  const answered = useMemo(() => answeredUids(groupInputs), [groupInputs])
+  const setAttending = useCallback(
+    async (uid: string, attending: boolean) => {
+      if (!repo) return
+      try {
+        await repo.setSession(classId, lessonId, { attendance: withAttendance(attendEdit, uid, answered.has(uid), attending) })
+      } catch (err) {
+        console.error('[출석] 고치지 못했다:', err)
+      }
+    },
+    [repo, classId, lessonId, attendEdit, answered],
+  )
   const openSteps = useMemo(() => session?.openSteps ?? [], [session?.openSteps])
   const toggleStep = useCallback(
     async (sid: string) => {
@@ -144,7 +163,7 @@ export function Teach() {
                 <input type="checkbox" checked={hideNames} onChange={(e) => setHideNames(e.target.checked)} /> 실명 가리기
               </label>
               <button type="button" className="tab" aria-expanded={rosterOpen} onClick={() => setRosterOpen(true)}>
-                명단 {submittedCount}/{students.length}
+                명단 · 출석 {students.length}/{enrolled.length}
               </button>
               <MusicToggle />
             </div>
@@ -215,7 +234,7 @@ export function Teach() {
                       모둠 나누기
                     </Button>
                   ) : null}
-                  {step.kind === 'intro' && isFormationLesson ? <Caption>{roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : `질문 답 ${groupInputs.filter((i) => i.questionId === question.id).length}/${students.length}`}</Caption> : null}
+                  {step.kind === 'intro' ? <Caption>{isFormationLesson && roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : `출석 ${students.length}/${enrolled.length} — 오늘의 질문에 답하면 출석이다`}</Caption> : null}
                 </div>
 
                 <LessonBody classId={classId} courseId={courseId} lesson={lesson} step={step} session={session} round={activeRound} nicknames={nicknames} tally={tally} teacher={{ students, participation, docs, onReveal, nameOf: (uid) => nicknames[uid] ?? '이름 없음' }} />
@@ -224,13 +243,13 @@ export function Teach() {
           </main>
 
           {rosterOpen ? (
-            <Overlay title={`명단 · 제출 ${submittedCount}/${students.length}`} onClose={() => setRosterOpen(false)}>
-              <RosterList students={students} docs={docs} />
+            <Overlay title={`명단 · 출석 ${students.length}/${enrolled.length} · 이 단계 제출 ${submittedCount}/${students.length}`} onClose={() => setRosterOpen(false)}>
+              <RosterList enrolled={enrolled} attending={students} answered={answered} docs={docs} onAttending={setAttending} />
             </Overlay>
           ) : null}
           {formationOpen && cls ? (
             <Overlay title="모둠 나누기" onClose={() => setFormationOpen(false)} wide>
-              <FormationPanel classId={classId} lessonId={lessonId} cls={cls} students={students} hist={historyFromDocs(pairHistory)} rounds={groupRounds} />
+              <FormationPanel classId={classId} lessonId={lessonId} cls={cls} students={enrolled} hist={historyFromDocs(pairHistory)} rounds={groupRounds} />
             </Overlay>
           ) : null}
         </div>
@@ -239,18 +258,53 @@ export function Teach() {
   )
 }
 
-/** 명단 서랍 — 이 단계의 제출 여부. 실명은 NamesProvider 가 정한 대로만 (실명 가리기면 닉네임) */
-function RosterList({ students, docs }: { students: Enrollment[]; docs: ResponseDoc[] }) {
+/**
+ * 명단 서랍 — 오늘 온 사람과 이 단계의 제출 여부.
+ *
+ * 출석은 학생이 「오늘의 질문」에 답하면 저절로 켜진다. 여기 체크 상자는 그 기준을 고치는 자리다 —
+ * 기기가 안 되는 사람을 넣고, 자리에 없는 사람을 뺀다. 수업 흐름을 여는 단추가 아니다.
+ * 실명은 NamesProvider 가 정한 대로만 나간다 (실명 가리기면 닉네임).
+ */
+function RosterList({
+  enrolled,
+  attending,
+  answered,
+  docs,
+  onAttending,
+}: {
+  enrolled: Enrollment[]
+  attending: Enrollment[]
+  answered: Set<string>
+  docs: ResponseDoc[]
+  onAttending: (uid: string, attending: boolean) => Promise<void>
+}) {
   const { nameOf } = useNames()
   const done = new Set(docs.filter((d) => (d.latestV ?? 0) > 0).map((d) => d.uid))
+  const here = new Set(attending.map((s) => s.uid))
+  const rows = [...enrolled].sort((a, b) => Number(here.has(b.uid)) - Number(here.has(a.uid)))
   return (
-    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 6 }}>
-      {students.map((s) => (
-        <li key={s.uid} className="text-body-sm rounded-md" style={{ padding: '6px 10px', boxShadow: 'inset 0 0 0 1px #e6e6e6', background: done.has(s.uid) ? '#eaf4ec' : '#fff' }}>
-          {done.has(s.uid) ? '✓ ' : '· '}
-          {nameOf(s.uid)}
-        </li>
-      ))}
-    </ul>
+    <>
+      <p className="text-body-sm" style={{ margin: '0 0 12px' }}>
+        오늘의 질문에 답한 사람이 출석입니다. 못 누른 사람은 체크해서 넣고, 자리에 없는 사람은 체크를 풉니다. 아래 ✓ 는 이 단계의 제출입니다.
+      </p>
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 6 }}>
+        {rows.map((s) => {
+          const present = here.has(s.uid)
+          return (
+            <li key={s.uid}>
+              <label
+                className="text-body-sm flex items-center gap-xxs rounded-md"
+                style={{ padding: '6px 10px', boxShadow: `inset 0 0 0 1px ${present ? '#111' : '#e6e6e6'}`, background: done.has(s.uid) ? '#eaf4ec' : '#fff', opacity: present ? 1 : 0.6 }}
+              >
+                <input type="checkbox" checked={present} aria-label={`${nameOf(s.uid)} 출석`} onChange={(e) => void onAttending(s.uid, e.target.checked)} />
+                <span style={{ flex: 1 }}>{nameOf(s.uid)}</span>
+                {answered.has(s.uid) ? <span className="caption">답함</span> : null}
+                {done.has(s.uid) ? <span aria-label="제출함">✓</span> : null}
+              </label>
+            </li>
+          )
+        })}
+      </ul>
+    </>
   )
 }

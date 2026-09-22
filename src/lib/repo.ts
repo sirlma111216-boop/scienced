@@ -91,6 +91,8 @@ export interface Repo {
 
   /* ── 차시 진행 상태 ── */
   watchSession(classId: string, lessonId: LessonId, cb: (s: SessionState | null) => void): () => void
+  /** 강사 — 학기 전체. 출석부가 차시마다의 출석 손질을 읽는다 */
+  watchSessions(classId: string, cb: (list: SessionState[]) => void): () => void
   setSession(classId: string, lessonId: LessonId, patch: Partial<SessionState>): Promise<void>
 
   /* ── 게임 (8차 6절) ── */
@@ -119,6 +121,8 @@ export interface Repo {
   confirmGroupRound(classId: string, round: GroupRound): Promise<void>
   addLateJoiner(classId: string, roundId: string, uid: string, groupId: string): Promise<void>
   watchGroupInputs(classId: string, lessonId: LessonId, cb: (list: GroupInput[]) => void): () => void
+  /** 강사 — 학기 전체. 출석부가 차시마다 누가 답했나를 읽는다 */
+  watchAllGroupInputs(classId: string, cb: (list: GroupInput[]) => void): () => void
   watchMyGroupInput(classId: string, lessonId: LessonId, uid: string, cb: (input: GroupInput | null) => void): () => void
   setGroupInput(classId: string, input: GroupInput): Promise<void>
 

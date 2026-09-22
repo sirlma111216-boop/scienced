@@ -123,7 +123,8 @@ export function Lesson() {
           </section>
         ) : null}
 
-        {stepIndex === 0 && isFormationLesson && classId ? <FormationQuestionView classId={classId} lessonId={lesson.id} question={question} round={roundHere} rounds={groupRounds} nicknames={nicknames} /> : null}
+        {/* 오늘의 질문은 매 차시 뜬다 — 답하면 그날 출석이다 (강의자 지시 2026-09-22) */}
+        {stepIndex === 0 && classId ? <FormationQuestionView classId={classId} lessonId={lesson.id} question={question} forGroups={isFormationLesson} round={isFormationLesson ? roundHere : null} rounds={groupRounds} nicknames={nicknames} /> : null}
 
         {activeRound && user ? (
           (() => {
