@@ -21,10 +21,13 @@ export function formationLessons(cls: ClassDoc | null | undefined, courseId: Cou
  * 이 차시에서 쓰는 모둠.
  *   · 모둠을 새로 나누는 차시(교육론 매 차시 · 교수법 홀수 차시)는 **이 차시에서 확정한 회차만** — 나누기 전에는 없다.
  *     지난 회차를 보이면 「같은 답끼리 모인다」는 질문 아래에 지난주 모둠이 떠 있어 헷갈린다 (강의자 지적 2026-09-22).
- *   · 나누지 않는 차시(교수법 짝수 차시)는 그 이전에 확정된 가장 최근 회차를 이어 쓴다.
+ *   · 나누지 않는 차시(교수법 짝수 차시)는 **바로 앞 나누는 차시**의 회차만 이어 쓴다. 그것이 없으면 없다.
+ *     더 옛 회차를 끌어오지 않는다 — 5강에서 아직 안 나눴는데 6강에 3강 모둠이 떠 있었다 (강의자 지적 2026-09-22).
+ *     이 차시에서 직접 나눈 회차가 있으면(강사가 짝수 차시에 나눈 경우) 그것이 먼저다.
  */
 export function roundForLesson(lessonId: LessonId, rounds: GroupRound[], formation: LessonId[]): GroupRound | null {
-  if (formation.includes(lessonId)) return rounds.find((r) => r.lessonId === lessonId) ?? null
-  const done = rounds.filter((r) => r.lessonId <= lessonId).sort((a, b) => (a.lessonId < b.lessonId ? 1 : -1))
-  return done[0] ?? null
+  const here = rounds.find((r) => r.lessonId === lessonId) ?? null
+  if (formation.includes(lessonId) || here) return here
+  const prev = [...formation].filter((l) => l < lessonId).sort().pop()
+  return prev ? (rounds.find((r) => r.lessonId === prev) ?? null) : null
 }

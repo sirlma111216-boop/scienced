@@ -100,7 +100,7 @@ export function LessonBody({
                 <Button variant="secondary" onClick={teacher.onFormation}>
                   모둠 나누기
                 </Button>
-                <Caption>{formationLesson ? (roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : '답한 사람만 모둠에 들어간다') : '이 차시는 지난 회차의 모둠을 그대로 쓴다 — 출석만 받는다'}</Caption>
+                <Caption>{formationLesson ? (roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : '답한 사람만 모둠에 들어간다') : round ? '이 차시는 바로 앞 차시에서 나눈 모둠을 그대로 쓴다 — 출석만 받는다' : '바로 앞 나누는 차시에서 아직 모둠을 나누지 않았다 — 그 차시 화면에서 나누면 여기에 뜬다'}</Caption>
               </>
             ) : null
             return (

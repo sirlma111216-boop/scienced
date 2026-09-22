@@ -221,6 +221,11 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
     ['교수법 5강(홀수 · 나누는 차시) — 나누기 전', roundForLesson('05', rounds, method), null],
     ['교수법 4강(짝수) — 3강 모둠을 잇는다', roundForLesson('04', rounds, method)?.lessonId, '03'],
     ['교수법 2강(짝수) — 1강 모둠을 잇는다', roundForLesson('02', rounds, method)?.lessonId, '01'],
+    /* 5강에서 아직 안 나눴으면 6강은 비어 있어야 한다 — 3강 모둠을 끌어오지 않는다 (강의자 지적 2026-09-22) */
+    ['교수법 6강(짝수) — 5강 회차가 없으면 3강 것을 끌어오지 않는다', roundForLesson('06', rounds, method), null],
+    ['교수법 6강(짝수) — 5강 회차가 있으면 그것', roundForLesson('06', [...rounds, mk('05', '5강 모둠')], method)?.lessonId, '05'],
+    ['교수법 6강 — 6강에서 직접 나눴으면 그것이 먼저', roundForLesson('06', [...rounds, mk('05', '5강 모둠'), mk('06', '6강 모둠')], method)?.lessonId, '06'],
+    ['교수법 13강(나누는 회차 밖) — 바로 앞 나누는 차시인 11강 것', roundForLesson('13', [mk('11', '11강 모둠')], ['01', '03', '05', '07', '09', '11']), '11강 모둠'].map((v, i) => (i === 1 ? v?.groups?.[0]?.name : v)),
   ]
   let bad = 0
   for (const [label, got, want] of checks) {
