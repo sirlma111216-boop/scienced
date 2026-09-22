@@ -15,8 +15,10 @@ const { FORMATION_QUESTIONS, questionForLessonNumber } = await import('../src/co
 const { answeredUids, attendanceEdit, attendingStudents, withAttendance, attendanceByLesson } = await import('../src/lib/attendance.ts')
 const { assignGroups, applyRound, feasibility, groupSizes } = await import('../shared/groups-core.ts')
 const { lessonIndex } = await import('../src/content/courses/index.ts')
-/** src/lib/groups.ts 의 defaultFormationLessons 와 같은 규칙 — 그 파일은 firebase 를 끌어와 node 에서 못 부른다 */
-const defaultFormationLessons = (courseId) => lessonIndex(courseId).map((l) => l.id).filter((_, i) => courseId === 'edu' || i % 2 === 0)
+/* 규칙은 앱이 쓰는 그 파일에서 그대로 부른다 — 검사기가 규칙을 다시 쓰면 둘이 어긋난다 */
+const { defaultFormationLessons, roundForLesson, METHOD_PAIRED_UNTIL } = await import('../src/lib/group-round.ts')
+
+const mk = (lessonId, name) => ({ id: 'r-' + lessonId, round: Number(lessonId), lessonId, gameId: 'q', groups: [{ id: '1', name, memberUids: ['a'] }], absentUids: [], seed: '', cost: 0, createdBy: 't', createdAt: 0, manualEdits: [], plannedNext: [], followedPlan: true, lateJoins: [] })
 
 const SCIENCE = ['과학', '실험', '원자', '분자', '세포', '광합성', '중력', '에너지', '화학', '물리', '생물', '지구', '전기', '자석', '탐구', '가설', '변인', '이산화탄소', '산소', '전류', '온도', '기압', '행성', '진화', '유전']
 
@@ -210,8 +212,6 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
 
 /* ── 차시가 쓰는 모둠 — 나누는 차시는 나누기 전까지 비어 있고, 나누지 않는 차시는 지난 회차를 잇는다 (강의자 지적 2026-09-22) ── */
 {
-  const { roundForLesson, defaultFormationLessons } = await import('../src/lib/group-round.ts')
-  const mk = (lessonId, name) => ({ id: 'r-' + lessonId, round: Number(lessonId), lessonId, gameId: 'q', groups: [{ id: '1', name, memberUids: ['a'] }], absentUids: [], seed: '', cost: 0, createdBy: 't', createdAt: 0, manualEdits: [], plannedNext: [], followedPlan: true, lateJoins: [] })
   const edu = defaultFormationLessons('edu')
   const method = defaultFormationLessons('method')
   const rounds = [mk('01', '1강 모둠'), mk('03', '3강 모둠')]
@@ -235,6 +235,63 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
     }
   }
   if (bad === 0) pass('차시의 모둠', '나누는 차시는 나누기 전까지 지난 모둠을 보이지 않고, 나누지 않는 차시만 지난 회차를 잇는다')
+}
+
+/*
+ * ── 전수조사 — 두 과목의 모든 차시가 규칙대로인가 (강의자 확정 2026-09-22) ──
+ *   교육론    12차시 전부 나눈다.
+ *   교수법    12강까지 홀수(1·3·5·7·9·11)에 나누고 그다음 짝수는 앞 차시를 따른다. 13강부터는 매 차시 나눈다.
+ * 차시 하나하나를 적어 놓고 센다 — 「홀수면 된다」로 세면 13강부터가 빠진다.
+ */
+{
+  const EXPECT = {
+    edu: { form: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'], follow: {} },
+    method: {
+      form: ['01', '03', '05', '07', '09', '11', '13', '14', '15', '16', '17', '18'],
+      /* 따르는 차시 → 따라야 할 차시 */
+      follow: { '02': '01', '04': '03', '06': '05', '08': '07', '10': '09', '12': '11' },
+    },
+  }
+  let bad = 0
+  for (const [courseId, want] of Object.entries(EXPECT)) {
+    const ids = lessonIndex(courseId).map((l) => l.id)
+    const form = defaultFormationLessons(courseId)
+    const missingLesson = [...want.form, ...Object.keys(want.follow)].filter((id) => !ids.includes(id))
+    if (missingLesson.length > 0) {
+      bad += 1
+      fail('전수조사', `${courseId} 색인에 없는 차시를 기대표가 적었다 — ${missingLesson.join(' · ')}`)
+    }
+    if (JSON.stringify(form) !== JSON.stringify(want.form)) {
+      bad += 1
+      fail('전수조사', `${courseId} 나누는 차시가 ${form.join('·')} 다 (기대 ${want.form.join('·')})`)
+    }
+    /* 색인의 모든 차시가 「나눈다」이거나 「앞을 따른다」 둘 중 하나여야 한다 — 빠진 차시가 없다 */
+    for (const id of ids) {
+      const isForm = form.includes(id)
+      const follows = want.follow[id]
+      if (isForm === Boolean(follows)) {
+        bad += 1
+        fail('전수조사', `${courseId} ${id}강이 어느 쪽인지 정해지지 않았다 (나눔 ${isForm} · 따름 ${follows ?? '없음'})`)
+      }
+      if (follows) {
+        /* 따르는 차시는 바로 앞 나누는 차시의 회차를 쓴다 — 그 회차가 있을 때와 없을 때 둘 다 */
+        const rounds = [mk(follows, `${follows}강 모둠`)]
+        const got = roundForLesson(id, rounds, form)?.lessonId ?? null
+        if (got !== follows) {
+          bad += 1
+          fail('전수조사', `${courseId} ${id}강이 ${follows}강 모둠을 따르지 않는다 (${got})`)
+        }
+        if (roundForLesson(id, [], form) !== null) {
+          bad += 1
+          fail('전수조사', `${courseId} ${id}강이 앞 차시에서 안 나눴는데도 모둠을 보인다`)
+        }
+      } else if (roundForLesson(id, [mk(String(Number(id) - 1).padStart(2, '0'), '앞 차시 모둠')], form) !== null) {
+        bad += 1
+        fail('전수조사', `${courseId} ${id}강은 나누는 차시인데 앞 차시 모둠을 끌어온다`)
+      }
+    }
+  }
+  if (bad === 0) pass('전수조사', `교육론 12차시는 매 차시 나누고, 교수법은 ${METHOD_PAIRED_UNTIL}강까지 홀수에 나눈 뒤 짝수가 따르며 13강부터 매 차시 나눈다 — 30차시 전부 확인`)
 }
 
 report('verify:groups')

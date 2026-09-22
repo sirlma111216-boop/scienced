@@ -95,11 +95,14 @@ export function LessonBody({
         switch (b.kind) {
           case 'question': {
             /* 오늘의 질문 — 두 화면이 같은 블록. 강사는 보기마다 답한 수와 [모둠 나누기]를 본다 */
+            /* 나누지 않는 차시에는 단추를 두지 않는다 — 앞 차시 모둠을 쓰는 자리에서 새로 나누면 둘이 뒤섞인다 (강의자 지적 2026-09-22) */
             const control = teacher ? (
               <>
-                <Button variant="secondary" onClick={teacher.onFormation}>
-                  모둠 나누기
-                </Button>
+                {formationLesson ? (
+                  <Button variant="secondary" onClick={teacher.onFormation}>
+                    모둠 나누기
+                  </Button>
+                ) : null}
                 <Caption>{formationLesson ? (roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : '답한 사람만 모둠에 들어간다') : round ? '이 차시는 바로 앞 차시에서 나눈 모둠을 그대로 쓴다 — 출석만 받는다' : '바로 앞 나누는 차시에서 아직 모둠을 나누지 않았다 — 그 차시 화면에서 나누면 여기에 뜬다'}</Caption>
               </>
             ) : null
