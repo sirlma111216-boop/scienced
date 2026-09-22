@@ -137,8 +137,9 @@ export function Teach() {
   if (!classId || !lessonId) return <Navigate to="/instructor/classes" replace />
   if (!entry) return <Navigate to="/instructor/classes" replace />
 
-  const isFormationLesson = formationLessons(cls, courseId).includes(lessonId)
-  const activeRound = roundForLesson(lessonId, groupRounds)
+  const formation = formationLessons(cls, courseId)
+  const isFormationLesson = formation.includes(lessonId)
+  const activeRound = roundForLesson(lessonId, groupRounds, formation)
   const question = questionForLesson(cls, lessonId)
   const tally = question.options.map((o) => ({ option: o, count: groupInputs.filter((i) => i.questionId === question.id && i.choice === o).length }))
   const nicknames = Object.fromEntries([...users.map((u) => [u.uid, u.nickname || '이름 없음']), ...enrollments.filter((e) => e.nickname).map((e) => [e.uid, e.nickname])]) as Record<string, string>

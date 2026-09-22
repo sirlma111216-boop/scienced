@@ -1,11 +1,12 @@
-import type { CourseId, LessonId } from '@/content/types'
-import { courseIdFromTitle, lessonIndex } from '@/content/courses'
+import type { LessonId } from '@/content/types'
+import { courseIdFromTitle } from '@/content/courses'
 import { FORMATION_QUESTION_BY_ID, questionForLessonNumber, type FormationQuestion } from '@/content/formation-questions'
 import { assignGroups, pairKey, pairKeysOf, type AssignInput, type AssignResult, type PairRecord } from '@shared/groups-core'
 import { apiPost } from './api'
 import type { ClassDoc, GroupInput, GroupRound, GroupRoundGroup, PairHistoryDoc } from './types'
 
 export { applyRound, assignGroups, decodePlan, encodePlan, feasibility, groupSizes, pairKey, placeLateJoiner, planSchedule, sameGrouping } from '@shared/groups-core'
+export { defaultFormationLessons, formationLessons, roundForLesson } from './group-round'
 
 /**
  * 모둠 나누기 — 화면이 쓰는 도움 함수 (6차 · 8차 5절).
@@ -17,16 +18,6 @@ export { applyRound, assignGroups, decodePlan, encodePlan, feasibility, groupSiz
 export const DEFAULT_GROUP_COUNT = 4
 export const DEFAULT_CLASS_SIZE = 20
 
-/** 모둠을 새로 나누는 차시 — 교수법은 홀수 차시, 교육론은 매 차시 (강의자 답 8) */
-export function defaultFormationLessons(courseId: CourseId): LessonId[] {
-  const ids = lessonIndex(courseId).map((l) => l.id)
-  return courseId === 'edu' ? ids : ids.filter((_, i) => i % 2 === 0)
-}
-
-export function formationLessons(cls: ClassDoc | null | undefined, courseId: CourseId): LessonId[] {
-  return cls?.groupFormationLessons?.length ? cls.groupFormationLessons : defaultFormationLessons(courseId)
-}
-
 export function groupCountOf(cls: ClassDoc | null | undefined): number {
   return cls?.groupCount && cls.groupCount >= 2 ? cls.groupCount : DEFAULT_GROUP_COUNT
 }
@@ -35,12 +26,6 @@ export function groupCountOf(cls: ClassDoc | null | undefined): number {
 export function roundNumberOf(lessonId: LessonId, lessons: LessonId[]): number | null {
   const i = lessons.indexOf(lessonId)
   return i < 0 ? null : i + 1
-}
-
-/** 이 차시에서 쓰는 모둠 — 이 차시 이전(포함)에 확정된 가장 최근 회차 */
-export function roundForLesson(lessonId: LessonId, rounds: GroupRound[]): GroupRound | null {
-  const done = rounds.filter((r) => r.lessonId <= lessonId).sort((a, b) => (a.lessonId < b.lessonId ? 1 : -1))
-  return done[0] ?? null
 }
 
 /**

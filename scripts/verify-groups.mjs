@@ -208,4 +208,28 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
   else pass('같은 코드', '서버 함수 · 화면 · 이 검사가 shared/groups-core 하나를 쓴다')
 }
 
+/* ── 차시가 쓰는 모둠 — 나누는 차시는 나누기 전까지 비어 있고, 나누지 않는 차시는 지난 회차를 잇는다 (강의자 지적 2026-09-22) ── */
+{
+  const { roundForLesson, defaultFormationLessons } = await import('../src/lib/group-round.ts')
+  const mk = (lessonId, name) => ({ id: 'r-' + lessonId, round: Number(lessonId), lessonId, gameId: 'q', groups: [{ id: '1', name, memberUids: ['a'] }], absentUids: [], seed: '', cost: 0, createdBy: 't', createdAt: 0, manualEdits: [], plannedNext: [], followedPlan: true, lateJoins: [] })
+  const edu = defaultFormationLessons('edu')
+  const method = defaultFormationLessons('method')
+  const rounds = [mk('01', '1강 모둠'), mk('03', '3강 모둠')]
+  const checks = [
+    ['교육론 4강(매 차시 나눔) — 나누기 전', roundForLesson('04', rounds, edu), null],
+    ['교육론 3강 — 그 차시에서 나눈 것', roundForLesson('03', rounds, edu)?.lessonId, '03'],
+    ['교수법 5강(홀수 · 나누는 차시) — 나누기 전', roundForLesson('05', rounds, method), null],
+    ['교수법 4강(짝수) — 3강 모둠을 잇는다', roundForLesson('04', rounds, method)?.lessonId, '03'],
+    ['교수법 2강(짝수) — 1강 모둠을 잇는다', roundForLesson('02', rounds, method)?.lessonId, '01'],
+  ]
+  let bad = 0
+  for (const [label, got, want] of checks) {
+    if (got !== want) {
+      bad += 1
+      fail('차시의 모둠', `${label}: ${JSON.stringify(got)} (기대 ${JSON.stringify(want)})`)
+    }
+  }
+  if (bad === 0) pass('차시의 모둠', '나누는 차시는 나누기 전까지 지난 모둠을 보이지 않고, 나누지 않는 차시만 지난 회차를 잇는다')
+}
+
 report('verify:groups')

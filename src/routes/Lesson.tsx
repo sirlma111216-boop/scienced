@@ -84,8 +84,9 @@ export function Lesson() {
     )
   }
 
-  const isFormationLesson = formationLessons(currentClass, courseId).includes(lesson.id)
-  const activeRound = roundForLesson(lesson.id, groupRounds)
+  const formation = formationLessons(currentClass, courseId)
+  const isFormationLesson = formation.includes(lesson.id)
+  const activeRound = roundForLesson(lesson.id, groupRounds, formation)
   const question = questionForLesson(currentClass, lesson.id)
   const navItems = steps.map((s) => ({ id: s.id, label: s.title, shortLabel: s.shortTitle, instructorHere: session?.instructorAt === s.id, done: (session?.openSteps ?? []).includes(s.id) }))
 
