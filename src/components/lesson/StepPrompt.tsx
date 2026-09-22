@@ -28,7 +28,9 @@ export function StepPrompt({ step }: { step: Step }) {
             <p className="text-body" style={{ margin: '4px 0 0' }}>
               {sources.length > 0 ? `「${sources.join('」 · 「')}」${objectParticle(sources[sources.length - 1])} 읽고 지금 생각을 고른다.` : '지금 생각을 고른다.'}
             </p>
-            <Caption style={{ marginTop: 12 }}>맞히는 물음이 아니다. 수업이 끝날 때 이 답과 견준다.</Caption>
+            <p className="text-body-sm" style={{ margin: '12px 0 0', opacity: 0.8 }}>
+              맞히는 물음이 아니다. 수업이 끝날 때 이 답과 견준다.
+            </p>
           </>
         ) : (
           <>
@@ -36,7 +38,9 @@ export function StepPrompt({ step }: { step: Step }) {
             <p className="text-body" style={{ margin: '4px 0 0' }}>
               오늘 활동에서 내가 고른 것과 그 까닭을 다시 보고 쓴다. 아래에 오늘의 기준이 다시 나와 있다.
             </p>
-            <Caption style={{ marginTop: 12 }}>근거가 된 개념 하나와, 그 개념이 없었다면 무엇을 달리 했을지를 함께 적는다.</Caption>
+            <p className="text-body-sm" style={{ margin: '12px 0 0', opacity: 0.8 }}>
+              근거가 된 개념 하나와, 그 개념이 없었다면 무엇을 달리 했을지를 함께 적는다.
+            </p>
           </>
         )}
       </div>

@@ -52,6 +52,19 @@ export function parseBody(body: string): BodyLine[] {
   return out
 }
 
+/**
+ * 꼬리표가 가리키는 것 — 지문(장면·과제·자료…)인지, 교사의 말인지, 학생의 말인지.
+ * 대본에서 지문과 대사가 같은 글씨면 읽기 싫다 (강의자 지적 2026-09-22). 화면은 이 판정으로 색과 꼴을 가른다.
+ */
+export type SpeakerKind = 'narration' | 'teacher' | 'student'
+const NARRATION = new Set(['장면', '과제', '문제', '상황', '자료', '배경', '조건', '결과', '기록', '처방', '안내', '메모', '참고', '단계', '시간', '날짜', '지시', '목표', '제목', '주제', '출처', '설명', '표', '그림', '보기', '질문', '답', '풀이', '해설', '요약', '평가', '채점', '기준', '점수', '판정'])
+export function speakerOf(label: string): SpeakerKind {
+  const l = label.replace(/\s+/g, '')
+  if (NARRATION.has(l) || /^(장면|단계|자료|과제|문제|기록|메모)\s*[A-Za-z0-9가-힣]{0,2}$/.test(l)) return 'narration'
+  if (/교사|선생|부장|교수|강사|담임|교장|교감|연구사|장학사/.test(l)) return 'teacher'
+  return 'student'
+}
+
 /** 파싱한 줄에 꼬리표가 하나라도 있는가. verify 와 화면이 같은 판정을 쓴다. */
 export function hasLabels(body: string): boolean {
   return parseBody(body).some((l) => l.kind === 'labelled')

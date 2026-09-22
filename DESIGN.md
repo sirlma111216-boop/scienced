@@ -42,7 +42,7 @@ typography:
     fontFeature: kern
   headline:
     fontFamily: figmaSans
-    fontSize: 26px
+    fontSize: 30px
     fontWeight: 540
     lineHeight: 1.35
     letterSpacing: -0.26px
@@ -56,28 +56,28 @@ typography:
     fontFeature: kern
   card-title:
     fontFamily: figmaSans
-    fontSize: 24px
+    fontSize: 26px
     fontWeight: 700
     lineHeight: 1.45
     letterSpacing: 0
     fontFeature: kern
   body-lg:
     fontFamily: figmaSans
-    fontSize: 20px
+    fontSize: 22px
     fontWeight: 330
     lineHeight: 1.40
     letterSpacing: -0.14px
     fontFeature: kern
   body:
     fontFamily: figmaSans
-    fontSize: 18px
+    fontSize: 20px
     fontWeight: 320
     lineHeight: 1.45
     letterSpacing: -0.26px
     fontFeature: kern
   body-sm:
     fontFamily: figmaSans
-    fontSize: 16px
+    fontSize: 18px
     fontWeight: 330
     lineHeight: 1.45
     letterSpacing: -0.14px
@@ -105,7 +105,7 @@ typography:
     fontFeature: kern
   caption:
     fontFamily: figmaMono
-    fontSize: 12px
+    fontSize: 13px
     fontWeight: 400
     lineHeight: 1.00
     letterSpacing: 0.60px
@@ -320,6 +320,8 @@ This is a system built on contrast: the monochrome chrome makes the color blocks
 - **Overlay Scrim** ({colors.overlay-scrim}): Black used at ~60% opacity behind modal / video-overlay surfaces (token captures the base; opacity applied at render time).
 
 ## Typography
+
+2026-09-22 — 활자를 한 단계 키웠다(본문 18→20 · 작은 본문 16→18 · 제목 26→30 · 카드 제목 24→26 · 캡션 12→13). 프로젝터 뒤에서 읽히지 않았다(강의자 지적). 색 블록 여백도 48→28. 대본(dialogue·studentWork)은 말하는 사람마다 색이 다르다 — 지문 회색 · 교사 갈색 · 학생 남색 ( 의 ).
 
 ### Font Family
 

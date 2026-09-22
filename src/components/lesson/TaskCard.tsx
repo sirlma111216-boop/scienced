@@ -45,7 +45,9 @@ export function TaskCard({ activity, step }: { activity: Activity; step: Step })
           </ol>
         </div>
 
-        <Caption>답은 하나가 아니다. 고른 것보다 고른 까닭이 남는다.</Caption>
+        <p className="text-body-sm" style={{ margin: 0, opacity: 0.8 }}>
+          답은 하나가 아니다. 고른 것보다 고른 까닭이 남는다.
+        </p>
       </div>
     </ColorBlock>
   )

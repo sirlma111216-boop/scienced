@@ -3,7 +3,7 @@ import type { ImageSpec, Stimulus, StimulusFormat } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { Badge, Caption, Notice, ScrollX } from '@/components/ui'
 import { withEmphasis } from '@/components/emphasis'
-import { parseBody } from '@/lib/body-text'
+import { parseBody, speakerOf, type SpeakerKind } from '@/lib/body-text'
 
 /**
  * 자료 블록 (4차 H.1 ②).
@@ -64,8 +64,20 @@ export function LockedCard({ title, message }: { title: string; message: string 
  * 좁은 화면에서는 위아래로 접는다. 꼬리표를 고정 폭으로 두면 375px 에서
  * 본문이 한 글자씩 끊긴다. 그 사고를 단계 알약에서 이미 한 번 겪었다.
  */
+/*
+ * 말하는 사람마다 색 (강의자 지적 2026-09-22 — 장면·학생·교사가 같은 글씨라 읽기 싫다).
+ *   지문: 회색 · 교사: 갈색 · 학생: 남색. 꼬리표는 그 색의 알약, 대사는 그 색의 글씨.
+ *   들여쓴 줄(cont)은 바로 앞 줄의 사람을 잇는다.
+ */
+const SPEAKER_STYLE: Record<SpeakerKind, { pillBg: string; pillInk: string; ink: string; weight: number }> = {
+  narration: { pillBg: '#ececec', pillInk: '#444', ink: '#4a4a4a', weight: 340 },
+  teacher: { pillBg: '#f6e3cf', pillInk: '#7a3a00', ink: '#5a2c06', weight: 400 },
+  student: { pillBg: '#dbe8fb', pillInk: '#123f7a', ink: '#12315c', weight: 400 },
+}
+
 function Body({ body }: { body: string }) {
   const lines = parseBody(body)
+  let last: SpeakerKind = 'narration'
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -83,35 +95,46 @@ function Body({ body }: { body: string }) {
           )
         }
         if (l.kind === 'labelled') {
+          const kind = speakerOf(l.label)
+          last = kind
+          const st = SPEAKER_STYLE[kind]
           return (
             <div
               key={i}
               className="stimulus-line"
-              style={{ display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}
+              data-speaker={kind}
+              style={{ display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap', margin: '4px 0' }}
             >
-              {/* 꼬리표. 본문과 확실히 갈라 보이게 굵게 + 살짝 작게. */}
+              {/* 꼬리표 — 말하는 사람의 색 알약 */}
               <span
                 className="text-body-sm"
                 style={{
                   fontWeight: 700,
-                  minWidth: 56,
+                  minWidth: 64,
                   flexShrink: 0,
                   letterSpacing: '0.01em',
+                  padding: '1px 10px',
+                  borderRadius: 999,
+                  background: st.pillBg,
+                  color: st.pillInk,
+                  textAlign: 'center',
                 }}
               >
                 {l.label}
               </span>
-              <span className="text-body" style={{ flex: '1 1 260px', minWidth: 0 }}>
+              <span className="text-body" style={{ flex: '1 1 260px', minWidth: 0, color: st.ink, fontWeight: st.weight }}>
                 {withEmphasis(l.text)}
               </span>
             </div>
           )
         }
+        const st = SPEAKER_STYLE[l.kind === 'cont' ? last : 'narration']
         return (
           <p
             key={i}
             className="text-body"
-            style={{ margin: '2px 0', paddingLeft: l.kind === 'cont' ? 68 : 0 }}
+            data-speaker={l.kind === 'cont' ? last : undefined}
+            style={{ margin: '2px 0', paddingLeft: l.kind === 'cont' ? 76 : 0, color: l.kind === 'cont' ? st.ink : undefined, fontWeight: l.kind === 'cont' ? st.weight : undefined }}
           >
             {withEmphasis(l.text)}
           </p>

@@ -15,8 +15,9 @@
 
   body {
     @apply bg-canvas text-ink font-sans text-body antialiased;
+    /* 2026-09-22 본문 20px — 프로젝터에서 읽히게 */
     margin: 0;
-    font-size: 18px;
+    font-size: 20px;
   }
 
   /* 지시서 15절 · 컨텍스트 19.10 — 키보드만으로 조작 가능해야 하고 포커스가 보여야 한다. */
@@ -253,7 +254,8 @@
    */
   .color-block {
     @apply rounded-lg;
-    padding: 48px;
+    /* 48 → 28. 여백이 글을 밀어내 한 화면에 든 것이 줄었다 (강의자 지적 2026-09-22) */
+    padding: 28px;
   }
   @media (max-width: 768px) {
     /* DESIGN.md Responsive: 768px 아래에서는 모서리를 없애고 화면 끝까지 채운다 */
@@ -270,7 +272,7 @@
   }
   .card {
     @apply bg-canvas rounded-lg hairline;
-    padding: 24px;
+    padding: 20px;
   }
   .tile {
     @apply bg-surface-soft rounded-md;
