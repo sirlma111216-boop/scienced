@@ -100,8 +100,9 @@ function buttonLabels(src) {
 }
 
 {
-  const ALLOWED = new Set([...TEACH_BUTTONS, '참가', '명단'])
-  const FILES = ['src/routes/Teach.tsx', 'src/components/lesson/LessonBody.tsx', 'src/components/games/GameShell.tsx', 'src/components/games/LegacyLadder.tsx', 'src/components/lumi/LumiTeacher.tsx']
+  /* 「크게 보기 / 작게 보기」는 게임 무대를 키우는 보기 조작이지 수업 조작이 아니다 (강의자 지시 2026-09-22 — 프로젝터에서 구슬 레이스가 작았다) */
+  const ALLOWED = new Set([...TEACH_BUTTONS, '참가', '명단', '크게 보기', '작게 보기'])
+  const FILES = ['src/routes/Teach.tsx', 'src/components/lesson/LessonBody.tsx', 'src/components/games/GameShell.tsx', 'src/components/games/LegacyLadder.tsx', 'src/components/lumi/LumiTeacher.tsx', 'src/components/marble/MarbleTeacher.tsx', 'src/components/games/StageZoom.tsx']
   const found = new Map()
   let bad = 0
   for (const f of FILES) {
@@ -119,7 +120,7 @@ function buttonLabels(src) {
     }
   }
   for (const b of TEACH_BUTTONS) if (b !== '응답 펼치기' && !found.has(b)) fail('단추 다섯', `「${b}」 단추가 수업 화면 어디에도 없다`)
-  if (bad === 0) pass('단추 다섯', `수업 화면의 단추는 ${TEACH_BUTTONS.join(' · ')} 이다 (학생 [참가] · 명단 서랍만 예외)`)
+  if (bad === 0) pass('단추 다섯', `수업 화면의 단추는 ${TEACH_BUTTONS.join(' · ')} 이다 (학생 [참가] · 명단 서랍 · 게임 무대 「크게 보기」만 예외)`)
   const summaries = (await read('src/components/lesson/LessonBody.tsx')).match(/<summary[^>]*>[\s\S]*?<\/summary>/g) ?? []
   const collapsed = summaries.filter((x) => /▸/.test(x)).length
   if (collapsed < 4) fail('응답 펼치기', `접힌 응답(「… ▸」)이 ${collapsed}개다 — 잠깐 확인 · 응답 · 올라온 글 · 모둠별 넷이 접혀 있어야 한다`)

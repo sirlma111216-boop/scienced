@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { LUMI_ORIGIN, embedUrl, type LumiGameResult, type LumiSnapshot } from '@/lib/lumi'
+import { StageZoom } from '@/components/games/StageZoom'
 
 /**
  * 루미 런 iframe — 메시지 다리 하나.
@@ -85,12 +86,14 @@ export function LumiFrame({
   }, [mountKey])
 
   return (
-    <iframe
-      ref={frameRef}
-      title="루미 런"
-      allow="fullscreen"
-      allowFullScreen
-      style={{ width: '100%', height, border: 0, borderRadius: 16, background: '#fffdf7', display: 'block' }}
-    />
+    <StageZoom label="루미 런">
+      <iframe
+        ref={frameRef}
+        title="루미 런"
+        allow="fullscreen"
+        allowFullScreen
+        style={{ width: '100%', height, border: 0, borderRadius: 16, background: '#fffdf7', display: 'block' }}
+      />
+    </StageZoom>
   )
 }

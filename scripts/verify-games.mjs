@@ -75,8 +75,8 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
         if (g.reaction) reaction += 1
         if (l.layout === 'edu80' && i === 0 && g.seconds > 60) fail('80분 활동 1', `${at} 의 게임 ${a.game} 이 ${g.seconds}초다 — 활동 1 은 60초 이하`)
         if (g.scope === 'group' && a.group?.format === undefined) fail('모둠 게임', `${at} 모둠 게임인데 모둠 단계가 없다`)
-        /* 루미 런은 강의자 답 2 로 교수법 3·4강에 연속으로 있다 — 그것만 예외 */
-        if (prev && prev.game === a.game && prev.lessonId !== l.id && a.game !== 'lumi') fail('연속 배치', `${where(prev.l)} 과 ${at} 이 연속으로 ${a.game} 이다`)
+        /* 밖에서 붙인 게임 둘은 강의자가 자리를 정했다 — 루미 런은 교수법 3·4강(답 2), 구슬 레이스는 교수법 5·6강(지시 2026-09-22). 그것만 연속을 허락한다 */
+        if (prev && prev.game === a.game && prev.lessonId !== l.id && !(a.game === 'lumi' || (a.game === 'marble' && c.courseId === 'method'))) fail('연속 배치', `${where(prev.l)} 과 ${at} 이 연속으로 ${a.game} 이다`)
         prev = { game: a.game, lessonId: l.id, l }
         for (const [k, v] of Object.entries(a.gameOptions ?? {})) {
           const opt = g.options?.[k]
@@ -92,7 +92,7 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
   }
   const clash = Object.entries(byWeek).filter(([, w]) => w.method && w.edu && w.method === w.edu && w.method !== 'ladder').map(([wk, w]) => `${wk}주 ${w.method}`)
   if (clash.length > 0) fail('같은 주 같은 게임', `두 과목이 같은 주에 같은 게임을 쓴다 — ${clash.join(', ')} (8.3)`)
-  pass('배치', '옛 게임은 1·2강, 루미 런은 3·4강에만 있고 반응 속도 게임은 과목당 2회 이하다')
+  pass('배치', '옛 게임은 1·2강, 루미 런은 3·4강, 구슬 레이스는 교수법 5·6강·교육론 2강이고 반응 속도 게임은 과목당 2회 이하다')
 }
 
 /* ── 구슬 레이스 — 서버 없이 강사 화면 하나에서 (강의자 지시 2026-09-21) ── */

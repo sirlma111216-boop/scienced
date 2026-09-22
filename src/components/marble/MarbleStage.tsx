@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { MARBLE_ORIGIN, loadMarbleSdk, type MarbleHandle, type MarbleParticipant, type MarbleResult, type MarbleRule } from '@/lib/marble'
+import { StageZoom } from '@/components/games/StageZoom'
 
 /**
  * 구슬 레이스 무대 — 활동 앱 iframe 하나.
@@ -9,6 +10,7 @@ import { MARBLE_ORIGIN, loadMarbleSdk, type MarbleHandle, type MarbleParticipant
  *   · `ready` 를 받은 뒤에 맵·규칙·명단을 넣고 부모에게 조종간(MarbleHandle)을 넘긴다. 그 전에는 시작할 수 없다.
  *   · `error` 는 삼키지 않는다 — 부모가 화면에 적는다.
  *   · iframe 은 높이가 0 이면 검은 칸만 보인다. 감싸는 요소에 실제 높이를 준다.
+ *   · 「크게 보기」(StageZoom)로 프로젝터에서 판을 전체 화면으로 키운다 — iframe 은 그대로 두고 감싸는 요소만 키운다.
  */
 export function MarbleStage({
   mountKey,
@@ -95,5 +97,9 @@ export function MarbleStage({
     }
   }, [mountKey])
 
-  return <div ref={hostRef} className="rounded-md" style={{ height, minHeight: 320, background: '#080b14', overflow: 'hidden' }} />
+  return (
+    <StageZoom label="구슬 레이스">
+      <div ref={hostRef} className="rounded-md stage-host" style={{ height, minHeight: 320, background: '#080b14', overflow: 'hidden' }} />
+    </StageZoom>
+  )
 }

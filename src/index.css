@@ -437,3 +437,16 @@
 .console-main {
   min-width: 0;
 }
+
+/* 게임 무대 「크게 보기」(StageZoom) — 키우면 무대와 iframe 이 판 전체를 채운다. 작을 때는 각자 height 그대로 */
+[data-stage-zoom='big'] > * {
+  flex: 1;
+  min-height: 0;
+  height: 100% !important;
+}
+[data-stage-zoom='big'] iframe,
+[data-stage-zoom='big'] .stage-host {
+  height: 100% !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+}
