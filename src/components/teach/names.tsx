@@ -83,10 +83,18 @@ export function Overlay({
   children: ReactNode
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null)
+  /*
+   * 닫기는 늘 최신 것을 부르되 **의존 목록에는 넣지 않는다** (2026-09-22).
+   * onClose 는 부모가 그릴 때마다 새로 만들어지는 함수라, 의존 목록에 두면 부모가 다시 그릴 때마다
+   * 이 효과가 다시 돌아 제목으로 포커스를 끌어온다. 그러면 열어 둔 선택 목록(질문 고르개)이 그 자리에서 닫힌다.
+   * 포커스를 옮기는 것은 덮개가 열릴 때 한 번이면 된다.
+   */
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   useEffect(() => {
     headingRef.current?.focus()
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') closeRef.current()
     }
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
@@ -95,7 +103,7 @@ export function Overlay({
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
     }
-  }, [onClose])
+  }, [])
   return (
     <div
       role="presentation"

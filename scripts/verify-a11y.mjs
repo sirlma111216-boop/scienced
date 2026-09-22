@@ -209,4 +209,65 @@ const all = [...sources.values()].join('\n')
   }
 }
 
+/*
+ * 11. 포커스를 옮기는 효과의 의존 목록에 콜백(onClose 꼴)을 두지 않는다 (2026-09-22).
+ *
+ * 덮개·상자가 열릴 때 제목으로 포커스를 옮기는 것은 맞다. 그런데 그 효과가 `[onClose]` 에 매달려 있으면,
+ * onClose 는 부모가 그릴 때마다 새로 만들어지는 함수라 **부모가 다시 그릴 때마다** 포커스를 다시 끌어온다.
+ * 실제로 모둠 나누기 덮개에서 질문 고르개를 누르면 목록이 뜨자마자 닫혔고, 의견 광장 상자에서는 쓰던 칸에서 커서가 튀었다.
+ * 포커스 이동은 마운트 때 한 번이다 — 최신 콜백이 필요하면 ref 로 부른다.
+ */
+{
+  /** useEffect( … , [deps]) 하나를 통째로 집는다 — 괄호 깊이를 세며 짝을 찾는다 */
+  function effects(src) {
+    const out = []
+    const re = /useEffect\(/g
+    let m
+    while ((m = re.exec(src))) {
+      const open = m.index + m[0].length - 1
+      let depth = 0
+      let quote = null
+      for (let k = open; k < src.length; k++) {
+        const ch = src[k]
+        if (quote) {
+          if (ch === '\\') k += 1
+          else if (ch === quote) quote = null
+          continue
+        }
+        if (ch === "'" || ch === '"' || ch === '`') quote = ch
+        else if (ch === '(' || ch === '[' || ch === '{') depth += 1
+        else if (ch === ')' || ch === ']' || ch === '}') {
+          depth -= 1
+          if (depth === 0) {
+            out.push(src.slice(open + 1, k))
+            break
+          }
+        }
+      }
+    }
+    return out
+  }
+
+  const where = (p) => p.replace(/\\/g, '/')
+  let bad = 0
+  let checked = 0
+  for (const [file, text] of sources) {
+    if (!/\.tsx?$/.test(file)) continue
+    for (const body of effects(text)) {
+      if (!/\.focus\(\)/.test(body)) continue
+      checked += 1
+      const deps = body.slice(body.lastIndexOf('['))
+      const callback = [...deps.matchAll(/\bon[A-Z]\w*/g)].map((x) => x[0])
+      if (callback.length > 0) {
+        bad += 1
+        fail(
+          '포커스 의존',
+          `${where(file)} — 포커스를 옮기는 효과가 콜백 [${callback.join(' · ')}] 에 매달려 있다. 부모가 다시 그릴 때마다 포커스를 빼앗아 열린 목록이 닫힌다 — 마운트 때 한 번만 옮기고 콜백은 ref 로 부른다`,
+        )
+      }
+    }
+  }
+  if (bad === 0) pass('포커스 의존', `포커스를 옮기는 효과 ${checked}곳이 콜백에 매달려 있지 않다 — 덮개는 열릴 때 한 번만 포커스를 옮긴다`)
+}
+
 report('verify:a11y')

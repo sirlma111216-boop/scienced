@@ -134,15 +134,22 @@ function Dialog({
   wide?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  /*
+   * 닫기는 늘 최신 것을 부르되 **의존 목록에는 넣지 않는다** (2026-09-22).
+   * onClose 가 의존 목록에 있으면 부모가 다시 그릴 때마다(새 글이 올라올 때마다) 이 효과가 다시 돌아
+   * 상자 테두리로 포커스를 끌어온다 — 쓰던 칸에서 커서가 튀어나간다. 포커스는 열릴 때 한 번만 옮긴다.
+   */
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') closeRef.current()
     }
     document.addEventListener('keydown', onKey)
     ref.current?.focus()
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [])
 
   return (
     <div
