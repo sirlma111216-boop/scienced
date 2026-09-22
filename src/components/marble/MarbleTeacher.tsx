@@ -142,16 +142,16 @@ export function MarbleTeacher({
         <Caption>대상 {studentUids.length}명</Caption>
       </div>
       <p className="text-body" style={{ margin: '8px 0 0' }}>
-        수강생 전원이 구슬로 달립니다. {pick.label}이 이번 발표자입니다. 학생 기기는 쓰지 않습니다 — 이 화면을 함께 봅니다.
+        오늘 온 사람이 구슬로 달립니다. {pick.label}이 이번 발표자입니다. 학생 기기는 쓰지 않습니다 — 이 화면을 함께 봅니다.
       </p>
       {unknown.length > 0 ? <Caption>⚠ 차시에 적힌 {unknown.join(' · ')} 를 몰라 기본값으로 돌렸습니다.</Caption> : null}
       {studentUids.length > MARBLE_MAX_PARTICIPANTS ? <Caption>⚠ 활동 앱은 한 번에 {MARBLE_MAX_PARTICIPANTS}명까지입니다. 앞의 {MARBLE_MAX_PARTICIPANTS}명만 달립니다.</Caption> : null}
 
       <div className="flex items-center gap-xs" style={{ marginTop: 12, flexWrap: 'wrap' }}>
-        <Button onClick={() => void start()} disabled={busy || !state || state.phase === 'running'}>
+        <Button onClick={() => void start()} disabled={busy || !state || state.phase === 'running' || studentUids.length === 0}>
           게임 시작
         </Button>
-        <Caption>{!state ? '대기실을 여는 중' : state.phase === 'running' ? '구슬이 굴러가는 중 — 끝나면 저절로 확정된다' : state.phase === 'done' ? '다시 누르면 새 판(재추첨)' : `누르면 ${MARBLE_COUNTDOWN}초 뒤 출발한다`}</Caption>
+        <Caption>{studentUids.length === 0 ? '오늘 온 사람이 없다 — 학생이 첫 화면의 「오늘의 질문」에 답하면 명단에 들어온다' : !state ? '대기실을 여는 중' : state.phase === 'running' ? '구슬이 굴러가는 중 — 끝나면 저절로 확정된다' : state.phase === 'done' ? '다시 누르면 새 판(재추첨)' : `누르면 ${MARBLE_COUNTDOWN}초 뒤 출발한다`}</Caption>
       </div>
       {note ? (
         <p role="status" className="text-body-sm" style={{ margin: '8px 0 0', fontWeight: 480 }}>

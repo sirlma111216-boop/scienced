@@ -251,6 +251,8 @@ function LibraryGame({
   const result = state?.result ?? null
   const total = teacher ? teacher.students.length : null
   const groupGate = spec.scope === 'group' && groups.length === 0
+  /* 오늘 온 사람이 없으면 뽑을 후보도 없다 — 빈 결과를 적지 않고 무엇을 해야 하는지 적는다 */
+  const emptyGate = Boolean(teacher) && (total ?? 0) === 0
 
   return (
     <ColorBlock tone="lime">
@@ -279,12 +281,22 @@ function LibraryGame({
         </div>
       ) : null}
 
+      {emptyGate ? (
+        <div style={{ marginTop: 12 }}>
+          <Notice tone="cream">
+            <p className="text-body-sm" style={{ margin: 0 }}>
+              오늘 온 사람이 아직 없다. 학생이 첫 화면의 「오늘의 질문」에 답하면 후보가 된다. 답하지 못한 사람은 머리의 「명단」에서 넣는다.
+            </p>
+          </Notice>
+        </div>
+      ) : null}
+
       {teacher ? (
         <div className="flex items-center gap-xs" style={{ marginTop: 12, flexWrap: 'wrap' }}>
-          <Button onClick={() => void start()} disabled={busy || !state || state.phase === 'running' || groupGate}>
+          <Button onClick={() => void start()} disabled={busy || !state || state.phase === 'running' || groupGate || emptyGate}>
             게임 시작
           </Button>
-          <Caption>{!state ? '대기실을 여는 중' : state.phase === 'lobby' ? (joined.length === 0 ? '참가자가 없으면 발표 횟수 가중 추첨' : '누르면 바로 시작한다') : state.phase === 'running' ? '진행 중 — 끝나면 저절로 확정된다' : '다시 누르면 새 판(재추첨)'}</Caption>
+          <Caption>{!state ? '대기실을 여는 중' : emptyGate ? '오늘 온 사람이 없어 뽑을 후보가 없다' : state.phase === 'lobby' ? (joined.length === 0 ? '참가자가 없으면 출석한 사람 가운데 발표 횟수 가중 추첨' : '누르면 바로 시작한다') : state.phase === 'running' ? '진행 중 — 끝나면 저절로 확정된다' : '다시 누르면 새 판(재추첨)'}</Caption>
           {state && state.phase === 'done' ? (
             <label className="text-body-sm flex items-center gap-xxs">
               수동 지정
