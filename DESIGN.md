@@ -321,7 +321,7 @@ This is a system built on contrast: the monochrome chrome makes the color blocks
 
 ## Typography
 
-2026-09-22 — 활자를 한 단계 키웠다(본문 18→20 · 작은 본문 16→18 · 제목 26→30 · 카드 제목 24→26 · 캡션 12→13). 프로젝터 뒤에서 읽히지 않았다(강의자 지적). 색 블록 여백도 48→28. 대본(dialogue·studentWork)은 말하는 사람마다 색이 다르다 — 지문 회색 · 교사 갈색 · 학생 남색 ( 의 ).
+2026-09-22 — 활자를 한 단계 키웠다(본문 18→20 · 작은 본문 16→18 · 제목 26→30 · 카드 제목 24→26 · 캡션 12→13). 프로젝터 뒤에서 읽히지 않았다(강의자 지적). 색 블록 여백도 48→28. 대본(dialogue·studentWork)은 말하는 사람마다 색이 다르다 — 지문 회색 · 교사 갈색 · 학생 남색 (`src/lib/body-text.ts` 의 `speakerOf`).
 
 ### Font Family
 
