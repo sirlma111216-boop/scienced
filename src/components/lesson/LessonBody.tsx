@@ -4,6 +4,7 @@ import type { FormationQuestion } from '@/content/formation-questions'
 import { useAuth } from '@/lib/auth'
 import { allocationAverage, rankSum, sortTally, voteCounts, type MemberValue } from '@/lib/group-math'
 import { OPTION_MARK, checkTally } from '@/lib/concept-check'
+import { followedLesson } from '@/lib/group-round'
 import { stepBlocks, type Block } from '@/lib/teach-registry'
 import type { Enrollment, GroupInput, GroupRound, GroupShare, GroupValue, Participation, Post, ResponseDoc, SessionState } from '@/lib/types'
 import { Badge, Button, Caption, ScrollX } from '@/components/ui'
@@ -55,6 +56,7 @@ export function LessonBody({
   round,
   groupRounds,
   formationLesson,
+  formationList,
   question,
   nicknames,
   teacher,
@@ -71,6 +73,8 @@ export function LessonBody({
   groupRounds: GroupRound[]
   /** 이 차시에서 오늘의 질문으로 모둠을 새로 나누는가 */
   formationLesson: boolean
+  /** 모둠을 나누는 차시 목록 — 나누지 않는 차시가 어느 차시를 잇는지 여기서 찾는다 */
+  formationList: LessonId[]
   question: FormationQuestion
   nicknames: Record<string, string>
   teacher?: TeacherView | null
@@ -87,6 +91,8 @@ export function LessonBody({
   const myGroup = user ? (groups.find((g) => g.memberUids.includes(user.uid)) ?? null) : null
   const groupField = step.activity?.group ? step.fields.find((f) => f.key === step.activity!.group!.fieldKey) : undefined
   const roundHere = groupRounds.find((r) => r.lessonId === lesson.id) ?? null
+  /* 나누지 않는 차시가 어느 차시의 모둠을 잇는가 — 화면이 그 차시 이름을 댄다 */
+  const follows = followedLesson(lesson.id, formationList)
   const nameOf = (uid: string) => (teacher ? teacher.nameOf(uid) : (nicknames[uid] ?? '이름 없음'))
 
   return (
@@ -103,7 +109,13 @@ export function LessonBody({
                     모둠 나누기
                   </Button>
                 ) : null}
-                <Caption>{formationLesson ? (roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : '답한 사람만 모둠에 들어간다') : round ? '이 차시는 바로 앞 차시에서 나눈 모둠을 그대로 쓴다 — 출석만 받는다' : '바로 앞 나누는 차시에서 아직 모둠을 나누지 않았다 — 그 차시 화면에서 나누면 여기에 뜬다'}</Caption>
+                <Caption>
+                  {formationLesson
+                    ? roundHere
+                      ? `확정됨 · 모둠 ${roundHere.groups.length}`
+                      : '답한 사람만 모둠에 들어간다'
+                    : `이 차시는 모둠을 나누지 않는다 — ${follows ? `${Number(follows)}강에서 나눈 모둠을 ${round ? '그대로 쓴다' : '쓴다. 아직 안 나눴으면 그 차시 화면에서 나눈다'}` : '앞 차시 모둠을 그대로 쓴다'}`}
+                </Caption>
               </>
             ) : null
             return (

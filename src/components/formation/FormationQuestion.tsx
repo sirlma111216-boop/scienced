@@ -165,7 +165,7 @@ export function FormationQuestionView({
   return (
     <section aria-labelledby="group-question-title" style={{ marginBottom: 40 }}>
       <ColorBlock tone="pink">
-        <p className="eyebrow">오늘의 질문{forGroups ? ' · 모둠 나누기' : ''}</p>
+        <p className="eyebrow">오늘의 질문 · {forGroups ? '모둠 나누기' : '출석'}</p>
         <h2 id="group-question-title" className="text-headline" style={{ margin: '12px 0 0' }}>
           {question.question}
         </h2>

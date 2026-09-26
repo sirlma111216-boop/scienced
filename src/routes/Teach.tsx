@@ -227,7 +227,7 @@ export function Teach() {
                   session={session}
                   round={activeRound}
                   groupRounds={groupRounds}
-                  formationLesson={isFormationLesson}
+                  formationLesson={isFormationLesson} formationList={formation}
                   question={question}
                   nicknames={nicknames}
                   tally={tally}

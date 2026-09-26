@@ -208,6 +208,24 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
   const lib = await readFile('src/lib/groups.ts', 'utf8')
   if (!/shared\/groups-core/.test(server) || !/@shared\/groups-core/.test(lib)) fail('같은 코드', '서버 함수와 화면이 shared/groups-core 를 쓰지 않는다')
   else pass('같은 코드', '서버 함수 · 화면 · 이 검사가 shared/groups-core 하나를 쓴다')
+
+  /*
+   * 나누지 않는 차시에서 모둠 나누는 자리가 보이지 않는다 (강의자 지적 2026-09-22 · 2026-09-26).
+   * 단추만 지우면 부족했다 — 같은 분홍 블록에 「오늘의 질문」만 적혀 있어 강사가 그 자리를 또 모둠 자리로 읽었다.
+   * ① [모둠 나누기] 는 formationLesson 조건 안에 ② 블록 제목이 「모둠 나누기」와 「출석」으로 갈린다
+   * ③ 나누지 않는 차시의 안내는 「나누지 않는다」로 시작하고 이은 차시 번호를 댄다.
+   */
+  const body = await readFile('src/components/lesson/LessonBody.tsx', 'utf8')
+  const q = body.slice(body.indexOf("case 'question'"), body.indexOf("case 'roundBanner'"))
+  if (!/\{formationLesson \?[\s\S]{0,200}모둠 나누기\s*<\/Button>/.test(q)) {
+    fail('나누지 않는 차시', 'LessonBody 의 [모둠 나누기] 가 formationLesson 조건 안에 있지 않다 — 앞 차시 모둠을 쓰는 차시에서 새로 나누면 둘이 뒤섞인다')
+  } else if (!/이 차시는 모둠을 나누지 않는다/.test(q) || !/followedLesson|follows/.test(body)) {
+    fail('나누지 않는 차시', '나누지 않는 차시의 안내가 「이 차시는 모둠을 나누지 않는다 — n강에서 나눈 모둠을…」 꼴이 아니다')
+  } else if (!/오늘의 질문 · \{forGroups \? '모둠 나누기' : '출석'\}/.test(student)) {
+    fail('나누지 않는 차시', '오늘의 질문 블록의 제목이 「모둠 나누기」와 「출석」으로 갈리지 않는다 — 두 자리가 같아 보인다')
+  } else {
+    pass('나누지 않는 차시', '나누지 않는 차시에는 [모둠 나누기] 가 없고, 블록 제목이 「오늘의 질문 · 출석」이며, 어느 차시 모둠을 잇는지 번호를 댄다')
+  }
 }
 
 /* ── 차시가 쓰는 모둠 — 나누는 차시는 나누기 전까지 비어 있고, 나누지 않는 차시는 지난 회차를 잇는다 (강의자 지적 2026-09-22) ── */

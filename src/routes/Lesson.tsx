@@ -107,7 +107,7 @@ export function Lesson() {
           {step.title}
         </h2>
 
-        <LessonBody classId={classId!} courseId={courseId} lesson={lesson} step={step} session={session} round={activeRound} groupRounds={groupRounds} formationLesson={isFormationLesson} question={question} nicknames={nicknames} />
+        <LessonBody classId={classId!} courseId={courseId} lesson={lesson} step={step} session={session} round={activeRound} groupRounds={groupRounds} formationLesson={isFormationLesson} formationList={formation} question={question} nicknames={nicknames} />
 
         <nav className="flex items-center gap-md no-print" style={{ marginTop: 48, paddingTop: 24, boxShadow: 'inset 0 1px 0 #f1f1f1' }}>
           <Button variant="secondary" disabled={stepIndex === 0} onClick={() => setStepIndex((i) => Math.max(0, i - 1))}>

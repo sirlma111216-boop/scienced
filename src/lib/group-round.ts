@@ -42,6 +42,16 @@ export function formationLessons(cls: ClassDoc | null | undefined, courseId: Cou
 export function roundForLesson(lessonId: LessonId, rounds: GroupRound[], formation: LessonId[]): GroupRound | null {
   const here = rounds.find((r) => r.lessonId === lessonId) ?? null
   if (formation.includes(lessonId) || here) return here
-  const prev = [...formation].filter((l) => l < lessonId).sort().pop()
+  const prev = followedLesson(lessonId, formation)
   return prev ? (rounds.find((r) => r.lessonId === prev) ?? null) : null
+}
+
+/**
+ * 이 차시가 모둠을 잇는 차시. 나누는 차시면 null 이다.
+ * 화면이 「7강 모둠을 그대로 쓴다」처럼 **차시 이름을 대고** 말하는 데 쓴다 —
+ * 「바로 앞 나누는 차시」라고만 적으면 강사가 이 자리를 또 모둠 나누는 자리로 읽는다 (강의자 지적 2026-09-26).
+ */
+export function followedLesson(lessonId: LessonId, formation: LessonId[]): LessonId | null {
+  if (formation.includes(lessonId)) return null
+  return [...formation].filter((l) => l < lessonId).sort().pop() ?? null
 }
