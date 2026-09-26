@@ -6,7 +6,7 @@ import { apiPost } from './api'
 import type { ClassDoc, GroupInput, GroupRound, GroupRoundGroup, PairHistoryDoc } from './types'
 
 export { applyRound, assignGroups, decodePlan, encodePlan, feasibility, groupSizes, pairKey, placeLateJoiner, planSchedule, sameGrouping } from '@shared/groups-core'
-export { defaultFormationLessons, formationLessons, roundForLesson } from './group-round'
+export { attendanceLessonOf, defaultFormationLessons, followedLesson, formationLessons, roundForLesson } from './group-round'
 
 /**
  * 모둠 나누기 — 화면이 쓰는 도움 함수 (6차 · 8차 5절).

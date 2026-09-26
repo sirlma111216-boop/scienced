@@ -100,22 +100,18 @@ export function LessonBody({
       {blocks.map((b, i) => {
         switch (b.kind) {
           case 'question': {
-            /* 오늘의 질문 — 두 화면이 같은 블록. 강사는 보기마다 답한 수와 [모둠 나누기]를 본다 */
-            /* 나누지 않는 차시에는 단추를 두지 않는다 — 앞 차시 모둠을 쓰는 자리에서 새로 나누면 둘이 뒤섞인다 (강의자 지적 2026-09-22) */
+            /*
+             * 오늘의 질문 — **모둠을 나누는 차시에만** 있다 (강의자 지시 2026-09-26).
+             * 교수법은 3시간에 두 차시를 잇달아 하므로 7·8강이 같은 날이다. 앞 차시에서 출석도 받고 모둠도 나눴으니
+             * 따르는 차시(2~12 짝수)에는 질문을 아예 두지 않는다 — 같은 분홍 블록이 또 있으면 모둠 자리로 읽힌다.
+             */
+            if (!formationLesson) return null
             const control = teacher ? (
               <>
-                {formationLesson ? (
-                  <Button variant="secondary" onClick={teacher.onFormation}>
-                    모둠 나누기
-                  </Button>
-                ) : null}
-                <Caption>
-                  {formationLesson
-                    ? roundHere
-                      ? `확정됨 · 모둠 ${roundHere.groups.length}`
-                      : '답한 사람만 모둠에 들어간다'
-                    : `이 차시는 모둠을 나누지 않는다 — ${follows ? `${Number(follows)}강에서 나눈 모둠을 ${round ? '그대로 쓴다' : '쓴다. 아직 안 나눴으면 그 차시 화면에서 나눈다'}` : '앞 차시 모둠을 그대로 쓴다'}`}
-                </Caption>
+                <Button variant="secondary" onClick={teacher.onFormation}>
+                  모둠 나누기
+                </Button>
+                <Caption>{roundHere ? `확정됨 · 모둠 ${roundHere.groups.length}` : '답한 사람만 모둠에 들어간다'}</Caption>
               </>
             ) : null
             return (
@@ -124,8 +120,7 @@ export function LessonBody({
                 classId={classId}
                 lessonId={lesson.id}
                 question={question}
-                forGroups={formationLesson}
-                round={formationLesson ? roundHere : null}
+                round={roundHere}
                 rounds={groupRounds}
                 nicknames={nicknames}
                 teacher={teacher ? { tally: tally ?? [], inputs: teacher.inputs, enrolled: teacher.enrolled, nameOf: teacher.nameOf, control } : null}
@@ -134,7 +129,12 @@ export function LessonBody({
           }
           case 'roundBanner': {
             /* 학생은 내 모둠 하나, 강사는 모든 모둠 — 같은 자리, 같은 알약 */
-            if (!round) return null
+            /* 질문이 없는 차시에서는 이 자리가 「어느 차시 모둠인가」를 말하는 유일한 자리다 (강의자 지시 2026-09-26) */
+            if (!round) {
+              return teacher && follows ? (
+                <Caption key={b.id}>{Number(follows)}강에서 아직 모둠을 나누지 않았다 — 그 차시 화면에서 나눈다</Caption>
+              ) : null
+            }
             const shown = teacher ? groups : myGroup ? [myGroup] : []
             if (shown.length === 0) return null
             return (

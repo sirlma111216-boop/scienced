@@ -12,7 +12,8 @@ import { Badge, Button, ColorBlock, Notice } from '@/components/ui'
  *   확정 전   질문에 답 하나 고르기 — 이것이 그날 출석이다 (강의자 지시 2026-09-22)
  *   확정 뒤   내 모둠 카드 — 모둠 이름은 답(「일본 모둠」). 처음 만나는 분 배지.
  * 같은 답끼리 모이되 보장은 아니다 — 답이 몰리면 일부가 다른 모둠으로 간다고 그대로 적는다.
- * 모둠을 나누지 않는 차시(forGroups=false)에서는 출석만 한다. 모둠 이야기를 적지 않는다.
+ * **모둠을 나누는 차시에만 그린다** (강의자 지시 2026-09-26). 교수법 2~12 짝수 차시에는 이 블록이 아예 없다 —
+ * 3시간에 두 차시를 잇달아 하므로 앞 차시에서 출석도 받고 모둠도 나눴다. 같은 분홍 블록이 또 있으면 모둠 자리로 읽힌다.
  *
  * 강사 화면은 **같은 블록**을 그린다 (teacher). 보기 알약은 그대로이되 고를 수 없고 보기마다 답한 수가 붙는다.
  * [고르기] 자리에 [모둠 나누기]가 오고, 그 아래에 누가 무엇을 골랐는지가 접혀 있다 (강의자 지시 2026-09-22 — 강사는 학생과 같은 화면을 본다).
@@ -33,7 +34,6 @@ export function FormationQuestionView({
   classId,
   lessonId,
   question,
-  forGroups,
   round,
   rounds,
   nicknames,
@@ -42,8 +42,6 @@ export function FormationQuestionView({
   classId: string
   lessonId: LessonId
   question: FQ
-  /** 이 차시에서 이 답으로 모둠을 나누는가 */
-  forGroups: boolean
   round: GroupRound | null
   rounds: GroupRound[]
   nicknames: Record<string, string>
@@ -165,18 +163,16 @@ export function FormationQuestionView({
   return (
     <section aria-labelledby="group-question-title" style={{ marginBottom: 40 }}>
       <ColorBlock tone="pink">
-        <p className="eyebrow">오늘의 질문 · {forGroups ? '모둠 나누기' : '출석'}</p>
+        <p className="eyebrow">오늘의 질문 · 모둠 나누기</p>
         <h2 id="group-question-title" className="text-headline" style={{ margin: '12px 0 0' }}>
           {question.question}
         </h2>
         <p className="text-body" style={{ marginTop: 8 }}>
           답을 고르면 오늘 출석입니다. 오늘 활동은 답을 고른 사람들로 진행합니다.
         </p>
-        {forGroups ? (
-          <p className="text-body-sm" style={{ marginTop: 6, opacity: 0.85 }}>
-            같은 답을 고른 사람끼리 되도록 한 모둠이 됩니다. 답이 몰리면 몇 사람은 다른 모둠으로 갑니다. 모둠 이름은 답입니다.
-          </p>
-        ) : null}
+        <p className="text-body-sm" style={{ marginTop: 6, opacity: 0.85 }}>
+          같은 답을 고른 사람끼리 되도록 한 모둠이 됩니다. 답이 몰리면 몇 사람은 다른 모둠으로 갑니다. 모둠 이름은 답입니다.
+        </p>
         <fieldset disabled={Boolean(teacher)} style={{ border: 0, padding: 0, margin: '16px 0 0', minWidth: 0 }}>
           <legend className="caption">하나만</legend>
           <div className="flex flex-wrap gap-xs" style={{ marginTop: 8 }}>
@@ -237,7 +233,7 @@ export function FormationQuestionView({
             <Button onClick={() => void submit()}>{saved ? '다시 고르기' : '고르기'}</Button>
             {saved ? (
               <span className="caption" role="status">
-                <Badge>출석</Badge> {forGroups ? '강사가 모둠을 나누면 여기에 결과가 뜹니다' : '오늘 출석으로 들어갔습니다'}
+                <Badge>출석</Badge> 강사가 모둠을 나누면 여기에 결과가 뜹니다
               </span>
             ) : null}
           </div>

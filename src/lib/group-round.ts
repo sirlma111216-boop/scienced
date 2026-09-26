@@ -55,3 +55,14 @@ export function followedLesson(lessonId: LessonId, formation: LessonId[]): Lesso
   if (formation.includes(lessonId)) return null
   return [...formation].filter((l) => l < lessonId).sort().pop() ?? null
 }
+
+/**
+ * 출석을 어느 차시에서 읽고 쓰는가 (강의자 지시 2026-09-26).
+ *
+ * 교수법은 3시간에 두 차시를 잇달아 한다 — 7·8강은 같은 날이다. 그래서 **출석은 하루에 한 번**,
+ * 모둠을 나누는 차시(앞 차시)에서만 받는다. 따르는 차시에는 「오늘의 질문」이 아예 없고,
+ * 그 차시의 출석·응답 n/N·게임 참가는 앞 차시의 출석을 그대로 읽는다. 강사가 명단 서랍에서 고쳐도 앞 차시에 적힌다.
+ */
+export function attendanceLessonOf(lessonId: LessonId, formation: LessonId[]): LessonId {
+  return followedLesson(lessonId, formation) ?? lessonId
+}

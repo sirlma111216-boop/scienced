@@ -5,7 +5,7 @@ import { indexEntry } from '@/content/courses'
 import { answeredUids, attendanceEdit, attendingStudents, withAttendance } from '@/lib/attendance'
 import { useAuth } from '@/lib/auth'
 import { rememberTaught } from '@/lib/last-taught'
-import { formationLessons, historyFromDocs, questionForLesson, roundForLesson } from '@/lib/groups'
+import { attendanceLessonOf, formationLessons, historyFromDocs, questionForLesson, roundForLesson } from '@/lib/groups'
 import { courseOf, useLesson } from '@/lib/lesson-data'
 import type { AppUser, Enrollment, GroupInput, GroupRound, PairHistoryDoc, Participation, ResponseDoc, RosterEntry, SessionState } from '@/lib/types'
 import { LessonBody } from '@/components/lesson/LessonBody'
@@ -38,6 +38,10 @@ export function Teach() {
   const step = steps.find((s) => s.id === stepId) ?? steps[0]
 
   const [session, setSession] = useState<SessionState | null>(null)
+  /* 따르는 차시(교수법 2~12 짝수)의 출석은 앞 차시 문서에 있다 — 같은 날이라 출석은 하루에 하나다 */
+  const [attendSession, setAttendSession] = useState<SessionState | null>(null)
+  const formation = formationLessons(cls, courseId)
+  const attendanceLessonId = attendanceLessonOf(lessonId, formation)
   const [users, setUsers] = useState<AppUser[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [roster, setRoster] = useState<RosterEntry[]>([])
@@ -69,10 +73,19 @@ export function Teach() {
       repo.watchParticipation(classId, setParticipation),
       repo.watchGroupRounds(classId, setGroupRounds),
       repo.watchPairHistory(classId, setPairHistory),
-      repo.watchGroupInputs(classId, lessonId, setGroupInputs),
+      repo.watchGroupInputs(classId, attendanceLessonId, setGroupInputs),
     ]
     return () => offs.forEach((off) => off())
-  }, [repo, classId, lessonId])
+  }, [repo, classId, lessonId, attendanceLessonId])
+
+  /* 출석을 다른 차시에서 읽어야 하면 그 차시의 진행 문서도 본다 */
+  useEffect(() => {
+    if (!repo || !classId || attendanceLessonId === lessonId) {
+      setAttendSession(null)
+      return
+    }
+    return repo.watchSession(classId, attendanceLessonId, setAttendSession)
+  }, [repo, classId, lessonId, attendanceLessonId])
 
   useEffect(() => {
     if (!repo || !classId || !lessonId || !step) return
@@ -91,20 +104,22 @@ export function Teach() {
   /**
    * 오늘의 기준은 출석한 사람이다 — 「오늘의 질문」에 답한 사람 (강의자 지시 2026-09-22).
    * 아래 화면 전부(응답 n/N · 게임 참가 · 발표자 뽑기 · 모둠)가 이 목록을 분모로 쓴다.
+   * 따르는 차시는 같은 날 앞 차시의 출석을 그대로 읽고 쓴다 — 그 차시에는 질문이 없다 (강의자 지시 2026-09-26).
    */
-  const attendEdit = useMemo(() => attendanceEdit(session?.attendance), [session?.attendance])
+  const attendanceSource = attendanceLessonId === lessonId ? session : attendSession
+  const attendEdit = useMemo(() => attendanceEdit(attendanceSource?.attendance), [attendanceSource?.attendance])
   const students = useMemo(() => attendingStudents(enrolled, groupInputs, attendEdit), [enrolled, groupInputs, attendEdit])
   const answered = useMemo(() => answeredUids(groupInputs), [groupInputs])
   const setAttending = useCallback(
     async (uid: string, attending: boolean) => {
       if (!repo) return
       try {
-        await repo.setSession(classId, lessonId, { attendance: withAttendance(attendEdit, uid, answered.has(uid), attending) })
+        await repo.setSession(classId, attendanceLessonId, { attendance: withAttendance(attendEdit, uid, answered.has(uid), attending) })
       } catch (err) {
         console.error('[출석] 고치지 못했다:', err)
       }
     },
-    [repo, classId, lessonId, attendEdit, answered],
+    [repo, classId, attendanceLessonId, attendEdit, answered],
   )
   const openSteps = useMemo(() => session?.openSteps ?? [], [session?.openSteps])
   const toggleStep = useCallback(
@@ -137,7 +152,6 @@ export function Teach() {
   if (!classId || !lessonId) return <Navigate to="/instructor/classes" replace />
   if (!entry) return <Navigate to="/instructor/classes" replace />
 
-  const formation = formationLessons(cls, courseId)
   const isFormationLesson = formation.includes(lessonId)
   const activeRound = roundForLesson(lessonId, groupRounds, formation)
   const question = questionForLesson(cls, lessonId)

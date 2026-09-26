@@ -119,13 +119,13 @@ const SCIENCE = ['과학', '실험', '원자', '분자', '세포', '광합성', 
   else if (!/absentUids: absentees\.map/.test(panel)) fail('출석 배정', '확정한 회차에 결석자가 기록되지 않는다')
   else pass('출석 배정', '모둠 배정 대상은 오늘의 질문에 답한 사람이고, 나머지는 회차에 결석으로 남는다')
 
-  /* 오늘의 질문은 등록표가 도입 단계마다 넣고, LessonBody 가 두 화면에 같이 그린다 — 경로 파일이 조건을 걸면 안 된다 */
+  /* 오늘의 질문은 등록표가 도입마다 내고 LessonBody 가 나누는 차시에만 그린다 — 경로 파일이 따로 조건을 걸면 두 화면이 갈라진다 */
   const registry = await readFile('src/lib/teach-registry.ts', 'utf8')
   const body = await readFile('src/components/lesson/LessonBody.tsx', 'utf8')
-  if (/<FormationQuestionView/.test(lessonPage)) fail('매 차시 질문', 'Lesson.tsx 가 오늘의 질문을 LessonBody 밖에서 그린다 — 강사 화면에는 없게 된다')
-  else if (!/step\.kind === 'intro'\) out\.push\(mk\('question'/.test(registry)) fail('매 차시 질문', '등록표가 도입 단계마다 오늘의 질문 블록을 넣지 않는다 — 모둠을 나누지 않는 차시는 출석을 잴 수 없다')
-  else if (!/case 'question'/.test(body) || !/<FormationQuestionView/.test(body)) fail('매 차시 질문', 'LessonBody 가 오늘의 질문 블록을 그리지 않는다')
-  else pass('매 차시 질문', '도입 단계마다 오늘의 질문 블록이 등록표에서 나오고, LessonBody 가 학생·강사 화면에 같이 그린다')
+  if (/<FormationQuestionView/.test(lessonPage)) fail('질문 블록', 'Lesson.tsx 가 오늘의 질문을 LessonBody 밖에서 그린다 — 강사 화면에는 없게 된다')
+  else if (!/step\.kind === 'intro'\) out\.push\(mk\('question'/.test(registry)) fail('질문 블록', '등록표가 도입 단계에 오늘의 질문 블록을 넣지 않는다')
+  else if (!/case 'question'/.test(body) || !/<FormationQuestionView/.test(body)) fail('질문 블록', 'LessonBody 가 오늘의 질문 블록을 그리지 않는다')
+  else pass('질문 블록', '오늘의 질문은 등록표에서 나와 LessonBody 하나가 학생·강사 화면에 같이 그린다 (나누는 차시에만)')
 }
 
 /* ── 모의 실행 (6차 P.4 그대로) ── */
@@ -217,14 +217,19 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
    */
   const body = await readFile('src/components/lesson/LessonBody.tsx', 'utf8')
   const q = body.slice(body.indexOf("case 'question'"), body.indexOf("case 'roundBanner'"))
-  if (!/\{formationLesson \?[\s\S]{0,200}모둠 나누기\s*<\/Button>/.test(q)) {
-    fail('나누지 않는 차시', 'LessonBody 의 [모둠 나누기] 가 formationLesson 조건 안에 있지 않다 — 앞 차시 모둠을 쓰는 차시에서 새로 나누면 둘이 뒤섞인다')
-  } else if (!/이 차시는 모둠을 나누지 않는다/.test(q) || !/followedLesson|follows/.test(body)) {
-    fail('나누지 않는 차시', '나누지 않는 차시의 안내가 「이 차시는 모둠을 나누지 않는다 — n강에서 나눈 모둠을…」 꼴이 아니다')
-  } else if (!/오늘의 질문 · \{forGroups \? '모둠 나누기' : '출석'\}/.test(student)) {
-    fail('나누지 않는 차시', '오늘의 질문 블록의 제목이 「모둠 나누기」와 「출석」으로 갈리지 않는다 — 두 자리가 같아 보인다')
+  const teach = await readFile('src/routes/Teach.tsx', 'utf8')
+  if (!/if \(!formationLesson\) return null/.test(q)) {
+    fail('나누지 않는 차시', '나누지 않는 차시에 「오늘의 질문」 블록이 그려진다 — 출석은 같은 날 앞 차시에서 이미 받았고, 같은 블록이 또 있으면 모둠 자리로 읽힌다 (강의자 지시 2026-09-26)')
+  } else if (/forGroups/.test(body + student)) {
+    fail('나누지 않는 차시', '질문 블록에 forGroups 갈래가 남아 있다 — 이 블록은 나누는 차시에만 그려지므로 죽은 갈래다')
+  } else if (!/attendanceLessonOf/.test(teach) || !/watchGroupInputs\(classId, attendanceLessonId/.test(teach)) {
+    fail('출석 이어 쓰기', '수업 화면이 따르는 차시의 출석을 앞 차시에서 읽지 않는다 — 질문이 없는 차시의 출석이 0명이 된다')
+  } else if (!/setSession\(classId, attendanceLessonId, \{ attendance/.test(teach)) {
+    fail('출석 이어 쓰기', '명단 서랍의 출석 손질이 앞 차시 문서에 적히지 않는다 — 같은 날 출석이 둘로 갈린다')
+  } else if (!/강에서 아직 모둠을 나누지 않았다/.test(body)) {
+    fail('나누지 않는 차시', '모둠이 아직 없는 차시에서 어느 차시에서 나눠야 하는지 번호를 대지 않는다')
   } else {
-    pass('나누지 않는 차시', '나누지 않는 차시에는 [모둠 나누기] 가 없고, 블록 제목이 「오늘의 질문 · 출석」이며, 어느 차시 모둠을 잇는지 번호를 댄다')
+    pass('나누지 않는 차시', '나누지 않는 차시에는 질문 블록이 아예 없고, 출석·응답 n/N 은 같은 날 앞 차시의 출석을 그대로 읽고 쓴다')
   }
 }
 
