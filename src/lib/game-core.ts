@@ -178,21 +178,38 @@ function mine(ctx: GameContext): Derived {
   return { finished, winnerUids: winners, reason: finished ? (winners.length ? '지뢰를 밟은 사람' : '아무도 지뢰를 밟지 않았다 — 재추첨') : '', view: { mines: finished ? mines : [], picked: picks.length, total: ps.length, cells: finished ? picks : [] } }
 }
 
-/** 늦게 눌러라 — 10초. 0 이 지난 뒤 누르면 탈락. 유효한 마지막 사람 */
+/**
+ * 0 에 가깝게 — 10초 카운트다운 (강의자 지시 2026-09-28).
+ *
+ * 0 에 가깝게, 넘기지 말고 누르는 게임이다. **못한 사람이 발표자다.**
+ *   ① 끝까지 누르지 않은 사람 — 가장 나쁘다. 안 누르는 것이 안전하면 아무도 누르지 않는다.
+ *   ② 0 을 넘겨 누른 사람 — 늦게 누를수록 나쁘다.
+ *   ③ 0 전에 누른 사람 — 0 에서 멀수록(먼저 누를수록) 나쁘다.
+ * 같은 값이면 함께 발표한다. 끝나는 때는 모두 눌렀으면 0 + 1.5초, 아니면 넘겨 누를 틈을 주고 0 + 5초.
+ */
+const LATE_OVERTIME_MS = 5000
+
 function late(ctx: GameContext): Derived {
   const ps = participants(ctx)
   const t0 = started(ctx)
   if (!t0) return { finished: false, winnerUids: [], reason: '', view: { deadline: null } }
   const deadline = t0 + 10000
-  const presses = ps.map((p) => ({ uid: p.uid, t: num(val(p).t) })).filter((x): x is { uid: string; t: number } => x.t !== null)
-  const valid = presses.filter((p) => p.t <= deadline)
-  const finished = ctx.now >= deadline + 1500
+  const presses = ps.map((p) => ({ uid: p.uid, t: num(val(p).t) }))
+  const pressed = presses.filter((x): x is { uid: string; t: number } => x.t !== null)
+  const over = pressed.filter((p) => p.t > deadline)
+  const none = presses.length - pressed.length
+  const allPressed = ps.length > 0 && none === 0
+  const finished = ctx.now >= deadline + 1500 && (allPressed || ctx.now >= deadline + LATE_OVERTIME_MS)
+  /* 클수록 발표자에 가깝다 — 안 누름 > 넘겨 누름(늦을수록) > 0 전(먼저 누를수록) */
+  const badness = (t: number | null) => (t === null ? 2_000_000 : t > deadline ? 1_000_000 + (t - deadline) : deadline - t)
   let winners: string[] = []
-  if (finished && valid.length) {
-    const best = Math.max(...valid.map((v) => v.t))
-    winners = valid.filter((v) => v.t === best).map((v) => v.uid)
+  let why = ''
+  if (finished && ps.length > 0) {
+    const worst = Math.max(...presses.map((p) => badness(p.t)))
+    winners = presses.filter((p) => badness(p.t) === worst).map((p) => p.uid)
+    why = worst >= 2_000_000 ? '끝까지 누르지 않았다' : worst >= 1_000_000 ? '0 이 지난 뒤 가장 늦게 눌렀다' : '0 에서 가장 먼 때에 눌렀다'
   }
-  return { finished, winnerUids: winners, reason: finished ? (winners.length ? '0 이 되기 전에 가장 늦게 누른 사람 — 반응 속도 게임입니다' : '유효하게 누른 사람이 없다 — 재추첨') : '', view: { deadline, pressed: presses.length, out: presses.length - valid.length } }
+  return { finished, winnerUids: winners, reason: finished ? (winners.length ? `${why} — 반응 속도 게임입니다` : '참가자가 없다 — 재추첨') : '', view: { deadline, pressed: pressed.length, over: over.length, none } }
 }
 
 /** 가위바위보 토너먼트 */

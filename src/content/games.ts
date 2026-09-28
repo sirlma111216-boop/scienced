@@ -70,11 +70,11 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
   },
   late: {
     kind: 'late',
-    name: '늦게 눌러라',
-    rule: '10초 카운트다운. 가장 늦게 누른 사람이 발표합니다. 0 이 지난 뒤 누르면 탈락입니다.',
+    name: '0 에 가깝게',
+    rule: '10초 카운트다운. 0 에 가깝게, 넘기지 말고 누르세요. 0 에서 먼 사람이 발표합니다.',
     scope: 'individual',
     seconds: 30,
-    winner: '0 이 되기 전에 가장 늦게 누른 사람',
+    winner: '0 에서 가장 먼 사람 — 0 을 넘겼으면 늦을수록, 끝까지 안 눌렀으면 그 사람',
     reaction: true,
   },
   rps: {

@@ -4,7 +4,7 @@ import type { Lesson } from '../../types'
  * 교과교수법 13강 「SSI·기후위기·의사결정」 — 8차 골격 (F 단계).
  *
  * 시드는 docs/검토/method-13.md 다. audit:draft 가 문서와 이 파일을 대조한다.
- * 도입 → 개념 4장 → 활동(투표 + 늦게 눌러라) → 정리. 옛 응답 경로는 legacyStepIds 로 남긴다.
+ * 도입 → 개념 4장 → 활동(투표 + 0 에 가깝게) → 정리. 옛 응답 경로는 legacyStepIds 로 남긴다.
  */
 export const lesson: Lesson = {
   id: '13',

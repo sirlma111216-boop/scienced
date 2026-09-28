@@ -127,7 +127,8 @@ export function StudentGameInput({
           <p className="text-display-lg font-mono" style={{ margin: 0 }} aria-live="off">
             {left === null ? '—' : (left / 1000).toFixed(1)}
           </p>
-          <Caption>0 이 되기 전에 가장 늦게 누른 사람이 발표한다. 0 이 지난 뒤 누르면 탈락이다.</Caption>
+          <Caption>0 에 가깝게, 넘기지 말고 누른다. 0 에서 가장 먼 사람이 발표한다.</Caption>
+          <Caption>0 을 넘겨 누르면 그 사람이 발표자다. 늦게 누를수록 먼저다. 끝까지 안 누르면 그 사람이다.</Caption>
           <div style={{ marginTop: 10 }}>
             <Button disabled={pressed} onClick={() => onPatch({ t: now })}>
               {pressed ? '눌렀다' : '누르기'}
@@ -336,7 +337,11 @@ export function TeacherGameView({ kind, derived, nameOf }: { kind: GameKind; der
       return <Caption>{Number(view.round ?? 0)}번째 문까지 열림 · 남은 사람 {alive.length}명</Caption>
     }
     case 'late':
-      return <Caption>누름 {String(view.pressed ?? 0)} · 탈락 {String(view.out ?? 0)}</Caption>
+      return (
+        <Caption>
+          누름 {String(view.pressed ?? 0)} · 0 넘김 {String(view.over ?? 0)} · 안 누름 {String(view.none ?? 0)}
+        </Caption>
+      )
     case 'flash':
       return <Caption>{view.greenAt ? '초록' : '회색'} · 누름 {String(view.pressed ?? 0)} · 성급 {String(view.early ?? 0)}</Caption>
     case 'rps': {
