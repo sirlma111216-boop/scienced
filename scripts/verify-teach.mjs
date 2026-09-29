@@ -4,7 +4,7 @@
  *   · 등록표(teach-registry) — 블록 종류마다 조작부가 정해져 있고 LessonBody 가 종류를 다 그린다
  *   · 조작부는 블록 옆 — 강사 화면(Teach.tsx)이 LessonBody 를 쓰고, 학생 화면(Lesson.tsx)도 같은 LessonBody 를 쓴다
  *   · 수업 중 단추 다섯 이외 없음 — 단계 열기 · 자료 공개 · 모둠 나누기 · 게임 시작 · 응답 펼치기 (발표 모드는 강의자 지시로 뺐다)
- *       (응답 펼치기는 「응답 n/N ▸」 「올라온 글 n ▸」 「모둠별 ▸」 접기 요소다. 학생만 누르는 [참가]·명단 서랍은 예외로 둔다)
+ *       (응답 펼치기는 「응답 n/N ▸」 「올라온 글 n ▸」 「모둠별 ▸」 접기 요소다. 명단 서랍과 게임 무대의 「크게 보기」만 예외다)
  *   · 실명 가리기가 켜지면 rosterName 을 읽지 않는다 · 발표 모드가 어디에도 없다
  *   · /instructor/lesson/:id/live · /instructor/lessons 경로가 없다 (되돌리기 Navigate 만)
  *   · 학생 경로에 강사 전용 요소(PlanPreviewBar · TierBadge · 강사 이동 배너)가 없다
@@ -100,8 +100,11 @@ function buttonLabels(src) {
 }
 
 {
-  /* 「크게 보기 / 작게 보기」는 게임 무대를 키우는 보기 조작이지 수업 조작이 아니다 (강의자 지시 2026-09-22 — 프로젝터에서 구슬 레이스가 작았다) */
-  const ALLOWED = new Set([...TEACH_BUTTONS, '참가', '명단', '크게 보기', '작게 보기'])
+  /*
+   * 「크게 보기 / 작게 보기」는 게임 무대를 키우는 보기 조작이지 수업 조작이 아니다 (강의자 지시 2026-09-22 — 프로젝터에서 구슬 레이스가 작았다).
+   * 학생의 [참가]는 없앴다 — 오늘 온 사람이 곧 게임 참가자다 (강의자 지시 2026-09-29).
+   */
+  const ALLOWED = new Set([...TEACH_BUTTONS, '명단', '크게 보기', '작게 보기'])
   const FILES = ['src/routes/Teach.tsx', 'src/components/lesson/LessonBody.tsx', 'src/components/games/GameShell.tsx', 'src/components/games/LegacyLadder.tsx', 'src/components/lumi/LumiTeacher.tsx', 'src/components/marble/MarbleTeacher.tsx', 'src/components/games/StageZoom.tsx']
   const found = new Map()
   let bad = 0

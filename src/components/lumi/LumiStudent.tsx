@@ -3,7 +3,7 @@ import type { CourseId, LessonId } from '@/content/types'
 import { useAuth } from '@/lib/auth'
 import { LUMI_TIME_LIMIT, activeLumi, fetchTicket, lumiConfigured, serverWsUrl, storageKey, studentRules } from '@/lib/lumi'
 import type { SessionState } from '@/lib/types'
-import { Badge, Button, Caption, ColorBlock, Notice } from '@/components/ui'
+import { Badge, Caption, ColorBlock, Notice } from '@/components/ui'
 import { LumiFrame } from './LumiFrame'
 
 /**
@@ -31,7 +31,6 @@ export function LumiStudent({
   const lumi = activeLumi(session?.lumi)
   const [ticket, setTicket] = useState<{ act: string; ticket: string; map: number; timeLimit: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [joinedAct, setJoinedAct] = useState<string | null>(null)
 
   useEffect(() => {
     if (!lumi?.roomCode || !user) return
@@ -113,16 +112,6 @@ export function LumiStudent({
               게임에 들어가지 못했다 — {error}. 화면을 새로고침해 보세요.
             </p>
           </Notice>
-        ) : ticket && user && joinedAct !== lumi.activityInstanceId ? (
-          <div className="card" style={{ marginTop: 16 }}>
-            <p className="text-body" style={{ margin: 0 }}>
-              방이 열렸다. 참가를 누르면 내 이름으로 들어간다.
-            </p>
-            <div style={{ marginTop: 10 }}>
-              <Button onClick={() => setJoinedAct(lumi.activityInstanceId)}>참가</Button>
-            </div>
-            <Caption>휴대폰은 가로로 돌리세요. 참가 코드·QR 은 없다.</Caption>
-          </div>
         ) : ticket && user ? (
           <div style={{ marginTop: 16 }}>
             <LumiFrame

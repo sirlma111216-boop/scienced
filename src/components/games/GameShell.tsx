@@ -23,11 +23,11 @@ type GameActivity = Activity & { game: GameKind; group: GroupData }
 /**
  * 발표자 선정 게임의 공통 껍데기 (8차 6.1).
  *
- *   학생  [참가] 하나 → 게임별 입력 → 결과
+ *   학생  게임별 입력 → 결과 (참가 단추는 없다 — 오늘 온 사람이 곧 참가자다, 강의자 지시 2026-09-29)
  *   강사  [게임 시작] 하나 → 진행 상황 → 결과 (자동 확정) · 수동 지정은 선택 상자
  *
  * 게임 상태는 (서버 시드 · 참가 · 입력 · 서버 시각)의 함수라 모든 화면이 같은 것을 계산한다 (game-core).
- * 강사 화면이 끝난 것을 보면 결과를 세션에 적고 발표 횟수를 올린다. 참가자가 없으면 발표 횟수 가중 추첨이다.
+ * 강사 화면이 끝난 것을 보면 결과를 세션에 적고 발표 횟수를 올린다. 오늘 온 사람이 없으면 발표 횟수 가중 추첨이다.
  * 반응 속도 게임은 결과에 「반응 속도 게임입니다」를 적는다.
  */
 export interface TeacherGameProps {
@@ -150,6 +150,9 @@ function LibraryGame({
   const derived: Derived | null = useMemo(() => (state ? derive({ state, inputs, now, groups, tally, bingoItems, options: activity.gameOptions }) : null), [state, inputs, now, groups, tally, bingoItems, activity.gameOptions])
   const joined = state ? participants({ state, inputs, now, groups }) : []
   const mine = state ? (inputs.find((i) => i.uid === uid && i.round === state.round) ?? null) : null
+  /* 참가 단추가 없다 — 오늘 온 사람이면 바로 참가자다. 아직 아무것도 내지 않았으면 빈 입력으로 그린다 */
+  const inRoster = Boolean(state) && joined.some((p) => p.uid === uid)
+  const emptyInput = useMemo(() => ({ uid, stepId: step.id, round: state?.round ?? 1, joinedAt: state?.startedAt ?? 0, value: {}, updatedAt: 0 }), [uid, step.id, state?.round, state?.startedAt])
   const gameId = `${lessonId}-${step.id}-${kind}`
 
   /* 강사 — 상태가 없으면 대기실을 연다 (한 번) */
@@ -206,14 +209,18 @@ function LibraryGame({
         return
       }
       if (state.phase !== 'lobby') return
-      if (joined.length === 0) {
+      if (teacher.students.length === 0) {
         const weights = Object.fromEntries(teacher.students.map((s) => [s.uid, weightFromPresentCount(teacher.participation.find((p) => p.uid === s.uid)?.presentCount ?? 0)]))
         const w = weightedDraw(state.seed, weights, 1)
-        await finalize(state, w, '참가자가 없어 발표 횟수가 적은 사람 가운데 가중 추첨')
+        await finalize(state, w, '오늘 온 사람이 없어 발표 횟수가 적은 사람 가운데 가중 추첨')
         return
       }
-      /* 추정 게임 — 오늘 모둠 질문의 답 분포를 상태에 넣는다. 학생 화면은 이것으로 같은 것을 계산한다 */
-      const extra = kind === 'estimate' ? { tally: (tally ?? []).map((t) => ({ option: t.option, count: t.count })) } : null
+      /*
+       * 시작할 때 오늘 출석한 사람을 상태에 적는다 — 이것이 참가자다 (강의자 지시 2026-09-29).
+       * 추정 게임은 오늘 모둠 질문의 답 분포도 함께 넣는다. 학생 화면은 이것으로 같은 것을 계산한다.
+       */
+      const roster = teacher.students.map((s) => s.uid)
+      const extra = { roster, ...(kind === 'estimate' ? { tally: (tally ?? []).map((t) => ({ option: t.option, count: t.count })) } : null) }
       await repo.setGame(classId, lessonId, step.id, { ...state, phase: 'running', startedAt: serverNow(), state: extra, updatedAt: Date.now() })
     } catch (err) {
       console.error('[게임] 시작하지 못했다:', err)
@@ -228,23 +235,13 @@ function LibraryGame({
     await finalize(state, [u], '강사가 지정', true)
   }
 
-  async function join() {
-    if (!repo || !user || !state) return
-    setBusy(true)
-    try {
-      await repo.setGameInput(classId, lessonId, { uid: user.uid, stepId: step.id, round: state.round, joinedAt: serverNow(), value: {}, updatedAt: Date.now() })
-    } catch (err) {
-      console.error('[게임] 참가하지 못했다:', err)
-      setNote('참가하지 못했습니다. 잠시 뒤 다시 누르세요.')
-    } finally {
-      setBusy(false)
-    }
-  }
+  /* 내 문서는 처음 낼 때 만들어진다 — 참가 단추가 없으므로 여기서 연다 */
   async function patch(p: Record<string, unknown>) {
-    if (!repo || !user || !state || !mine) return
-    const value = { ...((mine.value as Record<string, unknown> | null) ?? {}), ...p }
+    if (!repo || !user || !state) return
+    const base = mine ?? { uid: user.uid, stepId: step.id, round: state.round, joinedAt: serverNow(), value: {}, updatedAt: Date.now() }
+    const value = { ...((base.value as Record<string, unknown> | null) ?? {}), ...p }
     try {
-      await repo.setGameInput(classId, lessonId, { ...mine, value, updatedAt: Date.now() })
+      await repo.setGameInput(classId, lessonId, { ...base, value, updatedAt: Date.now() })
     } catch (err) {
       console.error('[게임] 입력을 보내지 못했다:', err)
       setNote('보내지 못했습니다. 다시 누르세요.')
@@ -265,9 +262,9 @@ function LibraryGame({
         </p>
         <Badge solid>{spec.name}</Badge>
         {spec.scope === 'group' ? <Badge>모둠</Badge> : null}
-        {state ? <Badge>{state.phase === 'lobby' ? '참가 받는 중' : state.phase === 'running' ? '진행 중' : '끝'}</Badge> : <Badge>준비 중</Badge>}
+        {state ? <Badge>{state.phase === 'lobby' ? '시작 전' : state.phase === 'running' ? '진행 중' : '끝'}</Badge> : <Badge>준비 중</Badge>}
         {state && state.round > 1 ? <Badge>{state.round}번째 판</Badge> : null}
-        <Caption>참가 {joined.length}{total !== null ? ` / ${total}` : ''}</Caption>
+        <Caption>후보 {teacher ? teacher.students.length : joined.length}{total !== null ? ` / ${total}` : ''}</Caption>
       </div>
       <p className="text-body" style={{ margin: '8px 0 0' }}>
         {spec.rule}
@@ -299,7 +296,7 @@ function LibraryGame({
           <Button onClick={() => void start()} disabled={busy || !state || state.phase === 'running' || groupGate || emptyGate}>
             게임 시작
           </Button>
-          <Caption>{!state ? '대기실을 여는 중' : emptyGate ? '오늘 온 사람이 없어 뽑을 후보가 없다' : state.phase === 'lobby' ? (joined.length === 0 ? '참가자가 없으면 출석한 사람 가운데 발표 횟수 가중 추첨' : '누르면 바로 시작한다') : state.phase === 'running' ? '진행 중 — 끝나면 저절로 확정된다' : '다시 누르면 새 판(재추첨)'}</Caption>
+          <Caption>{!state ? '대기실을 여는 중' : emptyGate ? '오늘 온 사람이 없어 뽑을 후보가 없다' : state.phase === 'lobby' ? '오늘 온 사람이 모두 후보다 — 누르면 바로 시작한다' : state.phase === 'running' ? '진행 중 — 끝나면 저절로 확정된다' : '다시 누르면 새 판(재추첨)'}</Caption>
           {state && state.phase === 'done' ? (
             <label className="text-body-sm flex items-center gap-xxs">
               수동 지정
@@ -321,28 +318,19 @@ function LibraryGame({
         </p>
       ) : null}
 
-      {/* 학생 — 참가 · 입력 */}
+      {/* 학생 — 입력. 참가 단추는 없다 (강의자 지시 2026-09-29 — 오늘 온 사람이 곧 참가자다) */}
       {!teacher && state && !result ? (
         <div className="card" style={{ marginTop: 12 }}>
           {state.phase === 'lobby' ? (
-            mine ? (
-              <p className="text-body" style={{ margin: 0 }} role="status">
-                참가했다. 강사가 시작하면 여기서 진행된다.
-              </p>
-            ) : (
-              <div className="flex items-center gap-md" style={{ flexWrap: 'wrap' }}>
-                <Button onClick={() => void join()} disabled={busy || groupGate}>
-                  참가
-                </Button>
-                <Caption>한 번만 누른다.</Caption>
-              </div>
-            )
+            <p className="text-body" style={{ margin: 0 }} role="status">
+              오늘의 질문에 답했으면 이미 참가자다. 강사가 시작하면 여기서 진행된다.
+            </p>
           ) : state.phase === 'running' ? (
-            mine && derived ? (
-              <StudentGameInput kind={kind} state={state} mine={mine} derived={derived} now={now} uid={uid} nameOf={nameOf} onPatch={(p) => void patch(p)} />
+            inRoster && derived ? (
+              <StudentGameInput kind={kind} state={state} mine={mine ?? emptyInput} derived={derived} now={now} uid={uid} nameOf={nameOf} onPatch={(p) => void patch(p)} />
             ) : (
               <p className="text-body" style={{ margin: 0 }}>
-                이번 판에 참가하지 않았다. 결과를 기다린다.
+                오늘 출석에 없어 이번 판의 후보가 아니다. 결과를 기다린다.
               </p>
             )
           ) : null}
@@ -350,7 +338,7 @@ function LibraryGame({
       ) : null}
       {!teacher && !state ? (
         <p className="text-body-sm" style={{ marginTop: 12, opacity: 0.7 }}>
-          강사가 게임을 열면 여기에 참가 단추가 나타난다.
+          강사가 게임을 열면 여기에 나타난다.
         </p>
       ) : null}
 
@@ -358,10 +346,10 @@ function LibraryGame({
       {teacher && state && state.phase === 'running' && derived ? (
         <div className="card" style={{ marginTop: 12 }}>
           <TeacherGameView kind={kind} derived={derived} nameOf={nameOf} />
-          {state.phase === 'running' && !derived.finished && joined.length > 0 ? <Caption>참가 · {joined.map((p) => nameOf(p.uid)).join(', ')}</Caption> : null}
+          {state.phase === 'running' && !derived.finished && joined.length > 0 ? <Caption>후보 · {joined.map((p) => nameOf(p.uid)).join(', ')}</Caption> : null}
         </div>
       ) : null}
-      {teacher && state && state.phase === 'lobby' && joined.length > 0 ? <Caption>참가 · {joined.map((p) => nameOf(p.uid)).join(', ')}</Caption> : null}
+      {teacher && state && state.phase === 'lobby' && teacher.students.length > 0 ? <Caption>후보 · {teacher.students.map((s) => nameOf(s.uid)).join(', ')}</Caption> : null}
 
       {/* 결과 — 모든 화면이 같은 것을 본다 */}
       {result ? <GameResultCard result={result} nameOf={nameOf} uid={uid} /> : null}

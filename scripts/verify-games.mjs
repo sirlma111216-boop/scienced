@@ -125,9 +125,11 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
   if (!/serverNow\(\)/.test(shell) || !/syncServerTime/.test(shell)) fail('서버 시각', 'GameShell 이 서버 시각을 재지 않는다 — 반응 시각을 클라이언트 시계로 적는다')
   else pass('서버 시각', '반응 시각은 참가 때 잰 서버 시각 오프셋으로 적힌다')
   const teacherButtons = [...shell.matchAll(/<Button[^>]*>\s*([^<{]+?)\s*<\/Button>/g)].map((m) => m[1].trim())
-  const bad = teacherButtons.filter((b) => !['게임 시작', '참가'].includes(b))
-  if (bad.length > 0) fail('단추', `GameShell 에 게임 시작·참가 밖의 단추가 있다 — ${bad.join(', ')}`)
-  else pass('단추', 'GameShell 의 단추는 강사 [게임 시작] · 학생 [참가] 뿐이다. 수동 지정은 선택 상자')
+  /* 학생의 [참가]는 없앴다 — 오늘 온 사람이 곧 참가자다 (강의자 지시 2026-09-29) */
+  const bad = teacherButtons.filter((b) => b !== '게임 시작')
+  if (bad.length > 0) fail('단추', `GameShell 에 [게임 시작] 밖의 단추가 있다 — ${bad.join(', ')}`)
+  else if (/참가<\/Button>/.test(shell) || /참가<\/Button>/.test(await readFile('src/components/lumi/LumiStudent.tsx', 'utf8'))) fail('단추', '학생 [참가] 단추가 되살아났다 — 출석한 사람이 곧 참가자다')
+  else pass('단추', 'GameShell 의 단추는 강사 [게임 시작] 하나다. 학생은 참가 단추 없이 바로 참가자이고, 수동 지정은 선택 상자')
   if (!/fairness/.test(shell) || !/반응 속도 게임/.test(shell + (await readFile('src/content/games.ts', 'utf8')))) fail('반응 속도 표시', '반응 속도 게임의 결과에 「반응 속도 게임입니다」가 적히지 않는다')
   const core = await readFile('src/lib/game-core.ts', 'utf8')
   if (!/representativeOf/.test(core)) fail('모둠 대표', '모둠 게임의 대표(발표 횟수가 가장 적은 사람)를 정하는 함수가 없다')
@@ -174,6 +176,39 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
     fail('0 에 가깝게', `강사 요약이 틀리다 — ${JSON.stringify(view)}`)
   }
   if (bad === 0) pass('0 에 가깝게', '안 누름 > 0 넘김(늦을수록) > 0 전(먼저 누를수록) 순으로 발표자를 정하고, 넘겨 누를 틈을 준 뒤 끝난다')
+}
+
+/*
+ * ── 참가자 = 오늘 온 사람 (강의자 지시 2026-09-29) ──
+ * 강사가 시작할 때 출석 명단을 상태에 적는다. 아무것도 내지 않은 사람도 후보다.
+ */
+{
+  const { derive, participants } = await import('../src/lib/game-core.ts')
+  const T0 = 2_000_000
+  const ctx = (roster, inputs, now = T0 + 20000) => ({
+    state: { kind: 'late', stepId: 'activity', phase: 'running', round: 1, seed: 'check::roster', startedAt: T0, state: roster ? { roster } : null, result: null, updatedAt: T0 },
+    inputs,
+    now,
+    groups: [],
+  })
+  const input = (uid, t) => ({ uid, stepId: 'activity', round: 1, joinedAt: T0, value: t === null ? {} : { t }, updatedAt: T0 })
+  let bad = 0
+  const check = (label, got, want) => { if (got !== want) { bad += 1; fail('참가자', `${label}: ${JSON.stringify(got)} (기대 ${JSON.stringify(want)})`) } }
+
+  /* 명단 셋 · 입력은 하나뿐 — 셋 다 참가자이고, 안 낸 둘이 발표자 후보다 */
+  const c1 = ctx(['a', 'b', 'c'], [input('a', T0 + 5000)])
+  check('명단에 적힌 사람이 모두 참가자다', participants(c1).map((x) => x.uid).join(','), 'a,b,c')
+  check('안 누른 사람이 발표자다 — 누른 사람이 아니라', derive(c1).winnerUids.sort().join(','), 'b,c')
+  /* 명단 순서가 참가 순서다 — 시드 없이도 화면마다 같다 */
+  check('참가 순서는 명단 순서다', participants(ctx(['c', 'a', 'b'], [])).map((x) => x.uid).join(','), 'c,a,b')
+  /* 옛 판(roster 없음)은 예전처럼 입력이 있는 사람만 */
+  check('roster 가 없는 옛 판은 입력이 있는 사람만 참가자다', participants(ctx(null, [input('a', T0 + 5000)])).map((x) => x.uid).join(','), 'a')
+  /* 명단에 없는 사람이 입력을 내도 참가자가 아니다 */
+  check('명단 밖의 입력은 참가자가 아니다', participants(ctx(['a'], [input('a', T0 + 1000), input('z', T0 + 2000)])).map((x) => x.uid).join(','), 'a')
+
+  const shell = await readFile('src/components/games/GameShell.tsx', 'utf8')
+  if (!/roster: teacher\.students\.map|const roster = teacher\.students\.map/.test(shell)) { bad += 1; fail('참가자', '강사가 시작할 때 출석 명단을 상태에 적지 않는다') }
+  if (bad === 0) pass('참가자', '오늘 온 사람이 그대로 참가자다 — 시작할 때 출석 명단을 상태에 적고 모든 화면이 그것을 읽는다')
 }
 
 report('verify:games')

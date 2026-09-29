@@ -58,8 +58,27 @@ export function shuffleSeeded<T>(seed: string, salt: string, items: T[]): T[] {
 }
 
 /** 참가자 — 이 라운드에 참가한 사람, 참가 순 */
+/**
+ * 이 판의 참가자 — **오늘 온 사람 전부**다 (강의자 지시 2026-09-29).
+ *
+ * 전에는 학생이 [참가]를 눌러야 참가자가 됐다. 한두 명이 끝까지 누르지 않아 강사가 그것을 말하느라 수업이 멈췄다.
+ * 이제 강사가 「게임 시작」을 누를 때 그날 출석 명단을 게임 상태(`state.roster`)에 적고, 모든 화면이 그것을 참가자로 읽는다.
+ * 명단에 있고 아직 아무것도 내지 않은 사람은 **빈 입력**으로 들어간다 — 안 누른 사람도 후보이고, 게임마다 그것을 어떻게 다룰지 정한다.
+ *
+ * roster 가 없는 옛 판(8차 초기)은 예전처럼 입력이 있는 사람만 참가자다.
+ */
 export function participants(ctx: GameContext): GameInput[] {
-  return ctx.inputs.filter((i) => i.round === ctx.state.round).sort((a, b) => a.joinedAt - b.joinedAt || a.uid.localeCompare(b.uid))
+  const mine = ctx.inputs.filter((i) => i.round === ctx.state.round)
+  const roster = rosterOf(ctx)
+  if (!roster) return mine.sort((a, b) => a.joinedAt - b.joinedAt || a.uid.localeCompare(b.uid))
+  const byUid = new Map(mine.map((i) => [i.uid, i]))
+  return roster.map((uid, i) => byUid.get(uid) ?? { uid, stepId: ctx.state.stepId, round: ctx.state.round, joinedAt: (ctx.state.startedAt ?? 0) + i, value: {}, updatedAt: 0 })
+}
+
+/** 게임 상태에 적힌 출석 명단. 옛 판에는 없다 */
+function rosterOf(ctx: GameContext): string[] | null {
+  const r = (ctx.state.state as { roster?: unknown } | null)?.roster
+  return Array.isArray(r) && r.every((x) => typeof x === 'string') && r.length > 0 ? (r as string[]) : null
 }
 
 const val = (i: GameInput | undefined): Record<string, unknown> => (i && i.value && typeof i.value === 'object' ? (i.value as Record<string, unknown>) : {})
