@@ -10,6 +10,7 @@ import { ConceptMap } from '@/routes/ConceptMap'
 import { Microteaching } from '@/routes/Microteaching'
 import { Curriculum } from '@/routes/Curriculum'
 import { ClassSelect } from '@/routes/ClassSelect'
+import { SiteNoticePopup } from '@/components/notice/SiteNoticePopup'
 import { InstructorStudents } from '@/routes/instructor/Students'
 import { InstructorAnalytics } from '@/routes/instructor/Analytics'
 import { InstructorAiReview } from '@/routes/instructor/AiReview'
@@ -23,6 +24,7 @@ import { InstructorClassSettings } from '@/routes/instructor/ClassSettings'
  *  - 비로그인 → /login
  *  - mustResetPassword → /reset-password 외 전부 차단
  *  - 학생이 /instructor/* · /teach/* → 403 안내
+ *  - 로그인을 마친 화면에는 전체 공지 창(SiteNoticePopup)이 함께 붙는다 — 기간 안이고 아직 닫지 않은 사람에게만 뜬다
  *  - 미공개 차시 내용은 전송하지 않는다 (차시 화면이 공개 여부를 본 뒤에만 import() · Firestore 규칙)
  *
  * 강사 홈(/instructor/classes)은 지금 클래스의 차시 목록이다 — 거기서 바로 수업 화면(/teach/:classId/:lessonId)으로 간다.
@@ -68,7 +70,13 @@ function Guard({
       </div>
     )
   }
-  return <>{children}</>
+  /* 전체 공지 — 로그인을 마친 화면이면 어디서든 뜬다 (강의자 지시 2026-10-02) */
+  return (
+    <>
+      {children}
+      <SiteNoticePopup />
+    </>
+  )
 }
 
 /** /instructor/class/:classId — 관리의 첫 탭(수강생 명단)으로 */

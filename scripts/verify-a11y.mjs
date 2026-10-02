@@ -10,6 +10,7 @@
  */
 import { readFile } from 'node:fs/promises'
 import { fail, pass, report, walk } from './_report.mjs'
+import { SITE_NOTICES, activeNotices } from '../src/lib/notice.ts'
 
 const files = await walk('src', ['.ts', '.tsx', '.css'])
 const sources = new Map()
@@ -268,6 +269,34 @@ const all = [...sources.values()].join('\n')
     }
   }
   if (bad === 0) pass('포커스 의존', `포커스를 옮기는 효과 ${checked}곳이 콜백에 매달려 있지 않다 — 덮개는 열릴 때 한 번만 포커스를 옮긴다`)
+}
+
+/* 12. 전체 공지 — 기간 안에만 뜨고, 닫으면 다시 뜨지 않는다 (강의자 지시 2026-10-02). 앱의 activeNotices 를 그대로 부른다 */
+{
+  const probs = []
+  const guard = sources.get([...sources.keys()].find((f) => f.replace(/\\/g, '/').endsWith('src/App.tsx')))
+  if (!/<SiteNoticePopup \/>/.test(guard ?? '')) probs.push('App.tsx 의 Guard 가 SiteNoticePopup 을 그리지 않는다 — 로그인한 사람이 공지를 보지 못한다')
+  const popup = sources.get([...sources.keys()].find((f) => f.replace(/\\/g, '/').endsWith('components/notice/SiteNoticePopup.tsx')))
+  if (!/<Overlay[^>]*onClose=\{close\}/.test(popup ?? '')) probs.push('공지 창에 닫는 길(Overlay onClose)이 없다')
+  const ids = new Set()
+  for (const n of SITE_NOTICES) {
+    if (ids.has(n.id)) probs.push(`공지 id 「${n.id}」가 겹친다`)
+    ids.add(n.id)
+    const from = Date.parse(n.from)
+    const until = Date.parse(n.until)
+    if (!Number.isFinite(from) || !Number.isFinite(until) || until <= from) probs.push(`「${n.id}」의 기간이 잘못됐다`)
+    if (!/[+-]\d\d:\d\d$|Z$/.test(n.from) || !/[+-]\d\d:\d\d$|Z$/.test(n.until)) probs.push(`「${n.id}」의 기간에 시간대가 없다 — 기기마다 다른 때에 뜬다`)
+    if (!n.title.trim() || n.body.length === 0) probs.push(`「${n.id}」에 제목이나 본문이 없다`)
+    const none = new Set()
+    const inside = activeNotices(from, none, [n]).length === 1 && activeNotices(until - 1, none, [n]).length === 1
+    const outside = activeNotices(from - 1, none, [n]).length === 0 && activeNotices(until, none, [n]).length === 0
+    const closed = activeNotices(from, new Set([n.id]), [n]).length === 0
+    if (!inside) probs.push(`「${n.id}」가 기간 안에 뜨지 않는다`)
+    if (!outside) probs.push(`「${n.id}」가 기간 밖에서 뜬다`)
+    if (!closed) probs.push(`「${n.id}」가 닫은 뒤에도 뜬다`)
+  }
+  if (probs.length) for (const p of probs) fail('공지', p)
+  else pass('공지', `전체 공지 ${SITE_NOTICES.length}건이 기간 안에만 뜨고 닫으면 다시 뜨지 않는다 — 로그인한 화면(Guard)에 붙어 있다`)
 }
 
 report('verify:a11y')
