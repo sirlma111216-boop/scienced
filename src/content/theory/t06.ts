@@ -33,7 +33,7 @@ export const t06: LessonTheory = {
         { title: '교육부 (2022). 과학과 교육과정. 교육부 고시 제2022-33호 [별책]. — 국가교육과정정보센터(NCIC)에서 원문 열람', url: 'https://ncic.re.kr' },
       ],
       linkedConceptId: 'c06-standard',
-      plainTerms: ['2022 개정 성취기준은 2015 의 코드만 바꾼 것이 아니다'],
+      plainTerms: ['2022 개정 성취기준은 2015 개정의 번호만 바꾼 것이 아니라'],
       oneLine: '2022년 고시된 국가 교육과정. 핵심 아이디어를 앞세우고, 내용을 세 범주로 적고, 평가의 방향을 튼다.',
       verified: false,
     },
