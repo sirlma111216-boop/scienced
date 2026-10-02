@@ -39,6 +39,7 @@
     "verify:course": "node --import ./scripts/_loader.mjs scripts/verify-course.mjs",
     "verify:teach": "node --import ./scripts/_loader.mjs scripts/verify-teach.mjs",
     "audit:activity": "node --import ./scripts/_loader.mjs scripts/audit-activity.mjs",
+    "audit:games": "node --import ./scripts/_loader.mjs scripts/_sim-games.mjs",
     "audit:draft": "node --import ./scripts/_loader.mjs scripts/audit-draft.mjs",
     "sync:checks": "node --import ./scripts/_loader.mjs scripts/sync-checks.mjs"
   },

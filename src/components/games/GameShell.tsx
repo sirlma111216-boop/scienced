@@ -3,7 +3,7 @@ import type { Activity, CourseId, GameKind, GroupData, LessonId, Step } from '@/
 import { gameRule, gameSpec } from '@/content/games'
 import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { derive, participants, representativeOf, type Derived } from '@/lib/game-core'
+import { bingoItemsOf, derive, participants, presentersOf, type Derived, type GameContext } from '@/lib/game-core'
 import { finalizeGame } from '@/lib/game-record'
 import { weightFromPresentCount, weightedDraw } from '@/lib/ladder'
 import { serverNow, syncServerTime } from '@/lib/server-time'
@@ -141,13 +141,9 @@ function LibraryGame({
   }, [state?.phase])
 
   const groups = useMemo(() => (round?.groups ?? []).map((g) => ({ id: g.id, name: g.name, memberUids: g.memberUids })), [round])
-  const bingoItems = useMemo(() => {
-    const f = activity.fields.find((x) => x.items?.length) ?? activity.fields.find((x) => x.options?.length)
-    const items = f?.items?.map((i) => i.label) ?? f?.options ?? []
-    const pool = [...items, ...activity.fields.flatMap((x) => x.options ?? [])]
-    return [...new Set(pool)].slice(0, 9)
-  }, [activity])
-  const derived: Derived | null = useMemo(() => (state ? derive({ state, inputs, now, groups, tally, bingoItems, options: activity.gameOptions }) : null), [state, inputs, now, groups, tally, bingoItems, activity.gameOptions])
+  const bingoItems = useMemo(() => bingoItemsOf(activity), [activity])
+  const ctx: GameContext | null = useMemo(() => (state ? { state, inputs, now, groups, tally, bingoItems, options: activity.gameOptions } : null), [state, inputs, now, groups, tally, bingoItems, activity.gameOptions])
+  const derived: Derived | null = useMemo(() => (ctx ? derive(ctx) : null), [ctx])
   const joined = state ? participants({ state, inputs, now, groups }) : []
   const mine = state ? (inputs.find((i) => i.uid === uid && i.round === state.round) ?? null) : null
   /* 참가 단추가 없다 — 오늘 온 사람이면 바로 참가자다. 아직 아무것도 내지 않았으면 빈 입력으로 그린다 */
@@ -179,18 +175,17 @@ function LibraryGame({
 
   /* 강사 — 끝난 게임을 확정한다 (한 판에 한 번) */
   useEffect(() => {
-    if (!teacher || !state || !derived || state.phase !== 'running' || !derived.finished) return
+    if (!teacher || !state || !ctx || !derived || state.phase !== 'running' || !derived.finished) return
     const key = `${state.seed}:${state.round}`
     if (finalizing.current === key) return
     finalizing.current = key
     const presentCount = Object.fromEntries(teacher.participation.map((p) => [p.uid, p.presentCount]))
-    let winners = derived.winnerUids
+    /* 발표자는 어느 게임이든 둘이다 — 모둠 게임은 이긴 모둠에서 발표 횟수가 적은 두 사람 (강의자 지시 2026-10-02) */
+    const winners = presentersOf(ctx, derived, presentCount)
     let reason = derived.reason
     if (spec.scope === 'group') {
       const g = groups.find((x) => x.id === derived.winnerGroupId)
-      const rep = g ? representativeOf(g, presentCount, state.seed) : null
-      winners = rep ? [rep] : []
-      reason = g ? `${g.name} — ${derived.reason} · 대표는 발표 횟수가 가장 적은 사람` : derived.reason
+      reason = g ? `${g.name} — ${derived.reason} · 그 모둠에서 발표 횟수가 적은 두 사람` : `${derived.reason} — 아무것도 내지 않은 사람부터 추첨`
     }
     void finalize(state, winners, reason).catch((err) => {
       console.error('[게임] 결과를 적지 못했다:', err)
@@ -269,6 +264,7 @@ function LibraryGame({
       <p className="text-body" style={{ margin: '8px 0 0' }}>
         {gameRule(kind, activity.gameOptions)}
       </p>
+      <Caption>발표자는 두 명이다. 게임 결과로 둘이 안 되면 아무것도 내지 않은 사람부터 채운다.</Caption>
       {spec.reaction ? <Caption>반응 속도 게임이다 — 기기와 회선에 따라 다를 수 있다.</Caption> : null}
 
       {groupGate ? (

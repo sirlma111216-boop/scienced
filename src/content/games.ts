@@ -5,6 +5,7 @@ import type { GameKind } from './types'
  * 발표자 선정 게임 라이브러리 (8차 6절).
  *
  * 공통 규칙
+ *   · **발표자는 어느 게임이든 둘이다** (강의자 지시 2026-10-02 — game-core 의 PRESENTER_COUNT).
  *   · 3분 이내. 80분 차시의 활동 1 에 붙는 것은 1분 이내.
  *   · 학생은 참가 단추를 누르지 않는다(오늘 온 사람이 곧 참가자다 — 2026-09-29). 강사는 [게임 시작] 하나. 규칙은 화면 한 줄.
  *   · 결과는 서버 시드로 정해지고 결과 화면에 시드와 후보를 남긴다.
@@ -39,42 +40,42 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
   bomb: {
     kind: 'bomb',
     name: '폭탄 돌리기',
-    rule: '폭탄을 가진 사람은 넘기기를 누르세요. 시간이 끝났을 때 든 사람이 발표합니다.',
+    rule: '폭탄은 두 개입니다. 폭탄을 가진 사람은 넘기기를 누르세요. 시간이 끝났을 때 든 두 사람이 발표합니다.',
     scope: 'individual',
     seconds: 60,
-    winner: '시간이 끝났을 때 폭탄을 든 사람',
+    winner: '시간이 끝났을 때 폭탄을 든 두 사람',
   },
   closest: {
     kind: 'closest',
     name: '숫자 가까이',
-    rule: '1부터 100 사이에서 하나를 고르세요. 서버가 뽑은 숫자에 가장 가까운 사람이 발표합니다.',
+    rule: '1부터 100 사이에서 하나를 고르세요. 서버가 뽑은 숫자에 가까운 두 사람이 발표합니다.',
     scope: 'individual',
     seconds: 30,
-    winner: '가장 가까운 사람 (동점 공동)',
+    winner: '가까운 순서로 두 사람 (같으면 시드)',
   },
   doors: {
     kind: 'doors',
     name: '문 세 개',
-    rule: '문 하나를 고르세요. 열린 문을 고른 사람은 통과합니다. 마지막까지 남은 한 사람이 발표합니다.',
+    rule: '문 하나를 고르세요. 열린 문을 고른 사람은 통과합니다. 마지막까지 남은 두 사람이 발표합니다.',
     scope: 'individual',
     seconds: 120,
-    winner: '마지막까지 통과하지 못하고 남은 한 사람',
+    winner: '마지막까지 통과하지 못하고 남은 두 사람',
   },
   mine: {
     kind: 'mine',
     name: '지뢰 한 칸',
-    rule: '5×5 격자에서 한 칸을 고르세요. 지뢰를 밟은 사람이 발표합니다.',
+    rule: '5×5 격자에서 한 칸을 고르세요. 지뢰를 밟은 두 사람이 발표합니다. 모자라면 지뢰에 가까운 칸을 고른 사람이 채웁니다.',
     scope: 'individual',
     seconds: 30,
-    winner: '지뢰를 밟은 사람 (없으면 재추첨)',
+    winner: '지뢰를 밟은 사람 가운데 둘 (모자라면 안 고른 사람, 그다음은 지뢰에 가까운 사람)',
   },
   late: {
     kind: 'late',
     name: '0 에 가깝게',
-    rule: '10초 카운트다운. 0 에 가깝게, 넘기지 말고 누르세요. 0 에서 먼 사람이 발표합니다.',
+    rule: '10초 카운트다운. 0 에 가깝게, 넘기지 말고 누르세요. 0 에서 먼 두 사람이 발표합니다.',
     scope: 'individual',
     seconds: 30,
-    winner: '0 에서 가장 먼 사람 — 0 을 넘겼으면 늦을수록, 끝까지 안 눌렀으면 그 사람',
+    winner: '0 에서 먼 순서로 두 사람 — 안 누름 · 0 넘김(늦을수록) · 0 전(먼저 누를수록)',
     reaction: true,
   },
   rps: {
@@ -83,49 +84,49 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
     rule: '짝이 정해지면 동시에 내세요. 진 사람은 탈락합니다.',
     scope: 'individual',
     seconds: 120,
-    winner: '우승자 (또는 첫 탈락자 — 차시별 선택)',
+    winner: '결승에 오른 두 사람 (또는 가장 먼저 진 두 사람 — 차시별 선택)',
     options: { pick: { label: '누가 발표하는가', values: ['winner', 'firstOut'], default: 'winner' } },
   },
   sync: {
     kind: 'sync',
     name: '동시에 눌러라',
-    rule: '모둠원 전원이 「지금」을 누르세요. 누른 시각의 편차가 가장 작은 모둠이 발표합니다.',
+    rule: '모둠원 전원이 「지금」을 누르세요. 누른 시각의 편차가 가장 작은 모둠에서 두 사람이 발표합니다.',
     scope: 'group',
     seconds: 30,
-    winner: '편차가 가장 작은 모둠의 대표',
+    winner: '편차가 가장 작은 모둠에서 발표 횟수가 적은 두 사람',
     reaction: true,
   },
   sum: {
     kind: 'sum',
     name: '비밀 합',
-    rule: '말하지 말고 1에서 5 중 하나를 고르세요. 합이 서버가 정한 목표에 가장 가까운 모둠이 발표합니다.',
+    rule: '말하지 말고 1에서 5 중 하나를 고르세요. 합이 서버가 정한 목표에 가장 가까운 모둠에서 두 사람이 발표합니다.',
     scope: 'group',
     seconds: 30,
-    winner: '합이 목표에 가장 가까운 모둠의 대표',
+    winner: '합이 목표에 가장 가까운 모둠에서 발표 횟수가 적은 두 사람',
   },
   relay: {
     kind: 'relay',
     name: '릴레이 단어',
-    rule: '모둠원이 순서대로 한 글자씩 넣어 여섯 글자 낱말을 완성하세요. 가장 빠른 모둠이 발표합니다.',
+    rule: '모둠원이 순서대로 한 글자씩 넣어 여섯 글자 낱말을 완성하세요. 가장 빠른 모둠에서 두 사람이 발표합니다.',
     scope: 'group',
     seconds: 60,
-    winner: '가장 먼저 완성한 모둠의 대표',
+    winner: '가장 먼저 완성한 모둠에서 발표 횟수가 적은 두 사람',
   },
   bingo: {
     kind: 'bingo',
     name: '빙고',
-    rule: '3×3 판의 항목을 서버가 하나씩 뽑습니다. 먼저 한 줄을 만든 사람이 발표합니다.',
+    rule: '3×3 판의 항목을 서버가 하나씩 뽑습니다. 먼저 한 줄을 만들어 빙고를 누른 두 사람이 발표합니다.',
     scope: 'individual',
     seconds: 120,
-    winner: '첫 빙고',
+    winner: '먼저 빙고를 외친 두 사람',
   },
   estimate: {
     kind: 'estimate',
     name: '추정',
-    rule: '오늘 모둠 질문에서 그 답을 고른 사람이 몇 명인지 맞히세요. 가장 가까운 사람이 발표합니다.',
+    rule: '오늘 모둠 질문에서 그 답을 고른 사람이 몇 명인지 맞히세요. 가까운 두 사람이 발표합니다.',
     scope: 'individual',
     seconds: 30,
-    winner: '가장 가까운 사람',
+    winner: '가까운 순서로 두 사람',
   },
   flash: {
     kind: 'flash',
@@ -133,7 +134,7 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
     rule: '화면이 초록으로 바뀌는 순간 누르세요.',
     scope: 'individual',
     seconds: 30,
-    winner: '가장 빠른 사람 (또는 가장 늦은 사람 — 차시별 선택)',
+    winner: '가장 빠른 두 사람 (또는 가장 늦은 두 사람 — 차시별 선택)',
     reaction: true,
     options: { pick: { label: '누가 발표하는가', values: ['fastest', 'slowest'], default: 'fastest' } },
   },
@@ -193,10 +194,15 @@ export function gameSpec(kind: GameKind): GameSpec {
  */
 export function gameRule(kind: GameKind, options?: Record<string, unknown> | null): string {
   const rule = GAME_LIBRARY[kind].rule
-  if (kind === 'rps') return `${rule} ${options?.pick === 'firstOut' ? '가장 먼저 진 사람이 발표합니다.' : '끝까지 이긴 사람이 발표합니다.'}`
-  if (kind === 'flash') return `${rule} ${options?.pick === 'slowest' ? '가장 늦게 누른 사람이 발표합니다.' : '가장 빨리 누른 사람이 발표합니다.'}`
+  if (kind === 'rps') return `${rule} ${options?.pick === 'firstOut' ? '가장 먼저 진 두 사람이 발표합니다.' : '끝까지 이긴 두 사람이 발표합니다.'}`
+  if (kind === 'flash') return `${rule} ${options?.pick === 'slowest' ? '가장 늦게 누른 두 사람이 발표합니다.' : '가장 빨리 누른 두 사람이 발표합니다.'}`
   return rule
 }
+
+/** 빙고 판의 칸에 들어가는 이름의 길이 — 이보다 긴 카드 문장은 판에 쓰지 않는다 */
+export const BINGO_LABEL_MAX = 12
+/** 빙고 판을 아홉 칸으로 채우는 낱말 — 활동의 항목이 아홉이 안 될 때 쓴다. 과학 낱말이 아니다 */
+export const BINGO_FILLERS = ['해', '달', '별', '구름', '바람', '비', '눈', '무지개', '번개']
 
 /** 릴레이 단어에 쓰는 여섯 글자 낱말 — 과학 낱말이 아니다 */
 export const RELAY_WORDS = ['다람쥐도토리', '봄바람산책길', '고구마아이스', '바닷가모래성', '초록우산하나', '겨울밤귤껍질', '동네빵집냄새', '기차역대합실', '토요일늦잠꿈', '수박화채한통']

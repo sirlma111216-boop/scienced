@@ -7,7 +7,8 @@
  *   · 반응 속도 게임은 과목마다 2회 이하 · 80분 활동 1 의 게임은 60초 이하 · 3분 이하
  *   · 연속 두 차시에 같은 게임 없음 (두 과목이 같은 주에 같은 게임을 쓰지 않는다)
  *   · 게임 상태는 서버 시각으로 — GameShell 이 serverNow 를 쓰고 /api/game/time 이 있다
- *   · 학생 [참가] 하나 · 강사 [게임 시작] 하나 · 수동 지정은 선택 상자
+ *   · 학생은 참가 단추 없이 참가자 · 강사 [게임 시작] 하나 · 수동 지정은 선택 상자
+ *   · **발표자는 어느 게임이든 둘** — 30차시의 게임을 앱의 계산으로 끝까지 돌려 본다 (전수조사 · 2026-10-02)
  */
 import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
@@ -132,12 +133,13 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
   else pass('단추', 'GameShell 의 단추는 강사 [게임 시작] 하나다. 학생은 참가 단추 없이 바로 참가자이고, 수동 지정은 선택 상자')
   if (!/fairness/.test(shell) || !/반응 속도 게임/.test(shell + (await readFile('src/content/games.ts', 'utf8')))) fail('반응 속도 표시', '반응 속도 게임의 결과에 「반응 속도 게임입니다」가 적히지 않는다')
   const core = await readFile('src/lib/game-core.ts', 'utf8')
-  if (!/representativeOf/.test(core)) fail('모둠 대표', '모둠 게임의 대표(발표 횟수가 가장 적은 사람)를 정하는 함수가 없다')
+  if (!/export function presentersOf/.test(core)) fail('모둠 대표', '모둠 게임의 발표자(이긴 모둠에서 발표 횟수가 적은 두 사람)를 정하는 함수가 없다')
+  if (!/presentersOf\(ctx, derived, presentCount\)/.test(shell)) fail('모둠 대표', 'GameShell 이 결과를 확정할 때 presentersOf 를 부르지 않는다 — 발표자가 둘이 아니게 된다')
 }
 
 /*
  * ── 「0 에 가깝게」(late) 의 순서 — 앱이 쓰는 그 계산을 그대로 부른다 (강의자 지시 2026-09-28) ──
- * 못한 사람이 발표자다: 안 누름 > 0 넘김(늦을수록) > 0 전(먼저 누를수록).
+ * 못한 두 사람이 발표자다: 안 누름 > 0 넘김(늦을수록) > 0 전(먼저 누를수록). winnerUids 는 발표자에 가까운 순서다.
  */
 {
   const { derive } = await import('../src/lib/game-core.ts')
@@ -151,13 +153,17 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
       now,
       groups: [],
     })
-  const ids = (d) => [...d.winnerUids].sort().join(',')
+  const ids = (d) => d.winnerUids.join(',')
+  const sorted = (d) => [...d.winnerUids].sort().join(',')
+  const idle = Object.fromEntries(['n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7'].map((u) => [u, null]))
   const cases = [
-    ['0 전만 눌렀으면 가장 먼저 누른 사람 (3초 남음 vs 1초 남음 → 3초)', ids(run({ early: DEADLINE - 3000, late1: DEADLINE - 1000 })), 'early'],
-    ['0 을 넘긴 사람이 있으면 그 사람 — 0 전 사람보다 먼저다', ids(run({ early: DEADLINE - 9000, over: DEADLINE + 500 })), 'over'],
-    ['0 을 넘긴 사람이 여럿이면 가장 늦게 누른 사람', ids(run({ over1: DEADLINE + 500, over2: DEADLINE + 2500 })), 'over2'],
-    ['끝까지 안 누른 사람이 가장 나쁘다', ids(run({ over: DEADLINE + 3000, none: null })), 'none'],
-    ['같은 때에 누른 사람은 함께 발표한다', ids(run({ a: DEADLINE - 4000, b: DEADLINE - 4000, c: DEADLINE - 500 })), 'a,b'],
+    ['0 전만 눌렀으면 먼저 누른 순서로 둘 (3초 · 2초 · 1초 남음 → 3초, 2초)', ids(run({ early: DEADLINE - 3000, mid: DEADLINE - 2000, late1: DEADLINE - 1000 })), 'early,mid'],
+    ['0 을 넘긴 사람이 0 전 사람보다 먼저다', ids(run({ early: DEADLINE - 9000, over: DEADLINE + 500, near: DEADLINE - 500 })), 'over,early'],
+    ['0 을 넘긴 사람이 여럿이면 늦게 누른 사람부터', ids(run({ over1: DEADLINE + 500, over2: DEADLINE + 2500, near: DEADLINE - 100 })), 'over2,over1'],
+    ['끝까지 안 누른 사람이 가장 먼저다', ids(run({ over: DEADLINE + 3000, none: null, near: DEADLINE - 100 })), 'none,over'],
+    ['같은 때에 누른 둘은 함께 발표한다', sorted(run({ a: DEADLINE - 4000, b: DEADLINE - 4000, c: DEADLINE - 500 })), 'a,b'],
+    ['안 누른 사람이 일곱이어도 발표자는 둘이다', run({ ...idle, a: DEADLINE - 500 }).winnerUids.length, 2],
+    ['그 둘은 안 누른 사람 가운데서 나온다', run({ ...idle, a: DEADLINE - 500 }).winnerUids.every((u) => u in idle), true],
     ['모두 눌렀으면 0 + 1.5초에 끝난다', run({ a: DEADLINE - 2000, b: DEADLINE - 1000 }, DEADLINE + 1600).finished, true],
     ['안 누른 사람이 있으면 0 + 1.5초에는 아직 안 끝난다 — 넘겨 누를 틈을 준다', run({ a: DEADLINE - 2000, b: null }, DEADLINE + 1600).finished, false],
     ['그 틈이 지나면 끝난다', run({ a: DEADLINE - 2000, b: null }, DEADLINE + 5000).finished, true],
@@ -175,7 +181,7 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
     bad += 1
     fail('0 에 가깝게', `강사 요약이 틀리다 — ${JSON.stringify(view)}`)
   }
-  if (bad === 0) pass('0 에 가깝게', '안 누름 > 0 넘김(늦을수록) > 0 전(먼저 누를수록) 순으로 발표자를 정하고, 넘겨 누를 틈을 준 뒤 끝난다')
+  if (bad === 0) pass('0 에 가깝게', '안 누름 > 0 넘김(늦을수록) > 0 전(먼저 누를수록) 순으로 발표자 둘을 정하고, 넘겨 누를 틈을 준 뒤 끝난다')
 }
 
 /*
@@ -209,6 +215,22 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
   const shell = await readFile('src/components/games/GameShell.tsx', 'utf8')
   if (!/roster: teacher\.students\.map|const roster = teacher\.students\.map/.test(shell)) { bad += 1; fail('참가자', '강사가 시작할 때 출석 명단을 상태에 적지 않는다') }
   if (bad === 0) pass('참가자', '오늘 온 사람이 그대로 참가자다 — 시작할 때 출석 명단을 상태에 적고 모든 화면이 그것을 읽는다')
+}
+
+/*
+ * ── 전수조사 — 30차시에 놓인 게임을 앱의 계산(derive · presentersOf · bingoItemsOf)으로 끝까지 돌린다 (강의자 지시 2026-10-02) ──
+ * 세 교실: 모두 낸다 · 절반만 낸다 · 아무도 안 낸다. 끝나야 하고, 발표자가 정확히 둘이어야 하고, 3분 안이어야 한다.
+ * 이 검사가 없을 때 빙고는 세 차시 모두 영영 끝나지 않았고(항목이 아홉이 안 됨), 「0 에 가깝게」는 안 누른 사람 전원이 발표자가 됐다.
+ */
+{
+  const { simulateGames } = await import('./_sim-games.mjs')
+  const { bad, cells, problems } = await simulateGames()
+  if (bad > 0) for (const p of problems) fail('전수조사', p)
+  else pass('전수조사', `차시에 놓인 게임을 세 교실에서 돌린 ${cells}칸이 모두 끝나고 발표자 둘을 낸다 (3분 이내)`)
+
+  const { LIBRARY_KINDS: kinds } = await import('../src/content/games.ts')
+  const text = Object.entries(GAME_LIBRARY).filter(([k]) => kinds.includes(k) && k !== 'lumi' && k !== 'marble' && k !== 'rps' && k !== 'flash')
+  for (const [k, g] of text) if (!/두 사람/.test(g.rule)) fail('전수조사', `${k} 의 규칙 한 줄이 발표자가 둘임을 말하지 않는다 — 「${g.rule}」`)
 }
 
 report('verify:games')

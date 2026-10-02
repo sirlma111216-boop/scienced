@@ -35,14 +35,14 @@ export function StudentGameInput({
   const view = derived.view
   switch (kind) {
     case 'bomb': {
-      const holder = view.holder as string | null
-      const iHold = holder === uid
+      const holders = (view.holders as string[] | undefined) ?? []
+      const iHold = holders.includes(uid)
       return (
         <div>
           <p className="text-body-lg" style={{ margin: 0, fontWeight: 480 }}>
-            {iHold ? '폭탄이 내 손에 있다' : `폭탄은 ${holder ? nameOf(holder) : '아직 아무도'} 손에 있다`}
+            {iHold ? '폭탄이 내 손에 있다' : `폭탄은 ${holders.length ? holders.map(nameOf).join(' · ') : '아직 아무도'} 손에 있다`}
           </p>
-          <Caption>언제 터질지는 아무도 모른다. 넘어간 횟수 {String(view.passes ?? 0)}</Caption>
+          <Caption>폭탄은 두 개다. 언제 터질지는 아무도 모른다. 넘어간 횟수 {String(view.passes ?? 0)}</Caption>
           {iHold ? (
             <div style={{ marginTop: 10 }}>
               <Button onClick={() => onPatch({ passes: [...((v.passes as number[] | undefined) ?? []), now] })}>넘기기</Button>
@@ -78,7 +78,7 @@ export function StudentGameInput({
       return (
         <div>
           <p className="text-body" style={{ margin: 0 }}>
-            {round + 1}번째 문. 남은 사람 {alive.length}명. 열린 문을 고르면 통과한다.
+            {round + 1}번째 문. 남은 사람 {alive.length}명. 열린 문을 고르면 통과한다. 시간 안에 못 고르면 발표자가 된다.
           </p>
           <div className="flex flex-wrap gap-xs" style={{ marginTop: 10 }}>
             {[1, 2, 3].map((d) => (
@@ -127,8 +127,8 @@ export function StudentGameInput({
           <p className="text-display-lg font-mono" style={{ margin: 0 }} aria-live="off">
             {left === null ? '—' : (left / 1000).toFixed(1)}
           </p>
-          <Caption>0 에 가깝게, 넘기지 말고 누른다. 0 에서 가장 먼 사람이 발표한다.</Caption>
-          <Caption>0 을 넘겨 누르면 그 사람이 발표자다. 늦게 누를수록 먼저다. 끝까지 안 누르면 그 사람이다.</Caption>
+          <Caption>0 에 가깝게, 넘기지 말고 누른다. 0 에서 먼 두 사람이 발표한다.</Caption>
+          <Caption>끝까지 안 누른 사람이 가장 먼저 발표자가 된다. 그다음은 0 을 넘겨 누른 사람(늦을수록 먼저)이다.</Caption>
           <div style={{ marginTop: 10 }}>
             <Button disabled={pressed} onClick={() => onPatch({ t: now })}>
               {pressed ? '눌렀다' : '누르기'}
@@ -141,7 +141,7 @@ export function StudentGameInput({
       return (
         <div>
           <p className="text-body" style={{ margin: 0 }}>
-            모둠원 전원이 「지금」을 동시에 누른다. 편차가 가장 작은 모둠이 발표한다.
+            모둠원 전원이 「지금」을 동시에 누른다. 편차가 가장 작은 모둠에서 두 사람이 발표한다.
           </p>
           <div style={{ marginTop: 10 }}>
             <Button disabled={typeof v.t === 'number'} onClick={() => onPatch({ t: now })}>
@@ -206,7 +206,7 @@ export function StudentGameInput({
       return (
         <div>
           <p className="text-body" style={{ margin: 0 }}>
-            5초마다 하나씩 뽑힌다. 한 줄이 되면 「빙고」를 누른다.
+            5초마다 하나씩 뽑힌다. 한 줄이 되면 「빙고」를 누른다. 먼저 누른 두 사람이 발표한다.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 10, maxWidth: 360 }}>
             {board.map((item) => (
@@ -327,7 +327,7 @@ export function TeacherGameView({ kind, derived, nameOf }: { kind: GameKind; der
   const view = derived.view
   switch (kind) {
     case 'bomb':
-      return <Caption>폭탄 · {view.holder ? nameOf(String(view.holder)) : '—'} · {String(view.passes ?? 0)}번 넘어감</Caption>
+      return <Caption>폭탄 둘 · {((view.holders as string[] | undefined) ?? []).map(nameOf).join(' · ') || '—'} · {String(view.passes ?? 0)}번 넘어감</Caption>
     case 'closest':
     case 'estimate':
     case 'mine':
