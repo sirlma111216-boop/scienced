@@ -1,23 +1,64 @@
+import { Suspense, lazy, type ComponentType } from 'react'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { AuthProvider, needsSetup, useAuth } from '@/lib/auth'
 import { Login } from '@/routes/Login'
 import { ResetPassword } from '@/routes/ResetPassword'
 import { Home } from '@/routes/Home'
 import { Lesson } from '@/routes/Lesson'
-import { Teach } from '@/routes/Teach'
-import { Portfolio } from '@/routes/Portfolio'
-import { ConceptMap } from '@/routes/ConceptMap'
-import { Microteaching } from '@/routes/Microteaching'
-import { Curriculum } from '@/routes/Curriculum'
 import { ClassSelect } from '@/routes/ClassSelect'
 import { SiteNoticePopup } from '@/components/notice/SiteNoticePopup'
-import { InstructorStudents } from '@/routes/instructor/Students'
-import { InstructorAnalytics } from '@/routes/instructor/Analytics'
-import { InstructorAiReview } from '@/routes/instructor/AiReview'
-import { InstructorClasses } from '@/routes/instructor/Classes'
-import { InstructorClassStudents } from '@/routes/instructor/ClassStudents'
-import { InstructorClassGroups } from '@/routes/instructor/ClassGroups'
-import { InstructorClassSettings } from '@/routes/instructor/ClassSettings'
+
+/**
+ * 열 때 받는 화면 (2026-10-02).
+ *
+ * 학생이 처음 여는 화면(로그인 · 홈 · 차시 · 클래스 고르기)만 첫 번들에 둔다. 강사 화면과 가끔 여는 화면은
+ * 그 경로에 들어설 때 내려받는다 — 학생 기기가 강사 화면의 코드까지 먼저 받을 이유가 없다.
+ * 받지 못하면(새 버전이 올라와 옛 파일이 없어졌거나 네트워크가 끊김) 이유를 콘솔에 남기고 다음에 할 일을 화면에 적는다.
+ */
+function LoadFailed() {
+  return (
+    <div className="shell" style={{ paddingTop: 96, maxWidth: 640 }}>
+      <p className="text-subhead" style={{ margin: 0 }}>
+        화면을 불러오지 못했습니다.
+      </p>
+      <p className="text-body" style={{ marginTop: 12 }}>
+        새 버전이 올라왔거나 네트워크가 끊겼을 수 있습니다. 화면을 새로 고치세요.
+      </p>
+    </div>
+  )
+}
+
+function Loading() {
+  return (
+    <div className="shell" style={{ paddingTop: 96 }}>
+      <p className="text-body">불러오는 중…</p>
+    </div>
+  )
+}
+
+function lazyRoute(name: string, load: () => Promise<ComponentType>) {
+  return lazy(() =>
+    load()
+      .then((component) => ({ default: component }))
+      .catch((err) => {
+        console.error(`[화면] ${name} 화면을 불러오지 못했다:`, err)
+        return { default: LoadFailed }
+      }),
+  )
+}
+
+const Teach = lazyRoute('수업 화면', () => import('@/routes/Teach').then((m) => m.Teach))
+const Portfolio = lazyRoute('포트폴리오', () => import('@/routes/Portfolio').then((m) => m.Portfolio))
+const ConceptMap = lazyRoute('개념 지도', () => import('@/routes/ConceptMap').then((m) => m.ConceptMap))
+const Microteaching = lazyRoute('마이크로티칭', () => import('@/routes/Microteaching').then((m) => m.Microteaching))
+const Curriculum = lazyRoute('교육과정 맵', () => import('@/routes/Curriculum').then((m) => m.Curriculum))
+const InstructorStudents = lazyRoute('수강생 관리', () => import('@/routes/instructor/Students').then((m) => m.InstructorStudents))
+const InstructorAnalytics = lazyRoute('분석', () => import('@/routes/instructor/Analytics').then((m) => m.InstructorAnalytics))
+const InstructorAiReview = lazyRoute('AI 검토', () => import('@/routes/instructor/AiReview').then((m) => m.InstructorAiReview))
+const InstructorClasses = lazyRoute('강사 홈', () => import('@/routes/instructor/Classes').then((m) => m.InstructorClasses))
+const InstructorClassStudents = lazyRoute('클래스 명단', () => import('@/routes/instructor/ClassStudents').then((m) => m.InstructorClassStudents))
+const InstructorClassGroups = lazyRoute('클래스 모둠', () => import('@/routes/instructor/ClassGroups').then((m) => m.InstructorClassGroups))
+const InstructorClassSettings = lazyRoute('클래스 설정', () => import('@/routes/instructor/ClassSettings').then((m) => m.InstructorClassSettings))
 
 /**
  * 라우트 보호.
@@ -45,11 +86,7 @@ function Guard({
   const loc = useLocation()
 
   if (loading) {
-    return (
-      <div className="shell" style={{ paddingTop: 96 }}>
-        <p className="text-body">불러오는 중…</p>
-      </div>
-    )
+    return <Loading />
   }
   if (!user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />
   /* 닉네임이 없으면 무조건 여기로 보낸다. 깃발이 아니라 상태를 본다 (needsSetup). */
@@ -88,6 +125,7 @@ function ClassAdminRedirect() {
 export function App() {
   return (
     <AuthProvider>
+      <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
@@ -223,6 +261,7 @@ export function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+      </Suspense>
     </AuthProvider>
   )
 }

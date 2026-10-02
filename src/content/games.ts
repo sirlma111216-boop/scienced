@@ -6,7 +6,7 @@ import type { GameKind } from './types'
  *
  * 공통 규칙
  *   · 3분 이내. 80분 차시의 활동 1 에 붙는 것은 1분 이내.
- *   · 학생은 [참가] 하나, 강사는 [시작] 하나. 규칙은 화면 한 줄.
+ *   · 학생은 참가 단추를 누르지 않는다(오늘 온 사람이 곧 참가자다 — 2026-09-29). 강사는 [게임 시작] 하나. 규칙은 화면 한 줄.
  *   · 결과는 서버 시드로 정해지고 결과 화면에 시드와 후보를 남긴다.
  *   · 발표 횟수가 적은 사람의 가중치 · 재추첨 · 수동 지정 · 비상 추첨은 GameShell 이 공통으로 갖는다.
  *   · 폰 세로 화면에서 된다. 루미 런만 가로.
@@ -58,7 +58,7 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
     rule: '문 하나를 고르세요. 열린 문을 고른 사람은 통과합니다. 마지막까지 남은 한 사람이 발표합니다.',
     scope: 'individual',
     seconds: 120,
-    winner: '끝까지 안 뽑힌 사람',
+    winner: '마지막까지 통과하지 못하고 남은 한 사람',
   },
   mine: {
     kind: 'mine',
@@ -130,7 +130,7 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
   flash: {
     kind: 'flash',
     name: '순간 포착',
-    rule: '화면이 초록으로 바뀌는 순간 누르세요. 가장 빨리(또는 늦게) 누른 사람이 발표합니다.',
+    rule: '화면이 초록으로 바뀌는 순간 누르세요.',
     scope: 'individual',
     seconds: 30,
     winner: '가장 빠른 사람 (또는 가장 늦은 사람 — 차시별 선택)',
@@ -185,6 +185,17 @@ export const LEGACY_KINDS: GameKind[] = ['ladder', 'envelope']
 
 export function gameSpec(kind: GameKind): GameSpec {
   return GAME_LIBRARY[kind]
+}
+
+/**
+ * 화면에 보이는 규칙 한 줄 — 차시가 정한 선택(gameOptions.pick)까지 넣어 **누가 발표하는지**를 말한다.
+ * 「가장 빨리(또는 늦게)」처럼 둘 중 무엇인지 알 수 없는 문장을 학생에게 보이지 않는다 (강의자 지시 2026-10-02).
+ */
+export function gameRule(kind: GameKind, options?: Record<string, unknown> | null): string {
+  const rule = GAME_LIBRARY[kind].rule
+  if (kind === 'rps') return `${rule} ${options?.pick === 'firstOut' ? '가장 먼저 진 사람이 발표합니다.' : '끝까지 이긴 사람이 발표합니다.'}`
+  if (kind === 'flash') return `${rule} ${options?.pick === 'slowest' ? '가장 늦게 누른 사람이 발표합니다.' : '가장 빨리 누른 사람이 발표합니다.'}`
+  return rule
 }
 
 /** 릴레이 단어에 쓰는 여섯 글자 낱말 — 과학 낱말이 아니다 */

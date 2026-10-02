@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Activity, CourseId, GameKind, GroupData, LessonId, Step } from '@/content/types'
-import { gameSpec } from '@/content/games'
+import { gameRule, gameSpec } from '@/content/games'
 import { apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { derive, participants, representativeOf, type Derived } from '@/lib/game-core'
@@ -267,7 +267,7 @@ function LibraryGame({
         <Caption>후보 {teacher ? teacher.students.length : joined.length}{total !== null ? ` / ${total}` : ''}</Caption>
       </div>
       <p className="text-body" style={{ margin: '8px 0 0' }}>
-        {spec.rule}
+        {gameRule(kind, activity.gameOptions)}
       </p>
       {spec.reaction ? <Caption>반응 속도 게임이다 — 기기와 회선에 따라 다를 수 있다.</Caption> : null}
 

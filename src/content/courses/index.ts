@@ -1,7 +1,7 @@
 import type { CourseId, Lesson, LessonId, LessonIndexEntry } from '../types'
 import { METHOD_INDEX, loadMethodLesson } from './method'
 import { EDU_INDEX, loadEduLesson } from './edu'
-import { THEORY } from '../theory'
+import { loadTheory } from '../theory'
 
 /**
  * 두 과목 (8차 8절).
@@ -51,9 +51,8 @@ export function loadLesson(courseId: CourseId, id: LessonId): Promise<Lesson | u
   const key = `${courseId}:${id}`
   let p = cache.get(key)
   if (!p) {
-    p = COURSES[courseId].load(id).then((l) => {
+    p = Promise.all([COURSES[courseId].load(id), loadTheory(courseId, id)]).then(([l, t]) => {
       if (!l) return undefined
-      const t = THEORY[courseId]?.[l.id]
       return t && !l.theory ? { ...l, theory: t } : l
     })
     cache.set(key, p)
