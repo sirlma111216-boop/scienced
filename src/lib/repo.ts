@@ -22,6 +22,7 @@ import type {
   RosterEntry,
   SessionState,
   StorageMode,
+  MtSlot,
 } from './types'
 
 /**
@@ -127,6 +128,12 @@ export interface Repo {
   setGroupInput(classId: string, input: GroupInput): Promise<void>
 
   /* ── AI 제안 (교사 검토 관문) ── */
+  /* ── 마이크로티칭 신청 (강의자 지시 2026-10-03) — 쓰기는 서버 함수가 한다 ── */
+  watchMtSlots(classId: string, cb: (list: MtSlot[]) => void): () => void
+  applyMicroteaching(classId: string, slotId: string, uid: string): Promise<{ ok: boolean; message?: string }>
+  /** 본인은 자기 것을, 강사는 uid 를 적어 남의 것을 취소한다 */
+  cancelMicroteaching(classId: string, uid: string): Promise<{ ok: boolean; message?: string }>
+
   watchAiLogs(cb: (list: AiLog[]) => void): () => void
   addAiProposal(classId: string, p: AiProposal): Promise<void>
   watchAiProposals(classId: string, cb: (list: AiProposal[]) => void): () => void

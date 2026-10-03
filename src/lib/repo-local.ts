@@ -2,8 +2,11 @@ import type { LessonId } from '@/content/types'
 import { COURSE_IDS, lessonIndex } from '@/content/courses'
 import { stepIdsOf } from '@/content/steps'
 import type { Repo } from './repo'
+import { courseIdFromTitle } from '@/content/courses'
+import { isMtSlot, mtOpenState } from '@shared/microteaching'
 import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
+  MtSlot,
   AiProposal,
   AppUser,
   ClassDoc,
@@ -84,6 +87,7 @@ const kParticipation = (c: string) => `c.${c}.participation`
 const kPublished = (c: string) => `c.${c}.published`
 const kEnrollments = (c: string) => `c.${c}.enrollments`
 const kRoster = (c: string) => `c.${c}.roster`
+const kMtSlots = (c: string) => `c.${c}.mtSlots`
 const kProposals = (c: string) => `c.${c}.aiProposals`
 const kPairHistory = (c: string) => `c.${c}.pairHistory`
 const kGroupRounds = (c: string) => `c.${c}.groupRounds`
@@ -336,6 +340,30 @@ export function createLocalRepo(): Repo {
     },
     watchPicks(classId, cb) {
       return subscribe(() => cb(read<PickRecord[]>(kPicks(classId), [])))
+    },
+
+    /* ── 마이크로티칭 신청 — 서버 함수(functions/api/_lib/microteaching.ts)와 같은 검사 ── */
+    watchMtSlots(classId, cb) {
+      return subscribe(() => cb(read<MtSlot[]>(kMtSlots(classId), [])))
+    },
+    async applyMicroteaching(classId, slotId, uid) {
+      const cls = read<ClassDoc[]>('classes', []).find((c) => c.id === classId)
+      if (!cls) return { ok: false, message: '그 클래스가 없습니다.' }
+      const courseId = cls.courseId ?? courseIdFromTitle(cls.courseTitle)
+      const enr = read<Enrollment[]>(kEnrollments(classId), []).find((e) => e.uid === uid)
+      if (!enr || enr.status !== 'active') return { ok: false, message: '이 클래스의 수강생만 신청할 수 있습니다.' }
+      if (mtOpenState(cls.microteachingOpenAt, Date.now()) !== 'open') return { ok: false, message: '아직 신청 기간이 아닙니다.' }
+      if (!isMtSlot(courseId, slotId)) return { ok: false, message: '없는 자리입니다. 화면을 새로 고치세요.' }
+      const list = read<MtSlot[]>(kMtSlots(classId), [])
+      if (list.some((s) => s.slotId === slotId && s.uid !== uid)) return { ok: false, message: '방금 다른 사람이 그 자리를 신청했습니다. 다른 자리를 고르세요.' }
+      const name = read<RosterEntry[]>(kRoster(classId), []).find((r) => r.uid === uid)?.rosterName?.trim() || enr.nickname
+      const [date, order] = slotId.split('_')
+      write(kMtSlots(classId), [...list.filter((s) => s.uid !== uid), { slotId, date, order: Number(order), uid, studentId: enr.studentId ?? '', name, nickname: enr.nickname, at: Date.now() }])
+      return { ok: true }
+    },
+    async cancelMicroteaching(classId, uid) {
+      write(kMtSlots(classId), read<MtSlot[]>(kMtSlots(classId), []).filter((s) => s.uid !== uid))
+      return { ok: true }
     },
 
     /* ── 모둠·참여 ── */

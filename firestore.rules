@@ -360,6 +360,23 @@ service cloud.firestore {
         allow delete: if isInstructor();
       }
 
+      /*
+       * ── 마이크로티칭 발표 신청 (강의자 지시 2026-10-03) ──
+       *   mtSlots          자리 하나 — 학번·이름이 든 발표 일정표라 같은 클래스 사람이 읽는다.
+       *   mtApplications   내 자리 가리킴 — 본인과 강사만.
+       *   쓰기는 서버 함수(서비스 계정)만 한다 — 한 자리에 두 사람, 한 사람이 두 자리를 막는 것이 거기 있다.
+       *   강사의 직접 쓰기도 열어 둔다(콘솔에서 손질할 때).
+       */
+      match /mtSlots/{slotId} {
+        allow read: if isEnrolled(cid) || isInstructor();
+        allow write: if isInstructor();
+      }
+
+      match /mtApplications/{userId} {
+        allow read: if isSelf(userId) || isInstructor();
+        allow write: if isInstructor();
+      }
+
       /* 루미 런 결과 — 게임 서버 → 서버 함수(서비스 계정)만 쓴다. 강사가 읽는다. 학생은 세션의 요약으로 본다. */
       match /lumiResults/{resultId} {
         allow read, delete: if isInstructor();

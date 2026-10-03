@@ -30,6 +30,8 @@
     "check:ai": "node --import ./scripts/_loader.mjs scripts/check-ai.mjs",
     "verify:stimulus": "node --import ./scripts/_loader.mjs scripts/verify-stimulus.mjs",
     "verify:figures": "node --import ./scripts/_loader.mjs scripts/verify-figures.mjs",
+    "verify:microteaching": "node --import ./scripts/_loader.mjs scripts/verify-microteaching.mjs",
+    "test:microteaching": "node --import ./scripts/_loader.mjs scripts/test-microteaching.mjs",
     "verify:theory": "node --import ./scripts/_loader.mjs scripts/verify-theory.mjs",
     "verify:groups": "node --import ./scripts/_loader.mjs scripts/verify-groups.mjs",
     "verify": "node scripts/verify-all.mjs",

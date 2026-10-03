@@ -43,6 +43,23 @@ export interface ClassDoc {
   groupFormationLessons?: LessonId[]
   /** 차시마다 쓴 아이스브레이킹 질문 id — 학기 안에 되풀이하지 않는다 (8차 5.2) */
   formationQuestions?: Record<string, string>
+  /** 마이크로티칭 신청을 학생에게 여는 때(ms). 없으면 강사만 본다 (강의자 지시 2026-10-03) */
+  microteachingOpenAt?: number | null
+}
+
+/**
+ * 마이크로티칭 발표 자리 — classes/{cid}/mtSlots/{slotId}. 서버 함수만 쓴다.
+ * 학번과 이름이 같은 클래스 사람에게 보인다 — 발표 일정표이기 때문이다 (강의자 지시 2026-10-03).
+ */
+export interface MtSlot {
+  slotId: string
+  date: string
+  order: number
+  uid: string
+  studentId: string
+  name: string
+  nickname: string
+  at: number
 }
 
 export interface LessonState {

@@ -21,8 +21,10 @@ import type { LessonId } from '@/content/types'
 import { COURSE_IDS, courseIdFromTitle, lessonIndex } from '@/content/courses'
 import { stepIdsOf } from '@/content/steps'
 import type { Repo } from './repo'
+import { apiPost } from './api'
 import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
+  MtSlot,
   AiLog,
   AiProposal,
   AppUser,
@@ -436,6 +438,24 @@ export function createFirestoreRepo(db: Firestore): Repo {
     async recordPick(classId, pick) {
       await setDoc(cd(db, classId, 'picks', pick.id), { ...pick, serverAt: serverTimestamp() })
     },
+    /* ── 마이크로티칭 신청 — 읽기만 직접, 쓰기는 서버 함수 ── */
+    watchMtSlots(classId, cb) {
+      return onSnapshot(
+        cc(db, classId, 'mtSlots'),
+        (snap) => cb(snap.docs.map((s) => s.data() as MtSlot).sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order)),
+        (err) => {
+          console.error('[마이크로티칭] 자리 목록을 읽지 못했다:', err)
+          cb([])
+        },
+      )
+    },
+    async applyMicroteaching(classId, slotId) {
+      return apiPost('/api/microteaching/apply', { classId, slotId })
+    },
+    async cancelMicroteaching(classId, uid) {
+      return apiPost('/api/microteaching/cancel', { classId, uid })
+    },
+
     watchPicks(classId, cb) {
       return onSnapshot(
         cc(db, classId, 'picks'),

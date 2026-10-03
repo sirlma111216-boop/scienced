@@ -52,7 +52,7 @@ npm run dev          # http://localhost:5173
 ## 배포 전 검증
 
 ```bash
-npm run verify        # 19종 — 소스 불변식
+npm run verify        # 20종 — 소스 불변식
 npm run typecheck
 npm run lint
 ```

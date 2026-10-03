@@ -2,7 +2,7 @@
 
 ## 「완료」라고 말하기 전에
 
-검증기 19종은 **소스의 불변식**만 본다. 실제로 터진 버그는 전부 그 바깥, **이음매**에 있었다.
+검증기 20종은 **소스의 불변식**만 본다. 실제로 터진 버그는 전부 그 바깥, **이음매**에 있었다.
 
 | 터진 것 | 검증기가 못 잡은 이유 |
 |---|---|
@@ -125,6 +125,13 @@
 - 외부 설정 셋: Cloudflare `LUMI_SHARED_SECRET` / Render `LESSON_SHARED_SECRET`(같은 값) · `LESSON_RESULT_URL`.
 - 로컬 저장 모드에서는 브라우저가 `local-dev` 비밀로 티켓을 만든다. webhook 은 `npm run test:lumi` 가 확인한다.
 
+## 마이크로티칭 발표 신청 (강의자 지시 2026-10-03)
+
+일정은 **`shared/microteaching.ts` 하나**다 (교육론 19자리 · 교수법 14자리). 화면 · 서버 함수 · 검증기가 같은 것을 읽는다.
+- 학생 화면 `/microteaching/apply` 은 클래스 문서의 `microteachingOpenAt` 이 지나야 열린다. 강사는 클래스 관리의 「마이크로티칭 신청」 탭에서 언제나 보고, 여는 때를 정하고, 미신청자를 세고, 남의 자리를 뺀다.
+- **쓰기는 서버 함수만 한다** (`functions/api/microteaching/apply · cancel` → `_lib/microteaching.ts`). 실명(명단)을 옮겨 적어야 하고, 한 자리에 두 사람 · 한 사람이 두 자리를 Firestore commit 의 「없을 때만」 조건과 같은 commit 의 삭제로 막는다. 화면은 `mtSlots` 를 구독해 그리기만 한다. 로컬 저장 모드는 `repo-local` 이 같은 검사를 흉내 낸다.
+- 자리 문서(`mtSlots`)에는 학번과 이름이 들어 있고 같은 클래스 사람이 읽는다 — 발표 일정표다. `verify:microteaching` · `test:microteaching` 이 센다.
+
 ## 전체 공지 · 번들 (2026-10-02)
 
 - **전체 공지**는 `src/lib/notice.ts` 의 `SITE_NOTICES` 에 한 줄을 더하고 배포한다. 로그인을 마친 모든 화면(`App.tsx` 의 `Guard`)에 창으로 뜨고, 기간(`from`~`until`, 시간대 포함)이 지나면 사라지고, 닫으면 그 기기에서 다시 뜨지 않는다. `verify:a11y` 「공지」가 센다.
@@ -133,7 +140,7 @@
 ## 검사 명령
 
 ```bash
-npm run verify        # 19종 — 소스 불변식
+npm run verify        # 20종 — 소스 불변식
 npm run typecheck
 npm run lint
 npm run emulators     # 아래의 선행
@@ -143,6 +150,7 @@ npm run test:flow     # 클래스 만들기 → 등록 → 제출 → 강사가 
 npm run test:delete   # 지우기가 하위 자료까지 치우는지 + 걸리는 시간
 npm run test:lumi     # 루미 런 결과 webhook 함수를 그대로 불러 발표자 저장·멱등·거절을 본다
 npm run audit:games   # 에뮬레이터 없이 — 차시에 놓인 게임을 앱의 계산으로 끝까지 돌린 표
+npm run test:microteaching # 마이크로티칭 신청 서버 계산을 그대로 불러 자격·기간·자리 다툼·옮기기·취소·규칙을 본다
 ```
 
 ## Windows 에서 파일을 고칠 때

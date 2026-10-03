@@ -36,13 +36,13 @@ function Loading() {
   )
 }
 
-function lazyRoute(name: string, load: () => Promise<ComponentType>) {
+function lazyRoute<P extends object = Record<string, never>>(name: string, load: () => Promise<ComponentType<P>>) {
   return lazy(() =>
     load()
       .then((component) => ({ default: component }))
       .catch((err) => {
         console.error(`[화면] ${name} 화면을 불러오지 못했다:`, err)
-        return { default: LoadFailed }
+        return { default: LoadFailed as unknown as ComponentType<P> }
       }),
   )
 }
@@ -59,6 +59,7 @@ const InstructorClasses = lazyRoute('강사 홈', () => import('@/routes/instruc
 const InstructorClassStudents = lazyRoute('클래스 명단', () => import('@/routes/instructor/ClassStudents').then((m) => m.InstructorClassStudents))
 const InstructorClassGroups = lazyRoute('클래스 모둠', () => import('@/routes/instructor/ClassGroups').then((m) => m.InstructorClassGroups))
 const InstructorClassSettings = lazyRoute('클래스 설정', () => import('@/routes/instructor/ClassSettings').then((m) => m.InstructorClassSettings))
+const MicroteachingApply = lazyRoute('마이크로티칭 신청', () => import('@/routes/MicroteachingApply').then((m) => m.MicroteachingApply))
 
 /**
  * 라우트 보호.
@@ -187,6 +188,14 @@ export function App() {
               </Guard>
             }
           />
+          <Route
+            path="/microteaching/apply"
+            element={
+              <Guard>
+                <MicroteachingApply />
+              </Guard>
+            }
+          />
 
           {/* 강사 — 수업 화면 하나 */}
           <Route
@@ -219,6 +228,14 @@ export function App() {
             element={
               <Guard instructorOnly classOptional>
                 <InstructorClassStudents />
+              </Guard>
+            }
+          />
+          <Route
+            path="/instructor/class/:classId/microteaching"
+            element={
+              <Guard instructorOnly classOptional>
+                <MicroteachingApply admin />
               </Guard>
             }
           />

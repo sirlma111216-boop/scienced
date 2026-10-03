@@ -111,6 +111,14 @@ export function Home() {
                 관찰 코드와 재수업 기록
               </p>
             </Link>
+            <Link to="/microteaching/apply" style={{ color: 'inherit' }}>
+              <p className="text-headline" style={{ margin: 0 }}>
+                발표 신청
+              </p>
+              <p className="text-body-sm" style={{ marginTop: 8 }}>
+                마이크로티칭 날짜와 순서를 고른다
+              </p>
+            </Link>
           </div>
         </ColorBlock>
       </div>
