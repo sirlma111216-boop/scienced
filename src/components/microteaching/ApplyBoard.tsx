@@ -169,6 +169,15 @@ export function ApplyBoard({
           </table>
         </ScrollX>
       </section>
+
+      {/* 강의자 지시 2026-10-03 — 신청 화면 맨 아래에 안내 상자 하나 */}
+      <div style={{ marginTop: 32 }}>
+        <Notice tone="cream">
+          <p className="text-body" style={{ margin: 0 }}>
+            마이크로티칭 주제와 수행 방법은 강의 시간에 안내해 드립니다.
+          </p>
+        </Notice>
+      </div>
     </div>
   )
 }
