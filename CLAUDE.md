@@ -130,6 +130,7 @@
 일정은 **`shared/microteaching.ts` 하나**다 (교육론 19자리 · 교수법 14자리). 화면 · 서버 함수 · 검증기가 같은 것을 읽는다.
 - 학생 화면 `/microteaching/apply` 은 클래스 문서의 `microteachingOpenAt` 이 지나야 열린다. 강사는 클래스 관리의 「마이크로티칭 신청」 탭에서 언제나 보고, 여는 때를 정하고, 미신청자를 세고, 남의 자리를 뺀다.
 - **쓰기는 서버 함수만 한다** (`functions/api/microteaching/apply · cancel` → `_lib/microteaching.ts`). 실명(명단)을 옮겨 적어야 하고, 한 자리에 두 사람 · 한 사람이 두 자리를 Firestore commit 의 「없을 때만」 조건과 같은 commit 의 삭제로 막는다. 화면은 `mtSlots` 를 구독해 그리기만 한다. 로컬 저장 모드는 `repo-local` 이 같은 검사를 흉내 낸다.
+- **때가 되면 창이 저절로 뜬다** (`components/microteaching/OpenPopup.tsx`, `Guard` 에 붙어 있다). 신청 전인 학생에게 어느 화면에서든 뜨고 「신청 화면으로 가기」 단추가 있다. 신청을 마치면 사라지고, [닫기]는 그 탭에서만 통한다 — 다음에 들어오면 다시 뜬다. 열린 때는 15초마다 다시 본다.
 - 자리 문서(`mtSlots`)에는 학번과 이름이 들어 있고 같은 클래스 사람이 읽는다 — 발표 일정표다. `verify:microteaching` · `test:microteaching` 이 센다.
 
 ## 전체 공지 · 번들 (2026-10-02)

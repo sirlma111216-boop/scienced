@@ -7,6 +7,7 @@ import { Home } from '@/routes/Home'
 import { Lesson } from '@/routes/Lesson'
 import { ClassSelect } from '@/routes/ClassSelect'
 import { SiteNoticePopup } from '@/components/notice/SiteNoticePopup'
+import { MicroteachingOpenPopup } from '@/components/microteaching/OpenPopup'
 
 /**
  * 열 때 받는 화면 (2026-10-02).
@@ -108,11 +109,12 @@ function Guard({
       </div>
     )
   }
-  /* 전체 공지 — 로그인을 마친 화면이면 어디서든 뜬다 (강의자 지시 2026-10-02) */
+  /* 전체 공지 — 로그인을 마친 화면이면 어디서든 뜬다 (강의자 지시 2026-10-02). 마이크로티칭 신청이 열리면 그 창도 (2026-10-03) */
   return (
     <>
       {children}
       <SiteNoticePopup />
+      <MicroteachingOpenPopup />
     </>
   )
 }

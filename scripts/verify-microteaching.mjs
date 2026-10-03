@@ -92,6 +92,15 @@ const { MT_SCHEDULE, MT_ORDER_LABEL, isMtSlot, mtDateLabel, mtOpenState, mtSched
   must(/lazyRoute\('마이크로티칭 신청'/.test(app), '경로', '신청 화면이 첫 번들에 들어갔다 — lazyRoute 로 둔다')
   const admin = await readFile('src/components/instructor/ClassAdmin.tsx', 'utf8')
   must(/to: 'microteaching'/.test(admin), '길잡이', '클래스 관리 탭에 마이크로티칭 신청이 없다 — 강사가 현황을 볼 자리')
+  /* 열리면 저절로 뜨는 창 — 로그인한 화면 어디서나, 신청 전인 학생에게, 신청 화면으로 가는 단추와 함께 */
+  const popup = await readFile('src/components/microteaching/OpenPopup.tsx', 'utf8')
+  must(/<MicroteachingOpenPopup \/>/.test(app), '열림 창', 'App.tsx 의 Guard 가 MicroteachingOpenPopup 을 그리지 않는다 — 때가 되어도 창이 뜨지 않는다')
+  must(/mtOpenState\(openAt, now\) === 'open'/.test(popup) && /setInterval/.test(popup), '열림 창', '열린 때를 주기적으로 다시 보지 않는다 — 화면을 열어 둔 채 그 시각이 와도 안 뜬다')
+  must(/watchMtSlots/.test(popup) && /slots\.some\(\(s\) => s\.uid === user\.uid\)/.test(popup), '열림 창', '신청을 마친 학생에게도 창이 뜬다')
+  must(/navigate\('\/microteaching\/apply'\)/.test(popup), '열림 창', '신청 화면으로 가는 단추가 없다')
+  must(/sessionStorage/.test(popup), '열림 창', '닫은 기록이 탭을 넘어 남는다 — 신청 전에는 다음에 들어올 때 다시 떠야 한다')
+  must(/isInstructor/.test(popup) && /return null/.test(popup), '열림 창', '강사에게도 창이 뜬다')
+
   const board = await readFile('src/components/microteaching/ApplyBoard.tsx', 'utf8')
   for (const k of ['취소', '전체 일정', 'datetime-local', '아직 신청하지 않은 사람']) must(board.includes(k), '화면', `신청 판에 「${k}」가 없다`)
   must(/isMine \|\| isInstructor/.test(board), '화면', '남의 자리에 취소 단추가 보인다 (강사 빼고)')

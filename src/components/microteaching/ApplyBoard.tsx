@@ -8,6 +8,7 @@ import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/com
  * 학생과 강사가 같은 판을 본다. 날짜마다 상자 하나, 상자 안에 「첫 번째 발표 · 두 번째 발표 · …」 단추.
  * 누르면 그 자리에 학번과 이름이 적히고 아래 표에도 같은 것이 보인다. 자기 자리만 취소할 수 있다.
  * 강사는 공개 시각을 정하고, 누가 아직 신청하지 않았는지 보고, 남의 자리도 뺄 수 있다(학생이 부탁할 때).
+ * 안내 글은 존댓말이다 — 「신청은 아직 열리지 않았다」가 반말로 읽혔다 (강의자 지시 2026-10-03).
  */
 export function ApplyBoard({
   courseId,
@@ -55,10 +56,10 @@ export function ApplyBoard({
           마이크로티칭 발표 신청 · {schedule.title}
         </p>
         <p className="text-headline" style={{ margin: '12px 0 0' }}>
-          {state === 'scheduled' && typeof openAt === 'number' ? `${fmt(openAt)}에 신청이 열린다.` : '신청은 아직 열리지 않았다.'}
+          {state === 'scheduled' && typeof openAt === 'number' ? `${fmt(openAt)}에 신청이 열립니다.` : '신청은 아직 열리지 않았습니다.'}
         </p>
         <p className="text-body" style={{ marginTop: 12 }}>
-          {state === 'scheduled' ? '그때 이 화면에 날짜와 자리가 뜬다. 한 사람이 한 자리를 고른다.' : '강사가 여는 때가 정해지면 이 화면에 그 때가 뜬다.'}
+          {state === 'scheduled' ? '그때 이 화면에 날짜와 자리가 뜹니다. 한 사람이 한 자리를 고릅니다.' : '강사가 여는 때를 정하면 이 화면에 그 때가 뜹니다.'}
         </p>
       </ColorBlock>
     )
@@ -74,7 +75,7 @@ export function ApplyBoard({
           {mine ? `내 자리 — ${mtDateLabel(mine.date)} ${MT_ORDER_LABEL[mine.order - 1]}` : '날짜 상자에서 발표 순서 하나를 누르세요.'}
         </p>
         <p className="text-body" style={{ marginTop: 12 }}>
-          {schedule.minutes}. 한 사람이 한 자리다. 내 자리는 취소하고 다른 날짜나 순서로 옮길 수 있다.
+          {schedule.minutes}. 한 사람이 한 자리입니다. 내 자리는 취소하고 다른 날짜나 순서로 옮길 수 있습니다.
         </p>
         <Caption>
           신청 {slots.length} / {schedule.total}
@@ -236,7 +237,7 @@ function InstructorPanel({
           </Button>
           <Badge solid={state === 'open'}>{state === 'open' ? '학생에게 열림' : state === 'scheduled' ? `${fmt(openAt as number)}에 열림` : '학생에게 닫힘'}</Badge>
         </div>
-        <Caption>때를 비우면 학생 화면에서 이 신청이 사라진다. 지금은 {fmt(now)}.</Caption>
+        <Caption>때를 비우면 학생 화면에서 이 신청이 사라집니다. 지금은 {fmt(now)}입니다.</Caption>
         <p className="text-body-sm" style={{ margin: '12px 0 0' }}>
           아직 신청하지 않은 사람 {missing.length} / {active.length}
           {missing.length ? ` — ${missing.map((e) => `${e.studentId ?? ''} ${nameOf(e.uid) || e.nickname}`.trim()).join(', ')}` : ''}
