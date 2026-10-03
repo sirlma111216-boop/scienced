@@ -33,6 +33,7 @@ export const MT_SCHEDULE: Record<MtCourseId, MtCourseSchedule> = {
     courseId: 'edu',
     title: '과학교육론',
     total: 19,
+    // wording-ok: 발표 시간 — 강의자가 정한 마이크로티칭 길이이지 앱의 진행 시간이 아니다
     minutes: '한 사람 10분 안팎 (1~2분 넘거나 모자라도 된다)',
     days: [
       { date: '2026-11-02', count: 2 },
@@ -48,6 +49,7 @@ export const MT_SCHEDULE: Record<MtCourseId, MtCourseSchedule> = {
     courseId: 'method',
     title: '과학교과교수법',
     total: 14,
+    // wording-ok: 발표 시간 — 강의자가 정한 마이크로티칭 길이이지 앱의 진행 시간이 아니다
     minutes: '한 사람 최소 15분, 최장 20분',
     days: [
       { date: '2026-10-27', count: 2 },

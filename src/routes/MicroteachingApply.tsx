@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
-import type { Enrollment, MtSlot, RosterEntry } from '@/lib/types'
+import type { Enrollment, MtSlot } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { ClassAdminHeader } from '@/components/instructor/ClassAdmin'
+import { useRosterNames } from '@/components/instructor/roster-names'
 import { ApplyBoard } from '@/components/microteaching/ApplyBoard'
 
 /**
@@ -23,7 +24,6 @@ export function MicroteachingApply({ admin = false }: { admin?: boolean }) {
   const courseId = courseOf(cls)
   const [slots, setSlots] = useState<MtSlot[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
-  const [roster, setRoster] = useState<RosterEntry[]>([])
   const [now, setNow] = useState(() => Date.now())
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -34,20 +34,15 @@ export function MicroteachingApply({ admin = false }: { admin?: boolean }) {
   }, [repo, classId])
   useEffect(() => {
     if (!repo || !classId || !isInstructor) return
-    const a = repo.watchEnrollments(classId, setEnrollments)
-    const b = repo.watchRoster(classId, setRoster)
-    return () => {
-      a()
-      b()
-    }
+    return repo.watchEnrollments(classId, setEnrollments)
   }, [repo, classId, isInstructor])
+  /* 실명은 강사일 때만 구독한다 — 학생 화면은 자리 문서에 적힌 이름만 본다 */
+  const nameOf = useRosterNames(isInstructor ? classId : '')
   /* 여는 때가 지나면 새로 고치지 않아도 열린다 */
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 15000)
     return () => window.clearInterval(t)
   }, [])
-
-  const nameOf = useCallback((uid: string) => roster.find((r) => r.uid === uid)?.rosterName ?? '', [roster])
 
   if (admin && !isInstructor) return <Navigate to="/" replace />
   if (!classId) return <Navigate to={isInstructor ? '/instructor/classes' : '/class'} replace />
