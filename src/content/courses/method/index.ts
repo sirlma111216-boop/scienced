@@ -26,7 +26,7 @@ export const METHOD_INDEX: LessonIndexEntry[] = [
   idx('06', 6, '2022 개정 과학과 교육과정 읽기', '성취기준 한 문장은 수업에서 무엇을 지키고 무엇을 빼라고 말하는가?', true, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('07', 7, '성취기준을 한 차시 수업으로 바꾸기', '성취기준 한 문장을 수업으로 옮길 때 활동보다 먼저 정해야 하는 것은 무엇인가?', true, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('08', 8, '탐구는 실험 순서를 따라 하는 것인가', '무엇이 있어야 한 활동을 탐구라고 부를 수 있는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
-  idx('09', 9, '과학·공학 실행과 모형 기반 탐구', '학생의 모형이 새 자료와 어긋날 때 교사는 무엇을 먼저 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('09', 9, '과학·공학적 실천과 모형 기반 탐구', '학생의 모형이 새 자료와 맞지 않을 때 교사는 무엇을 먼저 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('10', 10, '교수·학습 모형을 선택하고 변형하기', '수업 조건이 바뀌었을 때 교수·학습 모형에서 무엇을 남기고 무엇을 빼는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('11', 11, '설명·비유·모형·표상으로 이해시키기', '비유는 어디까지 쓰고 어디서 멈춰야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('12', 12, '질문·토론·과학적 논증', '학생들이 결론만 주고받을 때 교사는 다음 한마디로 무엇을 요구해야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),

@@ -6,7 +6,7 @@ import { Rich } from '@/components/theory/Rich'
 /**
  * 개념 카드 — 화면 한 장, 넘길 층이 없다 (8차 4.4).
  *
- *   이름 → 무엇인가(문단) → 왜 필요한가(문단) → 교실에서(문단) → 기준 3줄 → 헷갈리는 것 → 잠깐 확인 → (접힘) 더 읽기
+ *   이름 → 무엇인가(문단) → 처음 보는 말(있으면, 늘 펼침) → 왜 필요한가(문단) → 교실에서(문단) → 기준 3줄 → 헷갈리는 것 → 잠깐 확인 → (접힘) 더 읽기
  *
  * 쓰는 칸이 없다. 강사가 화면을 띄우고 설명한다.
  * 잠깐 확인(4지선다, 이유 칸 없음)은 children 으로 받는다 — 학생은 푸는 칸, 강사는 분포 (강의자 지시 2026-09-18).
@@ -27,6 +27,7 @@ export function ConceptCard({ concept, index, children }: { concept: KeyConcept;
         </div>
 
         <Paragraph label="무엇인가" text={concept.what} />
+        <Terms terms={concept.terms} />
         <Paragraph label="왜 필요한가" text={concept.why} />
         <Paragraph label="교실에서" text={concept.inClass} />
 
@@ -67,6 +68,31 @@ export function KeyPoints({ points, compact = false, name }: { points: readonly 
           </li>
         ))}
       </ol>
+    </div>
+  )
+}
+
+/**
+ * 처음 보는 말 (강의자 지시 2026-10-06 — 「강의자가 봐도 생소한데 수강생은 어떻겠는가. 새 용어는 자세히 풀어 설명하라」).
+ * 접지 않는다 — 카드를 따라가는 데 필요한 풀이라서다.
+ */
+function Terms({ terms }: { terms?: Array<{ term: string; plain: string }> }) {
+  if (!terms || terms.length === 0) return null
+  return (
+    <div className="bg-canvas rounded-md" style={{ padding: '12px 16px', marginTop: 12 }}>
+      <Caption>처음 보는 말</Caption>
+      <dl style={{ margin: '6px 0 0' }}>
+        {terms.map((t) => (
+          <div key={t.term} style={{ marginTop: 8 }}>
+            <dt className="text-body" style={{ fontWeight: 700 }}>
+              {t.term}
+            </dt>
+            <dd className="text-body" style={{ margin: '2px 0 0' }}>
+              <Rich text={t.plain} />
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }
