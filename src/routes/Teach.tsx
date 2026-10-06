@@ -14,7 +14,7 @@ import { FormationPanel } from '@/components/groups/FormationPanel'
 import { MusicToggle } from '@/components/teach/MusicToggle'
 import { NamesProvider, Overlay, useNames } from '@/components/teach/names'
 import { TheoryProvider } from '@/components/theory/TheoryContext'
-import { Button, Caption } from '@/components/ui'
+import { Caption } from '@/components/ui'
 
 /**
  * 강사 — 수업 화면 /teach/:classId/:lessonId (8차 7절). 화면 하나로 가르친다.
@@ -22,8 +22,8 @@ import { Button, Caption } from '@/components/ui'
  *   머리   ← 차시 목록 · 제목 · 단계 알약(가로 스크롤) · 실명 가리기 · 명단 n/N · 음악
  *   본문   학생 화면과 같은 블록(LessonBody)에 조작부가 인라인으로 붙는다
  *
- * ★ 수업 중에 누르는 단추는 다섯 가지뿐이다 (7.3 · verify:teach — 발표 모드는 강의자 지시로 뺐다):
- *   단계 열기 · 자료 공개 · 모둠 나누기 · 게임 시작 · 응답 펼치기(응답 n/N ▸ · 올라온 글 n ▸ · 모둠별 ▸)
+ * ★ 수업 중에 누르는 단추는 네 가지뿐이다 (7.3 · verify:teach — 발표 모드와 단계 열기는 강의자 지시로 뺐다):
+ *   자료 공개 · 모둠 나누기 · 게임 시작 · 응답 펼치기(응답 n/N ▸ · 올라온 글 n ▸ · 모둠별 ▸)
  * 화면을 띄울 때 실명은 「실명 가리기」로 가린다.
  */
 export function Teach() {
@@ -121,19 +121,6 @@ export function Teach() {
     },
     [repo, classId, attendanceLessonId, attendEdit, answered],
   )
-  const openSteps = useMemo(() => session?.openSteps ?? [], [session?.openSteps])
-  const toggleStep = useCallback(
-    async (sid: string) => {
-      if (!repo) return
-      const next = openSteps.includes(sid) ? openSteps.filter((x) => x !== sid) : [...openSteps, sid]
-      try {
-        await repo.setSession(classId, lessonId, { openSteps: next, currentStepId: sid, stepOpen: next.includes(sid) })
-      } catch (err) {
-        console.error('[수업] 단계를 열지 못했다:', err)
-      }
-    },
-    [repo, classId, lessonId, openSteps],
-  )
   const onReveal = useCallback(
     async (gateId: string, open: boolean) => {
       if (!repo) return
@@ -186,13 +173,11 @@ export function Teach() {
                 <ol role="tablist" aria-label="수업 단계" className="step-tabs" style={{ overflowX: 'auto', flexWrap: 'nowrap' }}>
                   {steps.map((s, i) => {
                     const selected = s.id === step?.id
-                    const opened = openSteps.includes(s.id)
                     return (
                       <li key={s.id} role="presentation">
-                        <button type="button" role="tab" id={`step-tab-${s.id}`} aria-selected={selected} aria-controls={`step-panel-${s.id}`} tabIndex={selected ? 0 : -1} className="tab-step" onClick={() => setStepId(s.id)} aria-label={`${i + 1}단계 ${s.title}${opened ? ' · 열림' : ''}`} title={s.title}>
+                        <button type="button" role="tab" id={`step-tab-${s.id}`} aria-selected={selected} aria-controls={`step-panel-${s.id}`} tabIndex={selected ? 0 : -1} className="tab-step" onClick={() => setStepId(s.id)} aria-label={`${i + 1}단계 ${s.title}`} title={s.title}>
                           <span className="step-meta" aria-hidden="true">
                             {String(i + 1).padStart(2, '0')}
-                            {opened ? ' ✓' : ''}
                           </span>
                           <span className="step-name step-name-short" aria-hidden="true">
                             {s.shortTitle}
@@ -217,17 +202,11 @@ export function Teach() {
                 {/* 차시 머리 — 학생과 같은 부품 */}
                 {step.kind === 'intro' ? <LessonHeader lesson={lesson} /> : null}
 
-                {/* 단계 머리 — 단계 열기. 모둠 나누기는 본문의 오늘의 질문 블록 옆에 있다 */}
+                {/* 단계 머리 — 쓰는 칸은 처음부터 열려 있다. 모둠 나누기는 본문의 오늘의 질문 블록 옆에 있다 */}
                 <div className="flex items-center gap-xs no-print" style={{ flexWrap: 'wrap', marginBottom: 4 }}>
                   <h2 className="text-headline" style={{ margin: 0 }}>
                     {step.title}
                   </h2>
-                  {step.fields.length > 0 ? (
-                    <Button variant={openSteps.includes(step.id) ? 'primary' : 'secondary'} aria-pressed={openSteps.includes(step.id)} onClick={() => void toggleStep(step.id)}>
-                      단계 열기
-                    </Button>
-                  ) : null}
-                  {step.fields.length > 0 ? <Caption>{openSteps.includes(step.id) ? '학생이 쓸 수 있다' : '누르면 이 단계의 칸이 열린다'}</Caption> : null}
                 </div>
                 <p className="text-body-sm no-print" style={{ margin: '0 0 16px', opacity: 0.72 }}>
                   아래는 학생 화면 그대로다. 잠긴 것은 학생에게도 잠겨 있다. 단추와 「… ▸」 접기만 강사에게 보인다.

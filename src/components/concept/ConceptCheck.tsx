@@ -10,7 +10,7 @@ import { ConceptCard } from '@/components/concept/ConceptCard'
  *
  * 한 단계의 확인을 응답 문서 하나에 모은다. 새 판이 앞 판을 대신하므로
  * 연달아 누른 답이 서로를 지우지 않게 저장을 줄 세우고, 지금까지 고른 것을 모두 담아 낸다.
- * 단계 열기와 상관없이 풀 수 있다 — 쓰는 칸이 아니다.
+ * 쓰는 칸이 아니다 — 제출 현황에 세지 않는다.
  */
 export function StudentConceptCards({ classId, lessonId, step }: { classId: string; lessonId: LessonId; step: Step }) {
   const { repo, user } = useAuth()

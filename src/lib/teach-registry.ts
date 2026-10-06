@@ -43,8 +43,8 @@ export const CONTROLS: Record<BlockKind, ControlId[]> = {
   more: [],
 }
 
-/** 7.3 — 수업 화면에 있는 단추 다섯 가지. 이 밖의 단추가 있으면 verify:teach 가 실패한다 */
-export const TEACH_BUTTONS = ['단계 열기', '자료 공개', '모둠 나누기', '게임 시작', '응답 펼치기'] as const
+/** 7.3 — 수업 화면에 있는 단추 네 가지. 이 밖의 단추가 있으면 verify:teach 가 실패한다. 「단계 열기」는 2026-10-06 에 없앴다 */
+export const TEACH_BUTTONS = ['자료 공개', '모둠 나누기', '게임 시작', '응답 펼치기'] as const
 
 export interface Block {
   /** `${stepId}:${kind}:${key}` */

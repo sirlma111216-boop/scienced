@@ -279,7 +279,7 @@ export interface GameResult {
 
 export interface SessionState {
   lessonId: LessonId
-  /** 강사가 학생에게 연 단계 id (8차 7.1 「단계 열기」) */
+  /** 옛 「단계 열기」 기록 — 2026-10-06 에 단추를 없애 더는 읽지 않는다 */
   openSteps?: string[]
   currentStepId: string | null
   stepOpen: boolean

@@ -33,7 +33,7 @@ import { payloadOf, submitted as isSubmitted } from '@/components/teach/names'
  *   블록마다 ① 학생 화면 그대로(잠김이면 잠김 카드, 열렸으면 그 칸) → ② 조작부 → ③ 「… n/N ▸」 접기 순서다.
  *   강사 화면이 학생 것을 다른 것으로 바꿔 끼우지 않는다 — 그렇게 했더니 강사가 학생이 무엇을 보는지 모른 채 물어보며 진행해야 했다.
  *   question → [모둠 나누기] · stimulusReveal → [자료 공개] · concepts → 잠깐 확인 「응답 n/N ▸」 · field → 「응답 n/N ▸」 · wall → 「올라온 글 n ▸」 · group → 「모둠별 ▸」 · game → [게임 시작]
- * 학생의 쓰는 칸은 강사가 「단계 열기」를 누른 뒤에만 열린다 (session.openSteps). 강사 화면도 그 전에는 잠김 카드를 본다.
+ * 학생의 쓰는 칸은 처음부터 열려 있다 — 「단계 열기」는 2026-10-06 에 없앴다 (강의자 지시: 열어 두는 것과 여는 것이 차이가 없다). 잠김은 「자료 공개」의 칸만 남는다.
  */
 export interface TeacherView extends TeacherGameProps {
   /** 이 단계의 응답 전부 */
@@ -83,8 +83,6 @@ export function LessonBody({
   const { user, isInstructor } = useAuth()
   const blocks = useMemo(() => stepBlocks(step, lesson), [step, lesson])
   const revealed = session?.revealed ?? []
-  /* 학생 화면 기준 — 강사도 같은 것을 본다 */
-  const stepOpen = (session?.openSteps ?? []).includes(step.id)
   const isOpen = (gate: { type: string; of: string }) => (gate.type === 'afterSubmit' ? true : revealed.includes(gate.of))
   const firstField = blocks.findIndex((b) => b.kind === 'field')
   const groups = round?.groups ?? []
@@ -213,16 +211,12 @@ export function LessonBody({
             )
           case 'field': {
             if (teacher) {
-              /* ① 학생이 지금 보는 칸 그대로 (단계를 열기 전엔 잠김 카드) → ③ 접힌 답 */
+              /* ① 학생이 지금 보는 칸 그대로 → ③ 접힌 답 */
               const f = b.field!
               const gateOpen = !f.gate || (f.gate.type === 'afterReveal' && revealed.includes(f.gate.of))
               return (
                 <div key={b.id} className="flex flex-col" style={{ gap: 12 }}>
-                  {!stepOpen ? (
-                    i === firstField ? (
-                      <LockedCard title={step.fields.map((x) => x.label).join(' · ')} message="강사가 이 단계를 열면 쓸 수 있다." />
-                    ) : null
-                  ) : gateOpen ? (
+                  {gateOpen ? (
                     <fieldset disabled aria-label={`${f.label} — 학생이 보는 칸`} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
                       <FieldRenderer def={f} value={undefined} error={null} disabled onChange={() => undefined} />
                     </fieldset>
@@ -236,8 +230,7 @@ export function LessonBody({
             if (i !== firstField) return null
             return (
               <div key={b.id}>
-                {stepOpen ? (
-                  <ResponseCollector classId={classId} lessonId={lesson.id} step={step} isGateOpen={isOpen}>
+                <ResponseCollector classId={classId} lessonId={lesson.id} step={step} isGateOpen={isOpen}>
                     {(submitted, doc) =>
                       step.activity && submitted ? (
                         <div className="flex flex-col" style={{ gap: 24, marginTop: 24 }}>
@@ -252,10 +245,7 @@ export function LessonBody({
                         </div>
                       ) : null
                     }
-                  </ResponseCollector>
-                ) : (
-                  <LockedCard title={step.fields.map((f) => f.label).join(' · ')} message="강사가 이 단계를 열면 쓸 수 있다." />
-                )}
+                </ResponseCollector>
               </div>
             )
           }
