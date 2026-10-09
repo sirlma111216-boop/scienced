@@ -24,6 +24,7 @@ const CHECKS = [
   ['verify:stimulus', '자료 — id · 꼬리표 · 대본 줄머리 · 자료 연결'],
   ['verify:figures', '그림 제작 명세 · 그림 속 글자 금지'],
   ['verify:theory', '이론 배경 — 깨진 표기 · 카드 연결 · 더 읽기'],
+  ['verify:record', '차시 활동 기록 — 강사만 · 읽기만 · 답을 글로 바꾸기 · 익명 번호'],
   ['verify:microteaching', '마이크로티칭 신청 — 일정 19/14 · 서버가 자격·기간·동시 신청을 가림 · 규칙 · 경로'],
 ]
 

@@ -12,6 +12,7 @@ export const CLASS_ADMIN_TABS = [
   { to: 'students', label: '수강생 명단' },
   { to: 'groups', label: '모둠' },
   { to: 'microteaching', label: '마이크로티칭 신청' },
+  { to: 'record', label: '차시 활동 기록' },
   { to: 'settings', label: '클래스 설정' },
 ] as const
 

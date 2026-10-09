@@ -60,6 +60,7 @@ const InstructorClasses = lazyRoute('강사 홈', () => import('@/routes/instruc
 const InstructorClassStudents = lazyRoute('클래스 명단', () => import('@/routes/instructor/ClassStudents').then((m) => m.InstructorClassStudents))
 const InstructorClassGroups = lazyRoute('클래스 모둠', () => import('@/routes/instructor/ClassGroups').then((m) => m.InstructorClassGroups))
 const InstructorClassSettings = lazyRoute('클래스 설정', () => import('@/routes/instructor/ClassSettings').then((m) => m.InstructorClassSettings))
+const LessonRecord = lazyRoute('차시 활동 기록', () => import('@/routes/instructor/LessonRecord').then((m) => m.LessonRecord))
 const MicroteachingApply = lazyRoute('마이크로티칭 신청', () => import('@/routes/MicroteachingApply').then((m) => m.MicroteachingApply))
 
 /**
@@ -230,6 +231,14 @@ export function App() {
             element={
               <Guard instructorOnly classOptional>
                 <InstructorClassStudents />
+              </Guard>
+            }
+          />
+          <Route
+            path="/instructor/class/:classId/record/:lessonId?"
+            element={
+              <Guard instructorOnly classOptional>
+                <LessonRecord />
               </Guard>
             }
           />
