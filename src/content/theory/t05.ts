@@ -108,7 +108,7 @@ export const t05: LessonTheory = {
         },
       ],
       linkedConceptId: 'c05-change',
-      plainTerms: ['쓰이는 범위가 좁아진다'],
+      plainTerms: ['범위가 좁아진다'],
       oneLine: '개념변화는 삭제가 아니라 지위의 변화. 옛 개념은 남고 지위만 내려간다.',
       verified: false,
     },
