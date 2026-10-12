@@ -119,6 +119,8 @@ function LibraryGame({
   const spec = gameSpec(kind)
   const state: GameState | null = session?.games?.[step.id] ?? null
   const [inputs, setInputs] = useState<GameInput[]>([])
+  /* 입력 구독이 한 번이라도 도착했는가 — 도착 전에는 결과를 확정하지 않는다 (상한이 지난 판을 새로 열면 빈 입력으로 확정하던 경쟁 · 2026-10-12) */
+  const [inputsReady, setInputsReady] = useState(false)
   const [now, setNow] = useState(() => serverNow())
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -132,7 +134,10 @@ function LibraryGame({
   }, [])
   useEffect(() => {
     if (!repo) return
-    return repo.watchGameInputs(classId, lessonId, step.id, setInputs)
+    return repo.watchGameInputs(classId, lessonId, step.id, (list) => {
+      setInputs(list)
+      setInputsReady(true)
+    })
   }, [repo, classId, lessonId, step.id])
   useEffect(() => {
     if (state?.phase !== 'running') return
@@ -175,7 +180,7 @@ function LibraryGame({
 
   /* 강사 — 끝난 게임을 확정한다 (한 판에 한 번) */
   useEffect(() => {
-    if (!teacher || !state || !ctx || !derived || state.phase !== 'running' || !derived.finished) return
+    if (!teacher || !state || !ctx || !derived || !inputsReady || state.phase !== 'running' || !derived.finished) return
     const key = `${state.seed}:${state.round}`
     if (finalizing.current === key) return
     finalizing.current = key
@@ -192,7 +197,7 @@ function LibraryGame({
       setNote('결과를 저장하지 못했습니다. 게임 시작을 다시 눌러 새 판을 여세요.')
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacher, state, derived?.finished])
+  }, [teacher, state, derived?.finished, inputsReady])
 
   async function start() {
     if (!repo || !teacher || !state) return
