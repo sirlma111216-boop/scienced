@@ -51,6 +51,11 @@ function act(kind, uid, d, value, now, i) {
     case 'flash':
       if (v.t === undefined && view.greenAt && now >= view.greenAt + 150 + i * 40) v.t = now
       break
+    case 'brick':
+      /* 시작 뒤 5초 + 사람마다 3초 간격으로 열어 2분 뒤 깬 벽돌 수를 낸다 */
+      if (v.began === undefined && now >= T0 + 5000 + i * 3000) v.began = now
+      if (v.began !== undefined && v.bricks === undefined && now >= v.began + 120_000) v.bricks = (i * 7) % 40
+      break
     case 'rps': {
       const m = [...(view.matches ?? [])].reverse().find((x) => (x.a === uid || x.b === uid) && !x.winner)
       if (m && !(v.hands ?? {})[m.key]) v.hands = { ...(v.hands ?? {}), [m.key]: ['rock', 'paper', 'scissors'][(i + m.key.length + Number(m.key.split('.')[1] ?? 0) * (i % 2 ? 1 : 2)) % 3] }

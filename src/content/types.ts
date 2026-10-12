@@ -30,6 +30,7 @@ export type GameKind =
   | 'flash' // 순간 포착
   | 'lumi' // 루미 런 (별도 게임, iframe)
   | 'marble' // 교실 구슬 레이스 (별도 게임, iframe · 서버 없이 강사 화면에서)
+  | 'brick' // 벽돌깨기 — 브릭픽 (별도 게임, iframe · 학생 기기마다 2분 · 적게 깬 둘)
   | 'ladder' // 1강 사다리 — 유지
   | 'envelope' // 2강 발표자 선정 봉투 — 유지
 

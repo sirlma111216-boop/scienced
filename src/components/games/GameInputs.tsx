@@ -3,12 +3,13 @@ import type { GameKind } from '@/content/types'
 import type { Derived } from '@/lib/game-core'
 import type { GameInput, GameState } from '@/lib/types'
 import { Badge, Button, Caption } from '@/components/ui'
+import { BrickPlay } from './BrickPlay'
 
 /**
  * 게임별 학생 입력 (8차 6.2). 값의 모양은 game-core 의 파서와 같다.
  *
  *   bomb {passes:number[]} · closest/estimate/sum {n} · doors {doors:{round:door}} · mine {cell}
- *   late/sync/flash {t} · rps {hands:{key:hand}} · relay {chars:{pos:char}, times:{pos:t}} · bingo {claim:t}
+ *   late/sync/flash {t} · rps {hands:{key:hand}} · relay {chars:{pos:char}, times:{pos:t}} · bingo {claim:t} · brick {began:t, bricks:n}
  *
  * 규칙은 한 줄이고 단추는 게임에 필요한 것뿐이다. 반응 시각은 서버 시각(now)이다.
  */
@@ -150,6 +151,8 @@ export function StudentGameInput({
           </div>
         </div>
       )
+    case 'brick':
+      return <BrickPlay uid={uid} nickname={nameOf(uid)} seed={state.seed} sessionId={`${state.stepId}:${state.round}:${state.seed}`} value={v} now={now} onPatch={onPatch} />
     case 'flash': {
       const green = view.greenAt !== null && view.greenAt !== undefined
       const pressed = typeof v.t === 'number'
@@ -344,6 +347,19 @@ export function TeacherGameView({ kind, derived, nameOf }: { kind: GameKind; der
       )
     case 'flash':
       return <Caption>{view.greenAt ? '초록' : '회색'} · 누름 {String(view.pressed ?? 0)} · 성급 {String(view.early ?? 0)}</Caption>
+    case 'brick': {
+      const bricks = (view.bricks as Record<string, number> | undefined) ?? {}
+      const list = Object.entries(bricks).sort((a, b) => a[1] - b[1])
+      return (
+        <div>
+          <Caption>
+            {/* wording-ok: 게임의 제한 시간 */}
+            냈다 {String(view.done ?? 0)} / {String(view.total ?? 0)} · 치는 중 {String(view.playing ?? 0)} · 모두 내거나, 낸 사람이 있고 1분 뒤부터 치는 사람이 없으면 끝난다 (상한 3분 — 학생이 활동을 다 낸 뒤에 시작을 누른다)
+          </Caption>
+          {list.length ? <Caption>{list.map(([u, n]) => `${nameOf(u)} ${n}`).join(' · ')}</Caption> : null}
+        </div>
+      )
+    }
     case 'rps': {
       const alive = (view.alive as string[] | undefined) ?? []
       return <Caption>{Number(view.round ?? 0)}라운드 · 남은 사람 {alive.map(nameOf).join(', ') || '—'}</Caption>

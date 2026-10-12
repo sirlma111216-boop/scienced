@@ -160,6 +160,16 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
       pick: { label: '발표자', values: Object.keys(MARBLE_PICKS), default: MARBLE_DEFAULT_PICK },
     },
   },
+  brick: {
+    kind: 'brick',
+    name: '벽돌깨기',
+    // wording-ok: 게임의 제한 시간 — 앱의 단계 시간이 아니다
+    rule: '자기 기기에서 벽돌깨기를 2분 동안 합니다. 벽돌을 가장 적게 깬 두 사람이 발표합니다.',
+    scope: 'individual',
+    seconds: 180,
+    // wording-ok: 게임의 제한 시간
+    winner: '2분 동안 벽돌을 가장 적게 깬 두 사람 (치지 않은 사람부터 채운다)',
+  },
   ladder: {
     kind: 'ladder',
     name: '사다리타기',
@@ -180,8 +190,8 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
   },
 }
 
-/** 6.2 의 새 게임 12 + 밖에서 붙인 게임 2(루미 런 · 구슬 레이스) — 라이브러리 14종. 사다리·봉투는 1·2강에 유지되는 옛 게임이다 */
-export const LIBRARY_KINDS: GameKind[] = ['bomb', 'closest', 'doors', 'mine', 'late', 'rps', 'sync', 'sum', 'relay', 'bingo', 'estimate', 'flash', 'lumi', 'marble']
+/** 6.2 의 새 게임 12 + 밖에서 붙인 게임 3(루미 런 · 구슬 레이스 · 벽돌깨기) — 라이브러리 15종. 사다리·봉투는 1·2강에 유지되는 옛 게임이다 */
+export const LIBRARY_KINDS: GameKind[] = ['bomb', 'closest', 'doors', 'mine', 'late', 'rps', 'sync', 'sum', 'relay', 'bingo', 'estimate', 'flash', 'brick', 'lumi', 'marble']
 export const LEGACY_KINDS: GameKind[] = ['ladder', 'envelope']
 
 export function gameSpec(kind: GameKind): GameSpec {

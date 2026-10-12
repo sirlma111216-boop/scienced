@@ -24,6 +24,18 @@
         "--strictPort"
       ],
       "port": 5310
+    },
+    {
+      "name": "brickpick-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "C:/Users/sirlm/AppData/Local/Temp/claude/C--Users-sirlm-OneDrive-----------scienced/a0249267-093f-43c3-8594-a2b21b92642c/scratchpad/ext/Alca",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "port": 5173
     }
   ]
 }

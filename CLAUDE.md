@@ -163,3 +163,10 @@ npm run test:microteaching # 마이크로티칭 신청 서버 계산을 그대�
 ## Windows 에서 파일을 고칠 때
 
 Bash heredoc 과 `node -e` 는 백틱과 `${}` 를 먹는다. 패치는 스크립트 파일로 써서 `node` 로 돌린다. `python3` 는 스토어 스텁이다. CRLF 파일은 먼저 LF 로 바꾼다.
+
+## 벽돌깨기(브릭픽) — 교육론 4강 활동 2 (강의자 지시 2026-10-12)
+
+강의자가 만든 벽돌깨기(저장소 `sirlma111216-boop/Alca` · `https://brickpick.sirlma.workers.dev`)를 **학생 기기마다** iframe 으로 연다 (`src/lib/brick.ts` · `components/games/BrickPlay.tsx`). 직접 조작 · 한 명 · 2분 · 같은 시드. 서버·티켓·webhook 없음.
+- 학생: [벽돌깨기 열기] → 게임 안 설명 한 장 → [준비됐어요] → 시작. 설정 칸 없음. 끝나면 `gameInputs` 에 `{began, bricks, score, playedMs, resultId}`.
+- 발표자는 `game-core` 의 `brick` — **적게 깬 둘**. 전원이 냈거나 · 낸 사람이 있고 1분 뒤 치는 사람이 없거나 · 3분 상한. 교육론 4강 활동 2 에만 (`verify:games`).
+- 브릭픽 쪽 설정 두 곳(`public/_headers` frame-ancestors · `.env.production` 의 `VITE_BRICKPICK_ALLOWED_PARENT_ORIGINS`)에 수업 앱 주소가 있어야 열린다. 로컬은 브릭픽 dev 서버(`.claude/launch.json` 의 `brickpick-dev`) + `VITE_BRICK_ORIGIN=http://localhost:5173`.

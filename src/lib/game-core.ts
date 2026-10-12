@@ -513,7 +513,37 @@ function flash(ctx: GameContext): Derived {
   return { finished, winnerUids: winners, reason: finished ? `${pick === 'slowest' ? '가장 늦게' : '가장 빨리'} 누른 순서로 둘${fillNote(filled)} — 반응 속도 게임입니다` : '', view: { greenAt: ctx.now >= greenAt ? greenAt : null, early: presses.length - valid.length, pressed: presses.length } }
 }
 
-const DERIVE: Partial<Record<GameKind, (ctx: GameContext) => Derived>> = { bomb, closest, doors, mine, late, rps, sync, sum, relay, bingo, estimate, flash }
+/**
+ * 벽돌깨기 — 학생 기기마다 브릭픽을 2분 치고 깬 벽돌 수(bricks)를 낸다. **가장 적게 깬 두 사람** (강의자 지시 2026-10-12).
+ *
+ *   · 게임을 열어 치기 시작하면 `began`, 끝나면 `bricks` 가 온다 (BrickPlay).
+ *   · 끝나는 때: 전원이 냈다 · 또는 누군가 낸 뒤 시작 1분이 지났는데 치는 중인 사람이 없으면 끝(그때까지 열지 않은 사람은 안 낸 사람) · 또는 3분 상한.
+ *     「낸 사람이 있어야」 — 강사가 시작을 눌렀는데 학생들이 아직 활동을 내느라 1분 안에 못 열면 아무도 치지 않은 채 끝나 버렸다 (2026-10-12 로컬 확인).
+ *   · 치지 않은 사람은 순위에 없다 — 둘이 안 되면 pickTwo 가 안 낸 사람부터 채운다. 일부러 안 치는 것이 안전하지 않다.
+ */
+function brick(ctx: GameContext): Derived {
+  const ps = participants(ctx)
+  const t0 = started(ctx)
+  const rows = ps.map((p) => ({ uid: p.uid, bricks: num(val(p).bricks), began: num(val(p).began) }))
+  const done = rows.filter((r): r is { uid: string; bricks: number; began: number | null } => r.bricks !== null)
+  const playing = rows.filter((r) => r.bricks === null && r.began !== null)
+  const allIn = ps.length > 0 && done.length === ps.length
+  const finished = Boolean(t0) && (allIn || ctx.now >= t0! + BRICK_CAP_MS || (ctx.now >= t0! + BRICK_OPEN_MS && playing.length === 0 && done.length > 0))
+  const { winners, filled } = finished ? pickTwo(ctx, rankBy(ctx, 'brick', done, (r) => r.bricks)) : { winners: [], filled: 0 }
+  return {
+    finished,
+    winnerUids: winners,
+    // wording-ok: 게임의 제한 시간
+    reason: finished ? `2분 동안 벽돌을 가장 적게 깬 순서로 둘 (친 사람 ${done.length}명)${fillNote(filled)}` : '',
+    view: { done: done.length, playing: playing.length, total: ps.length, deadlineAt: t0 ? t0 + BRICK_CAP_MS : null, bricks: Object.fromEntries(done.map((r) => [r.uid, r.bricks])) },
+  }
+}
+
+/** 벽돌깨기의 때 — src/lib/brick.ts 와 같은 값 (계산 파일은 화면 모듈을 끌어오지 않는다) */
+const BRICK_OPEN_MS = 60_000
+const BRICK_CAP_MS = 180_000
+
+const DERIVE: Partial<Record<GameKind, (ctx: GameContext) => Derived>> = { bomb, closest, doors, mine, late, rps, sync, sum, relay, bingo, estimate, flash, brick }
 
 export function derive(ctx: GameContext): Derived {
   const fn = DERIVE[ctx.state.kind]
