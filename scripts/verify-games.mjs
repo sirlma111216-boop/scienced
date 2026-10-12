@@ -73,7 +73,7 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
         if (a.game === 'ladder' && l.id !== '01') fail('옛 게임', `${at} 이 사다리를 쓴다 — 1강에만`)
         if (a.game === 'envelope' && !(c.courseId === 'method' && l.id === '02')) fail('옛 게임', `${at} 이 봉투를 쓴다 — 교수법 2강에만`)
         if (a.game === 'lumi' && !(c.courseId === 'method' && ['03', '04'].includes(l.id))) fail('루미 런', `${at} 이 루미 런을 쓴다 — 교수법 3·4강에만 (강의자 답 2)`)
-        if (a.game === 'brick' && !(c.courseId === 'edu' && l.id === '04' && i === 1)) fail('벽돌깨기', `${at} 이 벽돌깨기를 쓴다 — 교육론 4강 활동 2 에만 (강의자 지시 2026-10-12)`)
+        if (a.game === 'brick' && !((c.courseId === 'edu' && l.id === '04' && i === 1) || (c.courseId === 'method' && l.id === '12' && i === 1))) fail('벽돌깨기', `${at} 이 벽돌깨기를 쓴다 — 교육론 4강 · 교수법 12강의 활동 2 에만 (강의자 지시 2026-10-12 · 13)`)
         if (g.reaction) reaction += 1
         if (l.layout === 'edu80' && i === 0 && g.seconds > 60) fail('80분 활동 1', `${at} 의 게임 ${a.game} 이 ${g.seconds}초다 — 활동 1 은 60초 이하`)
         if (g.scope === 'group' && a.group?.format === undefined) fail('모둠 게임', `${at} 모둠 게임인데 모둠 단계가 없다`)
@@ -94,7 +94,7 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
   }
   const clash = Object.entries(byWeek).filter(([, w]) => w.method && w.edu && w.method === w.edu && w.method !== 'ladder').map(([wk, w]) => `${wk}주 ${w.method}`)
   if (clash.length > 0) fail('같은 주 같은 게임', `두 과목이 같은 주에 같은 게임을 쓴다 — ${clash.join(', ')} (8.3)`)
-  pass('배치', '옛 게임은 1·2강, 루미 런은 3·4강, 구슬 레이스는 교수법 5·6강·교육론 2강, 벽돌깨기는 교육론 4강 활동 2 이고 반응 속도 게임은 과목당 2회 이하다')
+  pass('배치', '옛 게임은 1·2강, 루미 런은 3·4강, 구슬 레이스는 교수법 5·6강·교육론 2강, 벽돌깨기는 교육론 4강·교수법 12강 활동 2 이고 반응 속도 게임은 과목당 2회 이하다')
 }
 
 /* ── 구슬 레이스 — 서버 없이 강사 화면 하나에서 (강의자 지시 2026-09-21) ── */
