@@ -164,11 +164,11 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
     kind: 'brick',
     name: '벽돌깨기',
     // wording-ok: 게임의 제한 시간 — 앱의 단계 시간이 아니다
-    rule: '자기 기기에서 벽돌깨기를 2분 동안 합니다. 벽돌을 가장 적게 깬 두 사람이 발표합니다.',
+    rule: '자기 기기에서 벽돌깨기를 2분 동안 합니다. 벽돌을 가장 적게 깬 두 사람이 발표합니다. 첫 사람이 시작한 뒤 2분 안에 시작하지 않으면 그 사람이 먼저 발표자가 됩니다.',
     scope: 'individual',
     seconds: 180,
     // wording-ok: 게임의 제한 시간
-    winner: '2분 동안 벽돌을 가장 적게 깬 두 사람 (치지 않은 사람부터 채운다)',
+    winner: '첫 시작 뒤 2분 안에 시작하지 않은 사람 먼저, 그다음 2분 동안 벽돌을 가장 적게 깬 사람 순으로 둘 (마지막 사람이 끝낼 때 공개)',
   },
   ladder: {
     kind: 'ladder',

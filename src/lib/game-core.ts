@@ -514,34 +514,76 @@ function flash(ctx: GameContext): Derived {
 }
 
 /**
- * 벽돌깨기 — 학생 기기마다 브릭픽을 2분 치고 깬 벽돌 수(bricks)를 낸다. **가장 적게 깬 두 사람** (강의자 지시 2026-10-12).
+ * 벽돌깨기 — 학생 기기마다 브릭픽을 2분 치고 깬 벽돌 수(bricks)를 낸다. **가장 적게 깬 두 사람** (강의자 지시 2026-10-12 · 13).
  *
- *   · 게임을 열어 치기 시작하면 `began`, 끝나면 `bricks` 가 온다 (BrickPlay).
- *   · 끝나는 때: 전원이 냈다 · 또는 누군가 낸 뒤 시작 1분이 지났는데 치는 중인 사람이 없으면 끝(그때까지 열지 않은 사람은 안 낸 사람) · 또는 3분 상한.
- *     「낸 사람이 있어야」 — 강사가 시작을 눌렀는데 학생들이 아직 활동을 내느라 1분 안에 못 열면 아무도 치지 않은 채 끝나 버렸다 (2026-10-12 로컬 확인).
- *   · 치지 않은 사람은 순위에 없다 — 둘이 안 되면 pickTwo 가 안 낸 사람부터 채운다. 일부러 안 치는 것이 안전하지 않다.
+ *   · 게임을 열어 [준비됐어요]를 눌러 치기 시작하면 `began`, 끝나면 `bricks` 가 온다 (BrickPlay).
+ *   · 시계는 **첫 사람이 시작한 때**부터 돈다 (강사의 「게임 시작」이 아니다). 첫 시작 뒤 2분 안에 시작하지 않은 사람은
+ *     **발표자가 먼저 된다** — 참여를 안 하는 것이 안전하지 않다 (2026-10-12 수업에서 참여 못 한 학생이 추첨으로 뽑힌 것을 보고 강의자가 정했다).
+ *   · 모두 시작했으면 **마지막 사람이 끝내는 때**가 공개 시점이다. 시작하고 2분 30초가 지나도록 결과가 없으면(창을 닫음) 중단으로 치고 더 기다리지 않는다.
+ *   · 아무도 시작하지 않으면 강사 시작 3분 뒤에 끝난다(전원 안 낸 사람 → pickTwo 가 시드로 둘).
+ *   · 발표자 순서: 안 시작한 사람(시드) → 중단한 사람(시드) → 벽돌이 적은 순. pickTwo 가 앞에서 둘을 쓴다.
  */
 function brick(ctx: GameContext): Derived {
   const ps = participants(ctx)
   const t0 = started(ctx)
   const rows = ps.map((p) => ({ uid: p.uid, bricks: num(val(p).bricks), began: num(val(p).began) }))
+  const begun = rows.filter((r) => r.began !== null)
+  const firstBegan = begun.length ? Math.min(...begun.map((r) => r.began!)) : null
+  const lateAt = firstBegan !== null ? firstBegan + BRICK_LATE_MS : null
   const done = rows.filter((r): r is { uid: string; bricks: number; began: number | null } => r.bricks !== null)
-  const playing = rows.filter((r) => r.bricks === null && r.began !== null)
-  const allIn = ps.length > 0 && done.length === ps.length
-  const finished = Boolean(t0) && (allIn || ctx.now >= t0! + BRICK_CAP_MS || (ctx.now >= t0! + BRICK_OPEN_MS && playing.length === 0 && done.length > 0))
-  const { winners, filled } = finished ? pickTwo(ctx, rankBy(ctx, 'brick', done, (r) => r.bricks)) : { winners: [], filled: 0 }
+  const idle = rows.filter((r) => r.began === null)
+  /* 시작했는데 2분 30초가 지나도록 결과가 없다 — 창을 닫았거나 멈춘 것으로 본다 */
+  const aborted = begun.filter((r) => r.bricks === null && ctx.now >= r.began! + BRICK_SETTLE_MS)
+  const playing = begun.filter((r) => r.bricks === null && ctx.now < r.began! + BRICK_SETTLE_MS)
+  const begunSettled = playing.length === 0
+  const lateClosed = lateAt !== null && ctx.now >= lateAt
+  /* 늦은 사람이 둘 이상이면 2분이 되는 순간 발표자가 정해진다. 그 밖에는 시작한 사람이 다 끝나야 한다 */
+  const finished =
+    Boolean(t0) &&
+    (firstBegan === null
+      ? ctx.now >= t0! + BRICK_NOONE_MS
+      : (lateClosed && idle.length >= PRESENTER_COUNT) || (begunSettled && (idle.length === 0 || lateClosed)))
+  const ranking = finished
+    ? [
+        ...shuffleSeeded(ctx.state.seed, 'brick-idle', idle.map((r) => r.uid).sort()),
+        ...shuffleSeeded(ctx.state.seed, 'brick-aborted', aborted.map((r) => r.uid).sort()),
+        ...rankBy(ctx, 'brick', done, (r) => r.bricks),
+      ]
+    : []
+  const { winners, filled } = finished ? pickTwo(ctx, ranking) : { winners: [], filled: 0 }
+  const lateNames = idle.length
+  const reason = !finished
+    ? ''
+    : firstBegan === null
+      ? '아무도 시작하지 않아 전원 가운데 추첨'
+      : // wording-ok: 게임의 제한 시간
+        `${lateNames ? `첫 시작 뒤 2분 안에 시작하지 않은 ${lateNames}명이 먼저, ` : ''}${aborted.length ? `중단한 ${aborted.length}명 다음, ` : ''}벽돌을 적게 깬 순서 (친 사람 ${done.length}명)${fillNote(filled)}`
+  const status = (r: { uid: string; bricks: number | null; began: number | null }) =>
+    r.bricks !== null ? 'done' : r.began === null ? 'idle' : ctx.now >= r.began + BRICK_SETTLE_MS ? 'aborted' : 'playing'
   return {
     finished,
     winnerUids: winners,
-    // wording-ok: 게임의 제한 시간
-    reason: finished ? `2분 동안 벽돌을 가장 적게 깬 순서로 둘 (친 사람 ${done.length}명)${fillNote(filled)}` : '',
-    view: { done: done.length, playing: playing.length, total: ps.length, deadlineAt: t0 ? t0 + BRICK_CAP_MS : null, bricks: Object.fromEntries(done.map((r) => [r.uid, r.bricks])) },
+    reason,
+    view: {
+      done: done.length,
+      playing: playing.length,
+      idle: idle.length,
+      aborted: aborted.length,
+      total: ps.length,
+      firstBegan,
+      lateAt,
+      people: rows.map((r) => ({ uid: r.uid, status: status(r), bricks: r.bricks })),
+    },
   }
 }
 
 /** 벽돌깨기의 때 — src/lib/brick.ts 와 같은 값 (계산 파일은 화면 모듈을 끌어오지 않는다) */
-const BRICK_OPEN_MS = 60_000
-const BRICK_CAP_MS = 180_000
+/** 첫 사람이 시작한 뒤 이 안에 시작하지 않으면 발표자가 먼저 된다 */
+const BRICK_LATE_MS = 120_000
+/** 시작한 사람이 이 안에 결과를 내지 않으면 중단으로 본다 (2분 경기 + 여유) */
+const BRICK_SETTLE_MS = 150_000
+/** 아무도 시작하지 않을 때 강사 시작 뒤 끝나는 때 */
+const BRICK_NOONE_MS = 180_000
 
 const DERIVE: Partial<Record<GameKind, (ctx: GameContext) => Derived>> = { bomb, closest, doors, mine, late, rps, sync, sum, relay, bingo, estimate, flash, brick }
 

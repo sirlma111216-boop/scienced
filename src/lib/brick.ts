@@ -5,7 +5,7 @@
  * 게임 안의 준비 화면(설명 한 장)에서 [준비됐어요]를 누르면 3초 뒤 바로 시작한다. 설정 칸은 없다 — 난이도·시간·규칙은 여기서 고정해 보낸다.
  *   · 모두 같은 서버 시드로 같은 판을 받는다 (벽돌 배치·아이템이 같다).
  *   · 2분(또는 목숨을 다 잃을 때까지) 뒤 게임이 COMPLETE 로 결과를 보내면 그 사람의 `bricks`(깬 벽돌 수)를 gameInputs 에 적는다.
- *   · 발표자는 game-core 의 `brick` 계산이 정한다 — **가장 적게 깬 두 사람**. 서버·티켓·webhook 이 없다 (점수는 학생 기기가 계산한 값이고 성적에 쓰지 않는다).
+ *   · 발표자는 game-core 의 `brick` 계산이 정한다 — 첫 시작 뒤 2분 안에 시작하지 않은 사람 먼저, 그다음 **가장 적게 깬 사람** 순으로 둘. 공개는 마지막 사람이 끝낼 때. 서버·티켓·webhook 이 없다 (점수는 학생 기기가 계산한 값이고 성적에 쓰지 않는다).
  *
  * 메시지 프로토콜은 브릭픽 저장소 `src/adapters/iframe/protocol.ts` 그대로 — READY → INIT → INIT_ACK → START → PROGRESS* → COMPLETE → COMPLETE_ACK.
  * 게임 쪽 배포 설정 두 곳(`public/_headers` 의 frame-ancestors · `VITE_BRICKPICK_ALLOWED_PARENT_ORIGINS`)에 수업 앱 주소가 있어야 열린다.
@@ -16,10 +16,10 @@ export const BRICK_ORIGIN = (String(import.meta.env.VITE_BRICK_ORIGIN ?? '').tri
 
 /** 한 사람이 치는 시간 — 2분 (강의자 지시) */
 export const BRICK_PLAY_MS = 120_000
-/** 강사가 시작한 뒤 이 안에 열지 않으면 그 사람은 안 낸 사람이다 — game-core 의 brick 계산과 같은 값 */
-export const BRICK_OPEN_MS = 60_000
-/** 판의 상한 — 라이브러리의 「3분 이내」. 이 뒤에는 치는 중이어도 끝난다 */
-export const BRICK_CAP_MS = 180_000
+/** 첫 사람이 시작한 뒤 이 안에 시작하지 않으면 발표자가 먼저 된다 — game-core 의 brick 계산과 같은 값 (강의자 지시 2026-10-13) */
+export const BRICK_LATE_MS = 120_000
+/** 시작한 사람이 이 안에 결과를 내지 않으면 중단으로 본다 */
+export const BRICK_SETTLE_MS = 150_000
 
 export const BRICK_CHANNEL = 'brickpick'
 export const BRICK_PROTOCOL = '1.0'

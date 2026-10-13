@@ -346,7 +346,7 @@ function LibraryGame({
       {/* 강사 — 진행 상황 */}
       {teacher && state && state.phase === 'running' && derived ? (
         <div className="card" style={{ marginTop: 12 }}>
-          <TeacherGameView kind={kind} derived={derived} nameOf={nameOf} />
+          <TeacherGameView kind={kind} derived={derived} nameOf={nameOf} now={now} />
           {state.phase === 'running' && !derived.finished && joined.length > 0 ? <Caption>후보 · {joined.map((p) => nameOf(p.uid)).join(', ')}</Caption> : null}
         </div>
       ) : null}

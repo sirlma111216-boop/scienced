@@ -18,6 +18,8 @@ export function BrickPlay({
   value,
   now,
   onPatch,
+  view,
+  nameOf,
 }: {
   uid: string
   nickname: string
@@ -26,6 +28,9 @@ export function BrickPlay({
   value: Record<string, unknown>
   now: number
   onPatch: (patch: Record<string, unknown>) => void
+  /** 계산이 낸 명단 — 누가 시작했고 끝냈는지 */
+  view?: Record<string, unknown>
+  nameOf?: (uid: string) => string
 }) {
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -128,7 +133,8 @@ export function BrickPlay({
         <p className="text-body-lg" style={{ margin: 0, fontWeight: 480 }}>
           냈다 — 깬 벽돌 {String(value.bricks)}개
         </p>
-        <Caption>결과는 강사가 확정하면 여기에 뜬다.</Caption>
+        <Caption>마지막 사람이 끝내면 발표자가 뜬다.</Caption>
+        {view && nameOf ? <BrickRoster view={view} now={now} nameOf={nameOf} /> : null}
       </div>
     )
   }
@@ -156,6 +162,39 @@ export function BrickPlay({
         <p role="status" className="text-body-sm" style={{ margin: '8px 0 0', fontWeight: 480 }}>
           {note}
         </p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * 참가자마다 했는지 안 했는지 (강의자 지시 2026-10-13 — 참여 못 한 학생이 뽑힌 뒤 「모두 다 하는지 안 하는지 표시」).
+ * 강사 화면과 학생 화면이 같은 명단을 본다. 첫 사람이 시작한 뒤 2분이 시작 마감이다.
+ */
+export function BrickRoster({ view, now, nameOf }: { view: Record<string, unknown>; now: number; nameOf: (uid: string) => string }) {
+  const people = (view.people as Array<{ uid: string; status: 'idle' | 'playing' | 'done' | 'aborted'; bricks: number | null }> | undefined) ?? []
+  const lateAt = typeof view.lateAt === 'number' ? view.lateAt : null
+  const left = lateAt === null ? null : Math.max(0, Math.ceil((lateAt - now) / 1000))
+  const label = (p: (typeof people)[number]) => (p.status === 'done' ? `냈다 ${p.bricks}` : p.status === 'playing' ? '치는 중' : p.status === 'aborted' ? '중단' : '아직 안 시작')
+  const order = { idle: 0, aborted: 1, playing: 2, done: 3 }
+  const sorted = [...people].sort((a, b) => order[a.status] - order[b.status] || (a.bricks ?? 0) - (b.bricks ?? 0))
+  return (
+    <div style={{ marginTop: 8 }}>
+      <Caption>
+        {/* wording-ok: 게임의 제한 시간 */}
+        냈다 {String(view.done ?? 0)} · 치는 중 {String(view.playing ?? 0)} · 아직 안 시작 {String(view.idle ?? 0)}
+        {Number(view.aborted ?? 0) > 0 ? ` · 중단 ${String(view.aborted)}` : ''} / {String(view.total ?? 0)}명
+        {/* wording-ok: 게임의 제한 시간 */}
+        {lateAt === null ? ' — 첫 사람이 시작하면 2분 시계가 돈다' : left ? ` — 시작 마감까지 ${left}초 (안 시작한 사람이 먼저 발표자)` : ' — 시작 마감이 지났다. 치는 사람이 끝나면 발표자가 뜬다'}
+      </Caption>
+      {sorted.length ? (
+        <ul className="flex flex-wrap gap-xs" style={{ listStyle: 'none', padding: 0, margin: '6px 0 0' }}>
+          {sorted.map((p) => (
+            <li key={p.uid} className="text-body-sm" style={{ padding: '2px 8px', borderRadius: 8, background: p.status === 'idle' || p.status === 'aborted' ? '#ffe9e0' : p.status === 'playing' ? '#fff6cc' : '#e7f3e0' }}>
+              {nameOf(p.uid)} · {label(p)}
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   )
