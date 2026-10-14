@@ -462,6 +462,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    /* ─────────────────────────── 교과서 보기 (2026-10-14) ─────────────────────────── */
+    // 학년 → 단원 → 소단원 목차. 소단원 하나가 PDF 하나다.
+    // · 학생(로그인한 사람)은 공개된 것만 읽는다 — 비공개 문서는 id 를 알아도 읽히지 않는다.
+    // · 쓰기는 서버 함수(functions/api/_lib/textbook.ts, 강사 판정 뒤 서비스 계정)만 한다.
+    // · PDF 자체는 Firestore 에 없다. 서명된 짧은 주소(/api/textbook/file)로만 나간다.
+    match /textbook/{id} {
+      allow read: if isInstructor() || (signedIn() && resource.data.published == true);
+      allow write: if false;
+    }
+
     /* ─────────────────────────── 마지막 전체 차단 ─────────────────────────── */
 
     match /{document=**} {

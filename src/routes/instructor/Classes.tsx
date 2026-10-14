@@ -99,6 +99,9 @@ export function InstructorClasses() {
         <Link to="/instructor/ai-review" className="text-link">
           AI 검토
         </Link>
+        <Link to="/instructor/textbook" className="text-link">
+          교과서 보기 관리
+        </Link>
       </div>
 
       {/* 이어서 할 차시 하나 — 홈에서 가장 큰 것이 수업을 여는 길이다 */}

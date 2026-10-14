@@ -57,3 +57,38 @@ export async function apiPost<T extends ApiResult>(
     } as T & ApiResult
   }
 }
+
+/**
+ * PUT /api/… 로 파일 한 개를 그대로 올린다 — 진행률을 알려 준다 (교과서 PDF, 2026-10-14).
+ *
+ * fetch 는 올리는 진행률을 주지 않아 XMLHttpRequest 를 쓴다. 토큰은 apiPost 와 같은 자리에서 붙인다 — 이 파일 밖에서 /api 를 부르지 않는다.
+ * 서버에 닿지 못하면 던지지 않고 ok:false 로 돌려준다.
+ */
+export async function apiUpload<T extends ApiResult>(
+  path: string,
+  file: Blob,
+  headers: Record<string, string>,
+  onProgress?: (sent: number, total: number) => void,
+): Promise<T & ApiResult> {
+  const token = await idToken()
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', path)
+    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v)
+    if (token) xhr.setRequestHeader('authorization', `Bearer ${token}`)
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded, e.total)
+    }
+    xhr.onload = () => {
+      try {
+        resolve(JSON.parse(xhr.responseText) as T & ApiResult)
+      } catch {
+        console.error('[업로드] 서버 응답을 읽지 못했다:', xhr.status, xhr.responseText.slice(0, 200))
+        resolve({ ok: false, message: `서버 응답을 읽지 못했습니다 (${xhr.status}). 파일이 너무 크면 서버가 받지 않습니다.` } as T & ApiResult)
+      }
+    }
+    xhr.onerror = () => resolve({ ok: false, message: '서버에 닿지 못했습니다. 연결을 확인하고 다시 올리세요.' } as T & ApiResult)
+    xhr.onabort = () => resolve({ ok: false, message: '올리기를 멈췄습니다.' } as T & ApiResult)
+    xhr.send(file)
+  })
+}

@@ -157,6 +157,7 @@ npm run test:flow     # 클래스 만들기 → 등록 → 제출 → 강사가 
 npm run test:delete   # 지우기가 하위 자료까지 치우는지 + 걸리는 시간
 npm run test:lumi     # 루미 런 결과 webhook 함수를 그대로 불러 발표자 저장·멱등·거절을 본다
 npm run audit:games   # 에뮬레이터 없이 — 차시에 놓인 게임을 앱의 계산으로 끝까지 돌린 표
+npm run test:textbook  # 교과서 서버 처리기 — 권한 · PDF 검사 · 교체 실패 · 서명 주소 · Range · 비공개 차단
 npm run test:microteaching # 마이크로티칭 신청 서버 계산을 그대로 불러 자격·기간·자리 다툼·옮기기·취소·규칙을 본다
 ```
 
@@ -170,3 +171,11 @@ Bash heredoc 과 `node -e` 는 백틱과 `${}` 를 먹는다. 패치는 스크�
 - 학생: [벽돌깨기 열기] → 게임 안 설명 한 장 → [준비됐어요] → 시작. 설정 칸 없음. 끝나면 `gameInputs` 에 `{began, bricks, score, playedMs, resultId}`.
 - 발표자는 `game-core` 의 `brick` — **첫 학생이 시작한 뒤 2분 안에 시작하지 않은 사람이 먼저, 그다음 적게 깬 순**으로 둘 (강의자 지시 2026-10-13 — 참여 안 한 학생이 추첨으로 뽑힌 일). 시계는 강사 시작이 아니라 첫 학생의 `began` 부터. 모두 시작했으면 마지막 사람이 끝낼 때 확정, 상한 없음(시작 뒤 2분 30초 무응답은 「중단」). 참가자마다 안 시작/치는 중/냈다를 `BrickRoster` 가 두 화면에 보인다. 교육론 4강 · 교수법 12강 활동 2 에만 (`verify:games`).
 - 브릭픽 쪽 설정 두 곳(`public/_headers` frame-ancestors · `.env.production` 의 `VITE_BRICKPICK_ALLOWED_PARENT_ORIGINS`)에 수업 앱 주소가 있어야 열린다. 로컬은 브릭픽 dev 서버(`.claude/launch.json` 의 `brickpick-dev`) + `VITE_BRICK_ORIGIN=http://localhost:5173`.
+
+## 교과서 보기 (강의자 지시 2026-10-14)
+
+학년 → 단원 → 소단원 나무. 학년·단원은 **`shared/textbook.ts` 하나**(1·2학년 2022 개정, 3학년 2015 개정) — 단원을 고치려면 여기만. 소단원(목차)은 강사가 화면에서 만든다.
+- 강사 `/instructor/textbook`(강사 홈의 「교과서 보기 관리」) · 학생 `/textbook`(아래 메뉴 「교과서」, `?id=` 로 소단원).
+- 목차 Firestore `textbook/{id}` — 쓰기는 서버 함수만(`functions/api/textbook/*` → `_lib/textbook.ts`, 강사 판정). 규칙: 강사 전부 · 로그인한 사람은 `published == true` 만.
+- PDF 는 R2 버킷 `scienced-textbook`(Pages 바인딩 `TEXTBOOK_BUCKET`). 올리기는 강사 함수가 스트림으로(상한 `TEXTBOOK_MAX_MB`, 기본 95). 읽기는 `TEXTBOOK_SECRET` 으로 서명한 30분 주소 — 화면은 `textbookReadUrl(id)` 만 부른다.
+- 새 PDF 를 연결한 **뒤에** 옛 파일을 지운다. 파일 없는 소단원은 공개되지 않는다. `npm run test:textbook` 이 처리기를 그대로 불러 센다.

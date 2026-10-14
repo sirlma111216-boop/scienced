@@ -342,6 +342,13 @@ export function createLocalRepo(): Repo {
       return subscribe(() => cb(read<PickRecord[]>(kPicks(classId), [])))
     },
 
+    /* ── 교과서 — PDF 저장소(R2)가 서버에 있어 로컬 저장 모드에서는 쓸 수 없다. 빈 목록이 아니라 이유를 준다 ── */
+    watchTextbooks(_opts, cb, onError) {
+      cb([])
+      onError?.('로컬 저장 모드에서는 교과서를 쓸 수 없습니다. 배포된 사이트에서 여세요.')
+      return () => {}
+    },
+
     /* ── 마이크로티칭 신청 — 서버 함수(functions/api/_lib/microteaching.ts)와 같은 검사 ── */
     watchMtSlots(classId, cb) {
       return subscribe(() => cb(read<MtSlot[]>(kMtSlots(classId), [])))

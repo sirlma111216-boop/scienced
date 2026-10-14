@@ -21,6 +21,7 @@ import type { LessonId } from '@/content/types'
 import { COURSE_IDS, courseIdFromTitle, lessonIndex } from '@/content/courses'
 import { stepIdsOf } from '@/content/steps'
 import type { Repo } from './repo'
+import type { TextbookDoc } from '@shared/textbook'
 import { apiPost } from './api'
 import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
@@ -439,6 +440,19 @@ export function createFirestoreRepo(db: Firestore): Repo {
       await setDoc(cd(db, classId, 'picks', pick.id), { ...pick, serverAt: serverTimestamp() })
     },
     /* ── 마이크로티칭 신청 — 읽기만 직접, 쓰기는 서버 함수 ── */
+    watchTextbooks(opts, cb, onError) {
+      const col = collection(db, 'textbook')
+      /* 학생은 규칙이 공개된 것만 읽게 한다 — 질의에도 같은 조건이 있어야 규칙을 통과한다 */
+      const q = opts.publishedOnly ? query(col, where('published', '==', true)) : col
+      return onSnapshot(
+        q,
+        (snap) => cb(snap.docs.map((d) => d.data() as TextbookDoc)),
+        (err) => {
+          console.error('[교과서] 목차를 읽지 못했다:', err)
+          onError?.('목차를 읽지 못했습니다. 새로 고쳐 보세요.')
+        },
+      )
+    },
     watchMtSlots(classId, cb) {
       return onSnapshot(
         cc(db, classId, 'mtSlots'),

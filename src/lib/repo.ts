@@ -1,3 +1,4 @@
+import type { TextbookDoc } from '@shared/textbook'
 import type { LessonId } from '@/content/types'
 import type {
   AiLog,
@@ -133,6 +134,10 @@ export interface Repo {
   applyMicroteaching(classId: string, slotId: string, uid: string): Promise<{ ok: boolean; message?: string }>
   /** 본인은 자기 것을, 강사는 uid 를 적어 남의 것을 취소한다 */
   cancelMicroteaching(classId: string, uid: string): Promise<{ ok: boolean; message?: string }>
+
+  /* ── 교과서 보기 (2026-10-14) — 쓰기는 서버 함수(/api/textbook/*)가 한다 ── */
+  /** publishedOnly — 학생: 공개된 소단원만. 강사: false 로 전부. 읽지 못하면 onError 로 이유를 준다(빈 목록과 다르다) */
+  watchTextbooks(opts: { publishedOnly: boolean }, cb: (list: TextbookDoc[]) => void, onError?: (message: string) => void): () => void
 
   watchAiLogs(cb: (list: AiLog[]) => void): () => void
   addAiProposal(classId: string, p: AiProposal): Promise<void>

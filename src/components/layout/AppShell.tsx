@@ -332,6 +332,9 @@ export function AppShell({
           <NavLink to="/curriculum" className="caption">
             교육과정
           </NavLink>
+          <NavLink to="/textbook" className="caption">
+            교과서
+          </NavLink>
           <NavLink to="/microteaching" className="caption">
             마이크로티칭
           </NavLink>

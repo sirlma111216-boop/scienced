@@ -68,7 +68,9 @@ const files = await walk('src', ['.ts', '.tsx'])
     const code = await readFile(file, 'utf8')
     /* 사람이 부르는 함수는 ID 토큰으로, 서버끼리(게임 서버 → 결과 webhook)는 공유 비밀 서명으로 확인한다 */
     const signed = code.includes('verifyLumiSignature')
-    if (!code.includes('verifyIdToken') && !signed) {
+    /* 교과서 — 길 파일은 _lib/textbook 의 처리기에 넘기기만 한다. 그 처리기가 토큰(강사·로그인) 또는 서명된 주소로 확인한다 (아래 ④) */
+    const delegated = /from '\.\.\/_lib\/textbook'/.test(code) && /=> handle[A-Z]\w*\(ctx\.env, ctx\.request\)/.test(code)
+    if (!code.includes('verifyIdToken') && !signed && !delegated) {
       fail('열린 서버 함수', `${norm(file)} 이 호출자를 확인하지 않는다`)
       open++
     }
@@ -76,6 +78,37 @@ const files = await walk('src', ['.ts', '.tsx'])
   if (open === 0) {
     pass('열린 서버 함수', `서버 함수 ${fns.length}개가 모두 ID 토큰(사람) 또는 서명(서버끼리)으로 호출자를 확인한다`)
   }
+}
+
+/* ── ④ 교과서 처리기가 실제로 호출자를 확인하는가 (2026-10-14) ── */
+{
+  const lib = await readFile('functions/api/_lib/textbook.ts', 'utf8')
+  const fnBody = (name) => {
+    const at = lib.indexOf(`export async function ${name}(`)
+    if (at < 0) return ''
+    const next = lib.indexOf('\nexport ', at + 10)
+    return lib.slice(at, next < 0 ? undefined : next)
+  }
+  let bad = 0
+  for (const name of ['handleConfig', 'handleSave', 'handlePublish', 'handleReorder', 'handleDelete', 'handleUpload']) {
+    if (!/await instructorOnly\(env, request\)/.test(fnBody(name))) {
+      fail('교과서 강사 확인', `${name} 이 강사를 확인하지 않는다`)
+      bad++
+    }
+  }
+  if (!/await caller\(env, request\)/.test(fnBody('handleReadUrl'))) {
+    fail('교과서 로그인 확인', 'handleReadUrl 이 로그인을 확인하지 않는다')
+    bad++
+  }
+  if (!/sameText\(want, sig\)/.test(fnBody('handleFile')) || !/now > exp/.test(fnBody('handleFile'))) {
+    fail('교과서 서명 주소', 'handleFile 이 서명과 만료를 확인하지 않는다')
+    bad++
+  }
+  if (!/verifyIdToken\(/.test(lib) || !/isInstructorUid\(/.test(lib)) {
+    fail('교과서 강사 확인', '_lib/textbook 이 ID 토큰 · instructors 문서로 판정하지 않는다')
+    bad++
+  }
+  if (bad === 0) pass('교과서', '관리 처리기 6개는 강사를, 읽기 주소는 로그인을, 파일은 서명·만료를 확인한다')
 }
 
 report('verify:api')
