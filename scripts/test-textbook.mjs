@@ -145,10 +145,9 @@ console.log('만들기 · 순서')
 const a = await post(lib.handleSave, tokT, { unitId: unit, title: '1. 생물을 이루는 세포', description: '세포의 구조' })
 const b = await post(lib.handleSave, tokT, { unitId: unit, title: '2. 생물의 다양성' })
 ok(a.ok && b.ok, '강사는 소단원을 만든다')
-ok(a.textbook.published === false && a.textbook.objectKey === null, '새 소단원은 비공개 · 파일 없음')
+ok(a.textbook.published === false && a.textbook.objectKey === null, '새 소단원은 PDF 가 없어 학생에게 안 보인다')
 ok(a.textbook.sortOrder === 1 && b.textbook.sortOrder === 2, '표시 순서가 1, 2 로 붙는다')
 ok((await post(lib.handleSave, tokT, { unitId: 'g9u9', title: 'x' })).ok === false, '없는 단원에는 만들 수 없다')
-ok((await post(lib.handlePublish, tokT, { id: a.textbook.id, published: true })).ok === false, 'PDF 없이 공개할 수 없다')
 const A = a.textbook.id
 const Bid = b.textbook.id
 
@@ -171,6 +170,7 @@ ok(first.ok, `1 MB PDF 를 올려 연결했다 (${ms} ms)`)
 const key1 = docOf(A).objectKey
 ok(key1 && objects.has(key1) && objects.get(key1).length === 1024 * 1024, 'R2 에 같은 크기로 들어갔다')
 ok(docOf(A).originalFileName === '1장 세포.pdf' && docOf(A).fileSize === 1024 * 1024, '원본 파일명과 크기가 목차에 적혔다')
+ok(docOf(A).published === true, 'PDF 가 붙으면 바로 공개된다 (따로 누를 것이 없다)')
 ok(key1.startsWith(`textbook/${unit}/${A}/`) && !key1.includes('세포'), '저장 키는 고유하고 원본 이름을 쓰지 않는다')
 
 console.log('바꾸기 실패 — 기존 교재 유지')
@@ -190,8 +190,9 @@ const key2 = docOf(A).objectKey
 ok(rep.ok && key2 !== key1 && objects.has(key2) && !objects.has(key1), '새 파일이 연결된 뒤 옛 파일을 지웠다')
 ok(docOf(A).id === A, '목차 id 는 그대로다')
 
-console.log('공개 · 순서')
-ok((await post(lib.handlePublish, tokT, { id: A, published: true })).ok && docOf(A).published === true, '공개로 바꿨다')
+console.log('순서 · 옛 비공개 맞추기')
+store.set(`textbook/${A}`, { ...store.get(`textbook/${A}`), published: { booleanValue: false } })
+ok((await post(lib.handleSave, tokT, { id: A, title: docOf(A).title, description: '' })).ok && docOf(A).published === true, '공개 단추 때 비공개로 남은 PDF 소단원은 제목 저장으로 공개가 된다')
 ok((await post(lib.handleReorder, tokT, { unitId: unit, ids: [Bid, A] })).ok, '순서를 바꿨다')
 ok(docOf(Bid).sortOrder === 1 && docOf(A).sortOrder === 2, '바꾼 순서를 다시 읽어도 같다')
 ok((await post(lib.handleReorder, tokT, { unitId: unit, ids: [A] })).ok === false, '목차 하나가 빠진 순서는 거절')
@@ -210,11 +211,11 @@ ok((await get(sUrl.replace(/sig=[0-9a-f]{4}/, 'sig=0000'))).status === 403, '서
 ok((await lib.handleFile(env, new Request(`https://x${sUrl}`), Date.now() + 31 * 60 * 1000)).status === 403, '30분이 지나면 403')
 ok((await get(urlBefore)).status === 403, 'PDF 를 바꾸기 전의 주소는 죽었다')
 ok((await post(lib.handleReadUrl, tokS, { id: Bid })).ok === false, '학생은 비공개(파일 없음) 소단원 주소를 받지 못한다')
-await post(lib.handlePublish, tokT, { id: A, published: false })
-ok((await post(lib.handleReadUrl, tokS, { id: A })).ok === false, '비공개로 바꾸면 학생은 주소를 받지 못한다')
-ok((await get(sUrl)).status === 404, '비공개로 바꾸면 이미 받은 학생 주소도 열리지 않는다')
+store.set(`textbook/${A}`, { ...store.get(`textbook/${A}`), published: { booleanValue: false } })
+ok((await post(lib.handleReadUrl, tokS, { id: A })).ok === false, '공개가 아닌 소단원은 학생이 주소를 받지 못한다')
+ok((await get(sUrl)).status === 404, '공개가 아니게 되면 이미 받은 학생 주소도 열리지 않는다')
 const aUrl = await post(lib.handleReadUrl, tokT, { id: A })
-ok(aUrl.ok && (await get(aUrl.url)).status === 200, '강사는 비공개 교재를 미리 본다')
+ok(aUrl.ok && (await get(aUrl.url)).status === 200, '강사는 공개가 아닌 교재도 미리 본다')
 
 console.log('지우기')
 const del = await post(lib.handleDelete, tokS, { id: A })

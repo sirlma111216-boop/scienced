@@ -20,7 +20,6 @@ import {
   deleteTextbook,
   reorderTextbooks,
   saveTextbook,
-  setTextbookPublished,
   textbookConfig,
   textbookReadUrl,
   uploadTextbookPdf,
@@ -34,7 +33,7 @@ import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/com
  * 학년 → 단원 → 소단원 나무로 들어가 소단원(목차)을 만들고, 소단원마다 PDF 한 개를 붙인다.
  *   · 학년 · 단원은 shared/textbook.ts 의 목록이다(1·2학년 2022 개정, 3학년 2015 개정). 소단원은 강사가 적는다.
  *   · 쓰기는 전부 서버 함수가 강사를 확인한 뒤에 한다 — 이 화면은 요청만 보낸다. 메뉴를 숨기는 것으로 권한을 끝내지 않는다.
- *   · 새 소단원은 비공개로 만들어진다. PDF 가 붙어야 공개할 수 있다 — 올리다 실패한 소단원이 학생에게 보이지 않는다.
+ *   · PDF 가 붙으면 바로 학생에게 보인다 (강의자 지시 2026-10-15 — 공개·비공개 단추를 없앴다). PDF 없는 소단원은 보이지 않는다 — 올리다 실패한 소단원이 학생에게 보이지 않는다.
  *   · PDF 를 바꿔도 소단원 id 와 학생 화면 주소는 그대로다. 새 파일이 연결된 뒤에 옛 파일을 지운다.
  */
 export function InstructorTextbook() {
@@ -66,6 +65,25 @@ export function InstructorTextbook() {
       },
     )
   }, [repo, isInstructor])
+
+  /*
+   * 공개 단추가 있던 때 올려 두고 비공개로 남은 소단원 — 열면 한 번 공개로 맞춘다 (2026-10-15).
+   * 제목 저장(save)이 「PDF 가 있으면 공개」로 적는다. 실패하면 표 위에 이유를 띄운다.
+   */
+  const healed = useRef(new Set<string>())
+  useEffect(() => {
+    if (!isInstructor || repo?.mode === 'local') return
+    const stale = list.filter((d) => d.objectKey && !d.published && !healed.current.has(d.id))
+    if (!stale.length) return
+    for (const d of stale) healed.current.add(d.id)
+    void Promise.all(stale.map((d) => saveTextbook({ id: d.id, title: d.title, description: d.description }))).then((rs) => {
+      const bad = rs.filter((r) => !r.ok)
+      if (bad.length) {
+        console.error('[교과서] PDF 가 있는 소단원을 공개로 맞추지 못했다:', bad)
+        setNote({ tone: 'err', text: `PDF 가 있는 소단원 ${bad.length}개를 학생에게 보이게 하지 못했습니다 — ${bad[0].message ?? ''}` })
+      } else setNote({ tone: 'ok', text: `PDF 가 있는 소단원 ${stale.length}개를 학생에게 보이게 했습니다.` })
+    })
+  }, [list, isInstructor, repo?.mode])
 
   useEffect(() => {
     if (!isInstructor || repo?.mode === 'local') return
@@ -119,7 +137,7 @@ export function InstructorTextbook() {
           교과서 보기 관리
         </h1>
         <p className="text-body" style={{ marginTop: 12, maxWidth: 720 }}>
-          학년 → 단원 → 소단원으로 들어가 소단원마다 PDF 한 개를 붙입니다. 새 소단원은 비공개로 만들어지고, PDF 를 올린 뒤에 공개할 수 있습니다. 학생 화면은 「교과서」 메뉴에서 같은 나무로 보입니다.
+          학년 → 단원 → 소단원으로 들어가 소단원마다 PDF 한 개를 붙입니다. PDF 가 올라가면 바로 학생 화면(아래 메뉴 「교과서」)에 같은 나무로 보입니다.
         </p>
 
         {repo?.mode === 'local' ? (
@@ -182,7 +200,7 @@ export function InstructorTextbook() {
                     >
                       {gradeLabel(d.grade)} › {unitOf(d.unitId)?.title} › {d.title}
                     </button>{' '}
-                    <Badge solid={d.published}>{d.published ? '공개' : '비공개'}</Badge>
+                    {d.objectKey ? null : <Badge>PDF 없음</Badge>}
                   </li>
                 ))}
               </ul>
@@ -221,14 +239,14 @@ export function InstructorTextbook() {
                     >
                       {i + 1}. {u.title}
                       <span style={{ float: 'right', opacity: 0.7 }}>
-                        {n.filter((d) => d.published).length}/{n.length}
+                        {n.length}
                       </span>
                     </button>
                   </li>
                 )
               })}
             </ul>
-            <Caption>숫자는 공개 / 전체 소단원입니다.</Caption>
+            <Caption>숫자는 그 단원의 소단원 수입니다.</Caption>
           </nav>
 
           {/* 나무 — 소단원 */}
@@ -239,6 +257,12 @@ export function InstructorTextbook() {
             <h2 id="tb-unit-title" className="text-headline" style={{ margin: '4px 0 0' }}>
               {unit.title}
             </h2>
+            {note ? (
+              <p role="status" className="text-body-sm" style={{ margin: '8px 0 0', fontWeight: 480 }}>
+                {note.tone === 'err' ? '⚠ ' : '✓ '}
+                {note.text}
+              </p>
+            ) : null}
 
             {!loaded ? (
               <p className="text-body-sm" style={{ marginTop: 16 }} role="status">
@@ -271,7 +295,7 @@ const fmtDate = (ms: number) => {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-/** 비공개도 볼 수 있는 미리보기 — 창을 먼저 열고 주소를 받아 넣는다(팝업 막힘 방지) */
+/** 미리보기 — 창을 먼저 열고 주소를 받아 넣는다(팝업 막힘 방지) */
 async function preview(id: string, say: (t: 'ok' | 'err', m: string) => void) {
   const w = window.open('', '_blank')
   const r = await textbookReadUrl(id)
@@ -298,7 +322,7 @@ function UnitTable({ items, maxBytes, onMove, say }: { items: TextbookDoc[]; max
       <table className="text-body-sm" style={{ marginTop: 16, borderCollapse: 'collapse', width: '100%', minWidth: 760 }}>
         <thead>
           <tr>
-            {['순서', '소단원', 'PDF', '크기', '공개', '수정일', ''].map((h) => (
+            {['순서', '소단원', 'PDF', '크기', '학생 화면', '수정일', ''].map((h) => (
               <th key={h} style={th}>
                 {h}
               </th>
@@ -377,13 +401,6 @@ function Row({
     setEditing(false)
     say('ok', `「${title}」을 고쳤습니다.`)
   }
-  async function togglePublish() {
-    setBusy(true)
-    const r = await setTextbookPublished(d.id, !d.published)
-    setBusy(false)
-    if (!r.ok) return say('err', r.message ?? '바꾸지 못했습니다.')
-    say('ok', `「${d.title}」을 ${d.published ? '비공개로' : '공개로'} 바꿨습니다.`)
-  }
   async function remove() {
     if (!window.confirm(`소단원 「${d.title}」을 지웁니다.\n붙어 있는 PDF 도 함께 지워지고 되돌릴 수 없습니다. 지울까요?`)) return
     setBusy(true)
@@ -434,10 +451,7 @@ function Row({
         <td style={{ ...td, whiteSpace: 'normal', maxWidth: 200 }}>{d.originalFileName ?? <span style={{ opacity: 0.6 }}>PDF 없음</span>}</td>
         <td style={td}>{fileSizeText(d.fileSize)}</td>
         <td style={td}>
-          <Badge solid={d.published}>{d.published ? '공개' : '비공개'}</Badge>{' '}
-          <button type="button" className="btn-tertiary" style={mini} disabled={busy || (!d.published && !d.objectKey)} onClick={() => void togglePublish()} title={!d.objectKey ? 'PDF 를 올린 뒤에 공개할 수 있습니다' : undefined}>
-            {d.published ? '비공개로' : '공개'}
-          </button>
+          {d.objectKey ? <Badge solid>보임</Badge> : <Badge>PDF 없음 · 안 보임</Badge>}
         </td>
         <td style={td}>{fmtDate(d.updatedAt)}</td>
         <td style={td}>
@@ -645,7 +659,7 @@ function AddForm({ unitId, unitTitle, maxBytes, disabled, say }: { unitId: strin
       setProgress(null)
       if (!up.ok) {
         setBusy(false)
-        setError(`소단원은 비공개로 만들었지만 PDF 를 올리지 못했습니다 — ${up.message ?? ''} 목록의 「PDF 올리기」로 다시 올리세요.`)
+        setError(`소단원은 만들었지만 PDF 를 올리지 못했습니다 — ${up.message ?? ''} PDF 가 없으면 학생에게 보이지 않습니다. 목록의 「PDF 올리기」로 다시 올리세요.`)
         setTitle('')
         setDescription('')
         setFile(null)
@@ -654,7 +668,7 @@ function AddForm({ unitId, unitTitle, maxBytes, disabled, say }: { unitId: strin
       }
     }
     setBusy(false)
-    say('ok', `「${title}」을 비공개로 만들었습니다.${file ? ' 공개를 누르면 학생에게 보입니다.' : ' PDF 를 올린 뒤에 공개할 수 있습니다.'}`)
+    say('ok', `「${title}」을 만들었습니다.${file ? ' 학생 화면에 바로 보입니다.' : ' PDF 를 올리면 학생 화면에 보입니다.'}`)
     setTitle('')
     setDescription('')
     setFile(null)
@@ -671,7 +685,7 @@ function AddForm({ unitId, unitTitle, maxBytes, disabled, say }: { unitId: strin
         <TitleFields title={title} description={description} setTitle={setTitle} setDescription={setDescription} idPrefix={`add-${unitId}`} />
       </div>
       <p className="text-body-sm" style={{ margin: '12px 0 6px', fontWeight: 480 }}>
-        PDF 파일 <span className="text-caption">공개하려면 필요</span>
+        PDF 파일 <span className="text-caption">올리면 학생 화면에 바로 보입니다</span>
       </p>
       <PdfUpload key={reset} maxBytes={maxBytes} file={file} onPick={setFile} />
       {progress !== null ? (

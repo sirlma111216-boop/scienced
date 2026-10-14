@@ -178,4 +178,4 @@ Bash heredoc 과 `node -e` 는 백틱과 `${}` 를 먹는다. 패치는 스크�
 - 강사 `/instructor/textbook`(강사 홈의 「교과서 보기 관리」) · 학생 `/textbook`(아래 메뉴 「교과서」, `?id=` 로 소단원).
 - 목차 Firestore `textbook/{id}` — 쓰기는 서버 함수만(`functions/api/textbook/*` → `_lib/textbook.ts`, 강사 판정). 규칙: 강사 전부 · 로그인한 사람은 `published == true` 만.
 - PDF 는 R2 버킷 `scienced-textbook`(Pages 바인딩 `TEXTBOOK_BUCKET`). 올리기는 강사 함수가 스트림으로(상한 `TEXTBOOK_MAX_MB`, 기본 95). 읽기는 `TEXTBOOK_SECRET` 으로 서명한 30분 주소 — 화면은 `textbookReadUrl(id)` 만 부른다.
-- 새 PDF 를 연결한 **뒤에** 옛 파일을 지운다. 파일 없는 소단원은 공개되지 않는다. `npm run test:textbook` 이 처리기를 그대로 불러 센다.
+- **PDF 가 붙으면 바로 공개** — 공개/비공개 단추를 두지 않는다 (강의자 지시 2026-10-15). `published` 는 「PDF 가 붙어 있다」와 같은 값이다(규칙과 학생 질의가 본다). 새 PDF 를 연결한 **뒤에** 옛 파일을 지운다. `npm run test:textbook` 이 처리기를 그대로 불러 센다.

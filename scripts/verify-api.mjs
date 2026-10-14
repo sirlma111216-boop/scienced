@@ -90,7 +90,7 @@ const files = await walk('src', ['.ts', '.tsx'])
     return lib.slice(at, next < 0 ? undefined : next)
   }
   let bad = 0
-  for (const name of ['handleConfig', 'handleSave', 'handlePublish', 'handleReorder', 'handleDelete', 'handleUpload']) {
+  for (const name of ['handleConfig', 'handleSave', 'handleReorder', 'handleDelete', 'handleUpload']) {
     if (!/await instructorOnly\(env, request\)/.test(fnBody(name))) {
       fail('교과서 강사 확인', `${name} 이 강사를 확인하지 않는다`)
       bad++
@@ -108,7 +108,7 @@ const files = await walk('src', ['.ts', '.tsx'])
     fail('교과서 강사 확인', '_lib/textbook 이 ID 토큰 · instructors 문서로 판정하지 않는다')
     bad++
   }
-  if (bad === 0) pass('교과서', '관리 처리기 6개는 강사를, 읽기 주소는 로그인을, 파일은 서명·만료를 확인한다')
+  if (bad === 0) pass('교과서', '관리 처리기 5개는 강사를, 읽기 주소는 로그인을, 파일은 서명·만료를 확인한다')
 }
 
 report('verify:api')

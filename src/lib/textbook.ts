@@ -6,7 +6,7 @@ import { apiPost, apiUpload } from './api'
  *
  *   목차 읽기   repo.watchTextbooks({ publishedOnly })    Firestore `textbook` 구독 (학생: 공개된 것만)
  *   PDF 읽기    textbookReadUrl(id) → url                 서명된 30분짜리 주소. <iframe src> · 새 창에 그대로 쓴다
- *   관리(강사)  saveTextbook · uploadTextbookPdf · setTextbookPublished · reorderTextbooks · deleteTextbook
+ *   관리(강사)  saveTextbook · uploadTextbookPdf · reorderTextbooks · deleteTextbook — PDF 가 붙으면 바로 공개된다(따로 누를 것이 없다)
  *
  * 쓰기는 전부 서버가 강사를 확인한 뒤에 한다. 여기 있는 브라우저 검사(확장자 · 형식 · 크기 · 머리 %PDF-)는
  * 기다리지 않게 미리 알려 주려는 것이고, 서버가 같은 검사를 다시 한다.
@@ -24,9 +24,6 @@ export const textbookConfig = () => apiPost<TextbookConfig>('/api/textbook/confi
 
 export const saveTextbook = (a: { id?: string; unitId?: string; title: string; description: string }) =>
   apiPost<{ ok: boolean; message?: string; textbook?: TextbookDoc }>('/api/textbook/save', a)
-
-export const setTextbookPublished = (id: string, published: boolean) =>
-  apiPost<{ ok: boolean; message?: string; textbook?: TextbookDoc }>('/api/textbook/publish', { id, published })
 
 export const reorderTextbooks = (unitId: string, ids: string[]) => apiPost<{ ok: boolean; message?: string }>('/api/textbook/reorder', { unitId, ids })
 

@@ -26,6 +26,8 @@ import { firestoreRest } from './lumi'
  *     R2 에 직접 올리는 서명 주소(S3 호환 API)는 R2 API 토큰을 대시보드에서 따로 만들어야 하고, 그 비밀이 하나 더 생긴다.
  *     교재 PDF 는 상한 안에 들어오므로 비밀 없이 바인딩만 쓰는 쪽을 골랐다 (docs/검토/8차-결정.md 2026-10-14).
  *   · 새 PDF 를 올려 크기까지 확인하고 목차에 연결한 **다음에** 옛 파일을 지운다. 중간에 실패하면 새 파일을 지우고 옛 연결은 그대로 둔다.
+ *   · **PDF 가 붙으면 바로 공개다** (강의자 지시 2026-10-15 — 「공개 버튼을 왜 만들었나, 올리면 모두에게 공개」). 따로 공개·비공개를 고르는 단추가 없다.
+ *     `published` 는 「PDF 가 붙어 있다」와 같은 값으로만 쓰인다 — 학생 목록 질의와 규칙이 이 필드를 본다. PDF 없는 소단원은 학생에게 보이지 않는다.
  *   · PDF 를 읽는 주소는 서명된 짧은 주소다(30분). PDF 보기 화면은 요청에 토큰 헤더를 붙일 수 없어서다.
  *     서명에 목차 id · 만료 · 파일 키가 들어가 파일을 바꾸면 옛 주소가 죽는다. 학생용 주소는 열 때마다 공개 여부를 다시 본다.
  */
@@ -243,7 +245,8 @@ export async function handleSave(env: TbEnv, request: Request, now = Date.now())
     const d = await readTextbook(env, b.id)
     if (d && 'error' in d) return fail(d.error)
     if (!d) return fail('그 목차가 없습니다. 화면을 새로 고치세요.')
-    const next: TextbookDoc = { ...d, title, description, updatedAt: now }
+    /* PDF 가 붙어 있으면 공개 — 공개 단추가 있던 때 비공개로 남은 소단원도 제목을 저장하면 맞춰진다 (2026-10-15) */
+    const next: TextbookDoc = { ...d, title, description, published: Boolean(d.objectKey), updatedAt: now }
     return (await putDoc(env, next, 'mustExist')) ? json({ ok: true, textbook: next }) : fail('저장하지 못했습니다. 잠시 뒤 다시 누르세요.')
   }
 
@@ -267,20 +270,6 @@ export async function handleSave(env: TbEnv, request: Request, now = Date.now())
     updatedAt: now,
   }
   return (await putDoc(env, d, 'mustNotExist')) ? json({ ok: true, textbook: d }) : fail('목차를 만들지 못했습니다. 잠시 뒤 다시 누르세요.')
-}
-
-/** POST /api/textbook/publish — { id, published } 파일이 없는 목차는 공개하지 않는다 */
-export async function handlePublish(env: TbEnv, request: Request, now = Date.now()): Promise<Response> {
-  const c = await instructorOnly(env, request)
-  if (c instanceof Response) return c
-  const b = await body<{ id?: string; published?: boolean }>(request)
-  if (!b?.id || !TEXTBOOK_ID_RE.test(b.id) || typeof b.published !== 'boolean') return fail('요청 형식이 올바르지 않습니다.')
-  const d = await readTextbook(env, b.id)
-  if (d && 'error' in d) return fail(d.error)
-  if (!d) return fail('그 목차가 없습니다. 화면을 새로 고치세요.')
-  if (b.published && !d.objectKey) return fail('PDF 를 올린 뒤에 공개할 수 있습니다.')
-  const next: TextbookDoc = { ...d, published: b.published, updatedAt: now }
-  return (await putDoc(env, next, 'mustExist')) ? json({ ok: true, textbook: next }) : fail('바꾸지 못했습니다. 잠시 뒤 다시 누르세요.')
 }
 
 /** POST /api/textbook/reorder — { unitId, ids } 그 단원의 소단원 전부를 이 순서로. 수정일은 바꾸지 않는다 */
@@ -434,7 +423,8 @@ export async function handleUpload(env: TbEnv, request: Request, now = Date.now(
     await bucket.delete(key).catch(() => {})
     return fail('목차를 다시 읽지 못했습니다. 기존 교재는 그대로입니다.')
   }
-  const next: TextbookDoc = { ...latest, objectKey: key, originalFileName: name, fileSize: len, contentType: 'application/pdf', updatedAt: now }
+  /* 연결과 공개가 한 번의 쓰기다 — 올라가면 바로 모두에게 보인다 (2026-10-15) */
+  const next: TextbookDoc = { ...latest, objectKey: key, originalFileName: name, fileSize: len, contentType: 'application/pdf', published: true, updatedAt: now }
   if (!(await putDoc(env, next, 'mustExist'))) {
     await bucket.delete(key).catch(() => {})
     return fail('PDF 를 목차에 연결하지 못했습니다. 기존 교재는 그대로입니다.')
