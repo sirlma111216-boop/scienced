@@ -15,6 +15,13 @@ import { Badge, Button, Caption, Card, Notice } from '@/components/ui'
  *     강사가 PDF 를 바꿔도 이 화면의 주소(?id=…)는 그대로다.
  *   · 강사가 이 화면을 열면 학생과 같은 것(공개된 것)만 보인다. 비공개 미리보기는 관리 화면에 있다.
  */
+/**
+ * 브라우저 PDF 보기의 도구 막대(목차 · 그리기 · 확대 · 쪽 번호 · 찾기 · 인쇄 · 저장)를 숨긴다 (강의자 지시 2026-10-15 — 「이 메뉴는 없애 줘」).
+ * Chrome · Edge 의 내장 보기가 주소 끝의 `#toolbar=0` 을 읽는다. 쪽 넘기기는 스크롤로 한다.
+ * Safari · Firefox 는 이 표시를 읽지 않아 자기 막대를 그대로 보인다 — 막대를 완전히 그리려면 PDF 를 직접 그리는 보기(다음 작업의 전자책 화면)가 필요하다.
+ */
+const viewerUrl = (url: string) => `${url}#toolbar=0&navpanes=0`
+
 export function Textbook() {
   const { repo } = useAuth()
   const [params, setParams] = useSearchParams()
@@ -115,10 +122,10 @@ export function Textbook() {
             </p>
           ) : (
             <div style={{ marginTop: 16 }}>
-              <iframe title={current?.title ?? '교과서'} src={view.url} style={{ width: '100%', height: 'min(85vh, 1100px)', border: '1px solid #e5e5e5', borderRadius: 12 }} />
+              <iframe title={current?.title ?? '교과서'} src={viewerUrl(view.url)} style={{ width: '100%', height: 'min(85vh, 1100px)', border: '1px solid #e5e5e5', borderRadius: 12 }} />
               <Caption>
                 화면이 비어 보이면{' '}
-                <a href={view.url} target="_blank" rel="noopener noreferrer" className="text-link">
+                <a href={viewerUrl(view.url)} target="_blank" rel="noopener noreferrer" className="text-link">
                   새 창으로 열기
                 </a>
                 {/* wording-ok: 읽기 주소의 유효 시간 — 앱의 단계 시간이 아니다 */}

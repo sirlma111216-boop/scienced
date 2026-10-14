@@ -304,8 +304,10 @@ async function preview(id: string, say: (t: 'ok' | 'err', m: string) => void) {
     say('err', r.message ?? '미리보기를 열지 못했습니다.')
     return
   }
-  if (w) w.location.href = r.url
-  else window.location.href = r.url
+  /* 학생 화면과 같게 브라우저 PDF 도구 막대를 숨긴다 (2026-10-15) */
+  const url = `${r.url}#toolbar=0&navpanes=0`
+  if (w) w.location.href = url
+  else window.location.href = url
 }
 
 function UnitTable({ items, maxBytes, onMove, say }: { items: TextbookDoc[]; maxBytes: number; onMove: (ids: string[]) => void; say: (t: 'ok' | 'err', m: string) => void }) {
