@@ -166,7 +166,10 @@ export function Textbook() {
                       .map(({ unit, items }) => (
                         <details key={unit.id} style={{ borderLeft: '3px solid #e5e5e5', paddingLeft: 12 }}>
                           <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 480 }}>
-                            {unit.title} <Caption>· {items.length}</Caption>
+                            {unit.title}{' '}
+                            <span className="text-body-sm" style={{ fontWeight: 400, opacity: 0.6 }}>
+                              소단원 {items.length}개
+                            </span>
                           </summary>
                           <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', display: 'grid', gap: 6 }}>
                             {items.map((d) => (
