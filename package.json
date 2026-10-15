@@ -33,6 +33,7 @@
     "verify:record": "node --import ./scripts/_loader.mjs scripts/verify-record.mjs",
     "verify:microteaching": "node --import ./scripts/_loader.mjs scripts/verify-microteaching.mjs",
     "test:textbook": "node --import ./scripts/_loader.mjs scripts/test-textbook.mjs",
+    "test:mt-files": "node --import ./scripts/_loader.mjs scripts/test-mt-files.mjs",
     "test:microteaching": "node --import ./scripts/_loader.mjs scripts/test-microteaching.mjs",
     "verify:theory": "node --import ./scripts/_loader.mjs scripts/verify-theory.mjs",
     "verify:groups": "node --import ./scripts/_loader.mjs scripts/verify-groups.mjs",

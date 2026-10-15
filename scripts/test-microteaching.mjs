@@ -6,7 +6,8 @@
  *
  *   · 여는 때 전에는 막힌다 · 수강생이 아니면 막힌다 · 일정에 없는 자리는 막힌다
  *   · 신청하면 mtSlots 에 학번 · 실명(명단) · 닉네임이 적히고 mtApplications 가 가리킨다
- *   · 같은 자리에 두 번째 사람은 막힌다 · 자리를 옮기면 옛 자리가 없어진다 · 취소하면 둘 다 없어진다
+ *   · 같은 자리에 두 번째 사람은 막힌다 · 자리를 옮기면 옛 자리가 없어진다 · 취소하면 자리가 없어지고 가리킴에서 자리가 빠진다
+ *     (2026-10-16 — 가리킴은 발표 내용 · 계획안을 다시 신청할 때를 위해 남긴다. 발표 내용 · 파일은 test:mt-files 가 센다)
  *   · 강사가 남의 것을 취소할 수 있다 · 왕복 시간
  */
 import { readFile } from 'node:fs/promises'
@@ -107,7 +108,7 @@ const SLOT = '2026-11-02_1'
   const b = await cancelMicroteaching(fnEnv, { classId: CID, uid: S1, byInstructor: true })
   const c = await cancelMicroteaching(fnEnv, { classId: CID, uid: S1, byInstructor: false })
   const { slots, apps } = await readAll()
-  if (a.ok && b.ok && c.ok && slots.length === 0 && Object.keys(apps).length === 0) pass('취소', '본인 취소 · 강사 취소 뒤 자리와 가리킴이 모두 없다. 없는 것을 또 취소해도 조용히 ok')
+  if (a.ok && b.ok && c.ok && slots.length === 0 && Object.values(apps).every((x) => !x.slotId)) pass('취소', '본인 취소 · 강사 취소 뒤 자리가 없고 가리킴에서 자리가 빠졌다. 없는 것을 또 취소해도 조용히 ok')
   else fail('취소', `${JSON.stringify({ a, b, c, slots, apps })}`)
 }
 /* 규칙 — 학생은 자리 문서를 직접 쓰지 못하고, 같은 클래스 사람은 읽는다 */

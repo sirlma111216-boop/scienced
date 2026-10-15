@@ -25,7 +25,7 @@ import type { TextbookDoc } from '@shared/textbook'
 import { apiPost } from './api'
 import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
-  MtSlot,
+  MtApplication, MtSlot,
   AiLog,
   AiProposal,
   AppUser,
@@ -465,6 +465,23 @@ export function createFirestoreRepo(db: Firestore): Repo {
     },
     async applyMicroteaching(classId, slotId) {
       return apiPost('/api/microteaching/apply', { classId, slotId })
+    },
+    watchMtApplications(classId, uid, cb, onError) {
+      const fail = (err: unknown) => {
+        console.error('[마이크로티칭] 신청 기록을 읽지 못했다:', err)
+        onError?.('신청 기록을 읽지 못했습니다. 새로 고쳐 보세요.')
+      }
+      if (uid) {
+        return onSnapshot(
+          doc(db, 'classes', classId, 'mtApplications', uid),
+          (s) => cb(s.exists() ? [{ uid, ...(s.data() as MtApplication) }] : []),
+          fail,
+        )
+      }
+      return onSnapshot(cc(db, classId, 'mtApplications'), (snap) => cb(snap.docs.map((s) => ({ uid: s.id, ...(s.data() as MtApplication) }))), fail)
+    },
+    async saveMtDetail(classId, _uid, d) {
+      return apiPost('/api/microteaching/detail', { classId, ...d })
     },
     async cancelMicroteaching(classId, uid) {
       return apiPost('/api/microteaching/cancel', { classId, uid })

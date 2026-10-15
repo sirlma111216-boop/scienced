@@ -133,6 +133,8 @@
 - **쓰기는 서버 함수만 한다** (`functions/api/microteaching/apply · cancel` → `_lib/microteaching.ts`). 실명(명단)을 옮겨 적어야 하고, 한 자리에 두 사람 · 한 사람이 두 자리를 Firestore commit 의 「없을 때만」 조건과 같은 commit 의 삭제로 막는다. 화면은 `mtSlots` 를 구독해 그리기만 한다. 로컬 저장 모드는 `repo-local` 이 같은 검사를 흉내 낸다.
 - **때가 되면 창이 저절로 뜬다** (`components/microteaching/OpenPopup.tsx`, `Guard` 에 붙어 있다). 신청 전인 학생에게 어느 화면에서든 뜨고 「신청 화면으로 가기」 단추가 있다. 신청을 마치면 사라지고, [닫기]는 그 탭에서만 통한다 — 다음에 들어오면 다시 뜬다. 열린 때는 15초마다 다시 본다.
 - 자리 문서(`mtSlots`)에는 학번과 이름이 들어 있고 같은 클래스 사람이 읽는다 — 발표 일정표다. `verify:microteaching` · `test:microteaching` 이 센다.
+- **일정표는 학생에게 늘 보인다** — 신청 단추만 여는 때부터 (강의자 지시 2026-10-16). 신청한 본인은 자기 자리에 **발표 내용**(학년 · 단원은 `shared/textbook.ts` 목록, 주제, 수업 방식 `MT_METHODS`)을 적고 같은 반 모두가 본다 — 서버 `/api/microteaching/detail` 이 자리 문서와 신청 기록에 함께 적어, 옮기거나 취소 · 재신청해도 남는다(취소는 신청 기록에서 자리만 뺀다).
+- **수업계획안** — 강사가 양식을 올리면(`/api/microteaching/template`, 클래스 문서 `mtTemplate`) 수강생이 내려받고, 신청한 학생은 자기 계획안을 올린다(`/api/microteaching/plan`, 신청 기록 `plan` — 본인과 강사만). 파일은 R2 `TEXTBOOK_BUCKET` 의 `microteaching/`, 내려받기는 10분 서명 주소(`file-url` → `file`). `npm run test:mt-files` 가 처리기를 그대로 불러 센다.
 
 ## 차시 활동 기록 (강의자 지시 2026-10-09)
 
@@ -158,6 +160,7 @@ npm run test:delete   # 지우기가 하위 자료까지 치우는지 + 걸리�
 npm run test:lumi     # 루미 런 결과 webhook 함수를 그대로 불러 발표자 저장·멱등·거절을 본다
 npm run audit:games   # 에뮬레이터 없이 — 차시에 놓인 게임을 앱의 계산으로 끝까지 돌린 표
 npm run test:textbook  # 교과서 서버 처리기 — 권한 · PDF 검사 · 교체 실패 · 서명 주소 · Range · 비공개 차단
+npm run test:mt-files  # 마이크로티칭 발표 내용 · 양식 · 계획안 서버 처리기 — 권한 · 형식 · 옮기기 · 서명 주소
 npm run test:microteaching # 마이크로티칭 신청 서버 계산을 그대로 불러 자격·기간·자리 다툼·옮기기·취소·규칙을 본다
 ```
 

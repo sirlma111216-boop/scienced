@@ -435,13 +435,13 @@ export async function handleUpload(env: TbEnv, request: Request, now = Date.now(
 
 /* ─────────────────────────── 읽기 — 서명된 짧은 주소 ─────────────────────────── */
 
-async function hmac(secret: string, text: string): Promise<string> {
+export async function hmac(secret: string, text: string): Promise<string> {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
   const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text)))
   return [...sig].map((x) => x.toString(16).padStart(2, '0')).join('')
 }
 
-function sameText(a: string, b: string): boolean {
+export function sameText(a: string, b: string): boolean {
   if (a.length !== b.length) return false
   let d = 0
   for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i)

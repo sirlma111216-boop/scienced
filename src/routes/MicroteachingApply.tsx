@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
-import type { Enrollment, MtSlot } from '@/lib/types'
+import type { Enrollment, MtApplication, MtSlot } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { ClassAdminHeader } from '@/components/instructor/ClassAdmin'
 import { useRosterNames } from '@/components/instructor/roster-names'
@@ -11,7 +11,7 @@ import { ApplyBoard } from '@/components/microteaching/ApplyBoard'
 /**
  * 마이크로티칭 발표 신청 (강의자 지시 2026-10-03).
  *
- *   /microteaching/apply                          학생 — 지금 클래스. 강사가 정한 때부터 열린다
+ *   /microteaching/apply                          학생 — 지금 클래스. 일정표는 늘 보이고, 신청은 강사가 정한 때부터 열린다 (2026-10-16)
  *   /instructor/class/:classId/microteaching     강사 — 클래스 관리의 한 탭. 언제나 보이고, 공개 시각을 정한다
  *
  * 저장과 자리 다툼은 서버 함수(functions/api/microteaching)가 맡는다. 이 화면은 자리 목록을 구독해 그리기만 한다.
@@ -24,6 +24,7 @@ export function MicroteachingApply({ admin = false }: { admin?: boolean }) {
   const courseId = courseOf(cls)
   const [slots, setSlots] = useState<MtSlot[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [apps, setApps] = useState<Array<MtApplication & { uid: string }>>([])
   const [now, setNow] = useState(() => Date.now())
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -36,6 +37,11 @@ export function MicroteachingApply({ admin = false }: { admin?: boolean }) {
     if (!repo || !classId || !isInstructor) return
     return repo.watchEnrollments(classId, setEnrollments)
   }, [repo, classId, isInstructor])
+  /* 신청 기록 — 학생은 자기 것만(규칙이 남의 것을 막는다), 강사는 전부 (계획안 낸 사람 보기) */
+  useEffect(() => {
+    if (!repo || !classId || !user) return
+    return repo.watchMtApplications(classId, isInstructor ? null : user.uid, setApps, (m) => setNote(m))
+  }, [repo, classId, user, isInstructor])
   /* 실명은 강사일 때만 구독한다 — 학생 화면은 자리 문서에 적힌 이름만 본다 */
   const nameOf = useRosterNames(isInstructor ? classId : '')
   /* 여는 때가 지나면 새로 고치지 않아도 열린다 */
@@ -67,6 +73,10 @@ export function MicroteachingApply({ admin = false }: { admin?: boolean }) {
 
   const board = (
     <ApplyBoard
+      classId={classId}
+      template={cls?.mtTemplate}
+      apps={apps}
+      onSaveDetail={(d) => repo!.saveMtDetail(classId, user?.uid ?? '', d)}
       courseId={courseId}
       uid={user?.uid ?? ''}
       isInstructor={isInstructor}

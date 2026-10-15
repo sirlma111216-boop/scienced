@@ -4,6 +4,7 @@ import { stepIdsOf } from '@/content/steps'
 import type { Repo } from './repo'
 import { courseIdFromTitle } from '@/content/courses'
 import { isMtSlot, mtOpenState } from '@shared/microteaching'
+import { TEXTBOOK_UNITS } from '@shared/textbook'
 import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
   MtSlot,
@@ -370,6 +371,24 @@ export function createLocalRepo(): Repo {
     },
     async cancelMicroteaching(classId, uid) {
       write(kMtSlots(classId), read<MtSlot[]>(kMtSlots(classId), []).filter((s) => s.uid !== uid))
+      return { ok: true }
+    },
+    /* 발표 내용 — 서버와 같이 자리 문서에 적는다. 계획안 · 양식 파일은 서버 저장소라 로컬에서는 없다 */
+    watchMtApplications(classId, uid, cb) {
+      return subscribe(() => {
+        const slots = read<MtSlot[]>(kMtSlots(classId), [])
+        const list = slots.filter((x) => !uid || x.uid === uid).map((x) => ({ uid: x.uid, slotId: x.slotId, grade: x.grade, unitId: x.unitId, unitTitle: x.unitTitle, topic: x.topic, methods: x.methods, methodOther: x.methodOther, detailAt: x.detailAt, plan: null }))
+        cb(list)
+      })
+    },
+    async saveMtDetail(classId, uid, d) {
+      const unit = TEXTBOOK_UNITS.find((u) => u.id === d.unitId)
+      if (!unit || unit.grade !== d.grade) return { ok: false, message: '학년과 단원을 고르세요.' }
+      if (!d.topic.trim()) return { ok: false, message: '발표 주제를 적으세요.' }
+      if (!d.methods.length && !d.methodOther.trim()) return { ok: false, message: '수업 방식을 하나 이상 고르세요.' }
+      const list = read<MtSlot[]>(kMtSlots(classId), [])
+      if (!list.some((x) => x.uid === uid)) return { ok: false, message: '먼저 발표 자리를 신청하세요.' }
+      write(kMtSlots(classId), list.map((x) => (x.uid === uid ? { ...x, grade: unit.grade, unitId: unit.id, unitTitle: unit.title, topic: d.topic.trim(), methods: d.methods, methodOther: d.methodOther.trim(), detailAt: Date.now() } : x)))
       return { ok: true }
     },
 

@@ -45,6 +45,8 @@ export interface ClassDoc {
   formationQuestions?: Record<string, string>
   /** 마이크로티칭 신청을 학생에게 여는 때(ms). 없으면 강사만 본다 (강의자 지시 2026-10-03) */
   microteachingOpenAt?: number | null
+  /** 수업계획안 양식 — 강사가 올린다. 수강생 모두가 내려받는다 (2026-10-16) */
+  mtTemplate?: MtFileMeta | null
 }
 
 /**
@@ -60,6 +62,37 @@ export interface MtSlot {
   name: string
   nickname: string
   at: number
+  /* 발표 내용 — 신청한 본인이 적는다 (2026-10-16). 아직 안 적었으면 없다 */
+  grade?: number | null
+  unitId?: string | null
+  unitTitle?: string
+  topic?: string
+  methods?: string[]
+  methodOther?: string
+  detailAt?: number | null
+}
+
+/** 올린 파일 하나 — 양식(클래스 문서 mtTemplate) · 계획안(가리킴 plan). 저장 키는 서버만 쓴다 */
+export interface MtFileMeta {
+  key: string
+  name: string
+  size: number
+  ext: string
+  at: number
+}
+
+/** classes/{cid}/mtApplications/{uid} — 본인과 강사만 읽는다 */
+export interface MtApplication {
+  slotId?: string | null
+  at?: number
+  grade?: number | null
+  unitId?: string | null
+  unitTitle?: string
+  topic?: string
+  methods?: string[]
+  methodOther?: string
+  detailAt?: number | null
+  plan?: MtFileMeta | null
 }
 
 export interface LessonState {

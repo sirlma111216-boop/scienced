@@ -120,3 +120,50 @@ export function mtScheduleProblems(): string[] {
   }
   return out
 }
+
+/* ─────────────── 발표 소재 · 수업 방식 · 수업계획안 (강의자 지시 2026-10-16) ─────────────── */
+
+/** 수업 방식 — 여러 개 고를 수 있다. 목록에 없으면 「기타」에 적는다 */
+export const MT_METHODS = ['강의', '시범실험', '학생 실험', '모둠활동', '토의·토론'] as const
+
+/**
+ * 발표 소재와 방식 — 신청한 학생이 자기 자리에 적는다. 같은 반 모두가 일정표에서 본다.
+ * 학년 · 단원은 교과서 보기와 같은 목록(shared/textbook.ts — 1·2학년 2022 개정, 3학년 2015 개정)에서 고른다.
+ */
+export interface MtDetail {
+  grade: number | null
+  unitId: string | null
+  /** 단원 이름 — 목록이 바뀌어도 적힌 대로 보이게 함께 적는다 */
+  unitTitle: string
+  topic: string
+  methods: string[]
+  /** 기타 방식 */
+  methodOther: string
+  detailAt: number | null
+}
+
+export const MT_TOPIC_MAX = 60
+export const MT_METHOD_OTHER_MAX = 30
+
+/** 수업계획안 · 양식 파일 — 한글 · 워드 · PDF */
+export const MT_FILE_EXTS = ['pdf', 'hwp', 'hwpx', 'docx', 'doc'] as const
+export const MT_FILE_MAX_MB = 20
+export const MT_FILE_ACCEPT = '.pdf,.hwp,.hwpx,.docx,.doc'
+
+/** 파일 머리로 형식을 본다 — 이름만 믿지 않는다. pdf %PDF- · docx/hwpx 는 zip(PK\x03\x04) · hwp/doc 는 OLE(D0 CF 11 E0) */
+export function mtFileKind(name: string, head: Uint8Array): (typeof MT_FILE_EXTS)[number] | null {
+  const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase()
+  if (!(MT_FILE_EXTS as readonly string[]).includes(ext)) return null
+  const starts = (bytes: number[]) => bytes.every((b, i) => head[i] === b)
+  if (ext === 'pdf') return starts([0x25, 0x50, 0x44, 0x46, 0x2d]) ? 'pdf' : null
+  if (ext === 'docx' || ext === 'hwpx') return starts([0x50, 0x4b, 0x03, 0x04]) ? ext : null
+  return starts([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) ? (ext as 'hwp' | 'doc') : null
+}
+
+export const MT_CONTENT_TYPE: Record<(typeof MT_FILE_EXTS)[number], string> = {
+  pdf: 'application/pdf',
+  hwp: 'application/x-hwp',
+  hwpx: 'application/hwp+zip',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  doc: 'application/msword',
+}
