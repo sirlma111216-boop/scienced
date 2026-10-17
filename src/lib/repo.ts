@@ -23,7 +23,7 @@ import type {
   RosterEntry,
   SessionState,
   StorageMode,
-  MtApplication, MtSlot,
+  MtApplication, MtPeerDoc, MtSlot,
 } from './types'
 
 /**
@@ -138,6 +138,8 @@ export interface Repo {
   watchMtApplications(classId: string, uid: string | null, cb: (list: Array<MtApplication & { uid: string }>) => void, onError?: (message: string) => void): () => void
   /** 발표 소재 · 수업 방식 저장 — 신청한 본인. 서버가 자리 문서와 신청 기록에 함께 적는다 */
   saveMtDetail(classId: string, uid: string, d: { grade: number; unitId: string; topic: string; methods: string[]; methodOther: string }): Promise<{ ok: boolean; message?: string }>
+  /** 내가 다른 사람 수업에 적은 동료 의견 — 규칙이 authorUid 가 나인 것만 내준다 (2026-10-17). 발표자 쪽 목록은 서버(mtPeerList)가 익명으로 준다 */
+  watchMtPeerMine(classId: string, authorUid: string, cb: (list: MtPeerDoc[]) => void, onError?: (message: string) => void): () => void
 
   /* ── 교과서 보기 (2026-10-14) — 쓰기는 서버 함수(/api/textbook/*)가 한다 ── */
   /** publishedOnly — 학생: 공개된 소단원만. 강사: false 로 전부. 읽지 못하면 onError 로 이유를 준다(빈 목록과 다르다) */

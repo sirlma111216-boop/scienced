@@ -121,7 +121,7 @@ const files = await walk('src', ['.ts', '.tsx'])
     return lib.slice(at, next < 0 ? undefined : next)
   }
   let bad = 0
-  for (const name of ['handleMtUpload', 'handleMtFileUrl', 'handleMtDetail']) {
+  for (const name of ['handleMtUpload', 'handleMtFileUrl', 'handleMtDetail', 'handleMtNote', 'handleMtPeer', 'handleMtPeerList']) {
     if (!/await whoCalls\(env, request\)/.test(fnBody(name))) {
       fail('마이크로티칭 호출자', `${name} 이 로그인을 확인하지 않는다`)
       bad++
@@ -130,6 +130,19 @@ const files = await walk('src', ['.ts', '.tsx'])
   if (!/kind === 'template' && !c\.instructor/.test(fnBody('handleMtUpload'))) {
     fail('마이크로티칭 양식', '양식 올리기가 강사를 확인하지 않는다')
     bad++
+  }
+  for (const name of ['handleMtVideoStart', 'handleMtVideoPart', 'handleMtVideoFinish', 'handleMtVideoAbort']) {
+    if (!/await instructorAndStudent\(env, request/.test(fnBody(name))) {
+      fail('마이크로티칭 영상', `${name} 이 강사를 확인하지 않는다`)
+      bad++
+    }
+  }
+  if (!/if \(!c\.instructor\) return fail/.test(fnBody('instructorAndStudent').replace('export async function', 'async function'))) {
+    /* instructorAndStudent 는 export 가 아니라 fnBody 가 못 찾는다 — 본문에서 직접 본다 */
+    if (!/async function instructorAndStudent[\s\S]*?if \(!c\.instructor\) return fail/.test(lib)) {
+      fail('마이크로티칭 영상', 'instructorAndStudent 가 강사를 확인하지 않는다')
+      bad++
+    }
   }
   if (!/sameText\(want, sig\)/.test(fnBody('handleMtFile')) || !/now > exp/.test(fnBody('handleMtFile'))) {
     fail('마이크로티칭 서명 주소', 'handleMtFile 이 서명과 만료를 확인하지 않는다')

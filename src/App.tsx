@@ -64,6 +64,7 @@ const InstructorTextbook = lazyRoute('교과서 보기 관리', () => import('@/
 const TextbookView = lazyRoute('교과서', () => import('@/routes/Textbook').then((m) => m.Textbook))
 const LessonRecord = lazyRoute('차시 활동 기록', () => import('@/routes/instructor/LessonRecord').then((m) => m.LessonRecord))
 const MicroteachingApply = lazyRoute('마이크로티칭 신청', () => import('@/routes/MicroteachingApply').then((m) => m.MicroteachingApply))
+const MicroteachingRecord = lazyRoute('마이크로티칭 기록', () => import('@/routes/MicroteachingRecord').then((m) => m.MicroteachingRecord))
 
 /**
  * 라우트 보호.
@@ -217,6 +218,14 @@ export function App() {
               </Guard>
             }
           />
+          <Route
+            path="/microteaching/record"
+            element={
+              <Guard>
+                <MicroteachingRecord />
+              </Guard>
+            }
+          />
 
           {/* 강사 — 수업 화면 하나 */}
           <Route
@@ -265,6 +274,14 @@ export function App() {
             element={
               <Guard instructorOnly classOptional>
                 <MicroteachingApply admin />
+              </Guard>
+            }
+          />
+          <Route
+            path="/instructor/class/:classId/mtrecord"
+            element={
+              <Guard instructorOnly classOptional>
+                <MicroteachingRecord admin />
               </Guard>
             }
           />

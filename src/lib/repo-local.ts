@@ -7,7 +7,7 @@ import { isMtSlot, mtOpenState } from '@shared/microteaching'
 import { TEXTBOOK_UNITS } from '@shared/textbook'
 import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
-  MtSlot,
+  MtPeerDoc, MtSlot,
   AiProposal,
   AppUser,
   ClassDoc,
@@ -380,6 +380,9 @@ export function createLocalRepo(): Repo {
         const list = slots.filter((x) => !uid || x.uid === uid).map((x) => ({ uid: x.uid, slotId: x.slotId, grade: x.grade, unitId: x.unitId, unitTitle: x.unitTitle, topic: x.topic, methods: x.methods, methodOther: x.methodOther, detailAt: x.detailAt, plan: null }))
         cb(list)
       })
+    },
+    watchMtPeerMine(classId, authorUid, cb) {
+      return subscribe(() => cb(read<MtPeerDoc[]>(`c.${classId}.mtPeer`, []).filter((p) => p.authorUid === authorUid)))
     },
     async saveMtDetail(classId, uid, d) {
       const unit = TEXTBOOK_UNITS.find((u) => u.id === d.unitId)

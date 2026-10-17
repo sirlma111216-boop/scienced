@@ -167,3 +167,39 @@ export const MT_CONTENT_TYPE: Record<(typeof MT_FILE_EXTS)[number], string> = {
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   doc: 'application/msword',
 }
+
+/* ─────────────── 지도안 피드백 · 수업 영상 · 후기 · 동료 의견 (강의자 지시 2026-10-17) ─────────────── */
+
+/** 글 하나 — 강사 피드백 · 학생 후기. 누가 언제 썼는지 함께 */
+export interface MtNote {
+  text: string
+  at: number
+}
+export const MT_NOTE_MAX = 3000
+
+/** 수업 영상 — 강사가 마이크로티칭 뒤에 올린다. 본인과 강사만 본다 */
+export const MT_VIDEO_EXTS = ['mp4', 'm4v', 'mov', 'webm'] as const
+export const MT_VIDEO_ACCEPT = '.mp4,.m4v,.mov,.webm,video/mp4,video/quicktime,video/webm'
+/** 영상 상한(MB) — 한 시간 수업 1080p 가 보통 1~2 GB 다 */
+export const MT_VIDEO_MAX_MB = 4096
+/** 조각 크기(MB) — Pages Functions 요청 상한(100 MB) 아래, R2 조각 최소(5 MiB) 위 */
+export const MT_VIDEO_PART_MB = 48
+export const MT_VIDEO_CONTENT_TYPE: Record<(typeof MT_VIDEO_EXTS)[number], string> = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' }
+
+/** 영상 파일 머리 — mp4·m4v·mov 는 4번째 바이트부터 "ftyp", webm 은 EBML 1A 45 DF A3 */
+export function mtVideoKind(name: string, head: Uint8Array): (typeof MT_VIDEO_EXTS)[number] | null {
+  const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase()
+  if (!(MT_VIDEO_EXTS as readonly string[]).includes(ext)) return null
+  if (ext === 'webm') return head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3 ? 'webm' : null
+  return head[4] === 0x66 && head[5] === 0x74 && head[6] === 0x79 && head[7] === 0x70 ? (ext as 'mp4' | 'm4v' | 'mov') : null
+}
+
+/** 동료 의견 — 다른 수강생이 수업을 들으며 적는다. 발표자에게는 익명으로 보인다 */
+export interface MtPeerComment {
+  presenterUid: string
+  authorUid: string
+  good: string
+  improve: string
+  at: number
+}
+export const MT_PEER_MAX = 800

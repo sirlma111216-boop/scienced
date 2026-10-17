@@ -43,11 +43,25 @@ export interface R2ObjectLike {
 export interface R2ObjectBodyLike extends R2ObjectLike {
   body: ReadableStream<Uint8Array>
 }
+/** 큰 파일(수업 영상)은 조각으로 올린다 — 요청 하나가 100 MB 를 넘지 못하므로 */
+export interface R2UploadedPartLike {
+  partNumber: number
+  etag: string
+}
+export interface R2MultipartLike {
+  key: string
+  uploadId: string
+  uploadPart(partNumber: number, value: ReadableStream<Uint8Array>): Promise<R2UploadedPartLike>
+  complete(parts: R2UploadedPartLike[]): Promise<R2ObjectLike>
+  abort(): Promise<void>
+}
 export interface R2BucketLike {
   put(key: string, value: ReadableStream<Uint8Array>, options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }): Promise<R2ObjectLike | null>
   head(key: string): Promise<R2ObjectLike | null>
   get(key: string, options?: { range?: { offset: number; length: number } }): Promise<R2ObjectBodyLike | null>
   delete(key: string): Promise<void>
+  createMultipartUpload(key: string, options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }): Promise<R2MultipartLike>
+  resumeMultipartUpload(key: string, uploadId: string): R2MultipartLike
 }
 
 export type TbEnv = Env & {

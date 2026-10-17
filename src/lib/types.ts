@@ -93,6 +93,35 @@ export interface MtApplication {
   methodOther?: string
   detailAt?: number | null
   plan?: MtFileMeta | null
+  /* 마이크로티칭 기록 (2026-10-17) — 지도안에 강사가 · 수업 영상(강사가 올림) · 학생 후기 · 수업에 강사가. 본인과 강사만 읽는다 */
+  planFeedback?: MtNote | null
+  video?: MtFileMeta | null
+  reflection?: MtNote | null
+  videoFeedback?: MtNote | null
+}
+
+/** 글 한 토막 — 피드백 · 후기 */
+export interface MtNote {
+  text: string
+  at: number
+}
+
+/** classes/{cid}/mtPeer/{presenterUid}__{authorUid} — 다른 수강생이 발표자의 수업에 적은 것. 쓴 사람은 자기 것만, 강사는 전부 읽는다 */
+export interface MtPeerDoc {
+  presenterUid: string
+  authorUid: string
+  good: string
+  improve: string
+  at: number
+}
+
+/** 서버가 주는 동료 의견 한 줄 — 발표자에게는 번호만(authorUid 없음), 강사에게는 쓴 사람도 */
+export interface MtPeerView {
+  n: number
+  good: string
+  improve: string
+  at: number
+  authorUid?: string
 }
 
 export interface LessonState {

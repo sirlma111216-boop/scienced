@@ -135,6 +135,7 @@
 - 자리 문서(`mtSlots`)에는 학번과 이름이 들어 있고 같은 클래스 사람이 읽는다 — 발표 일정표다. `verify:microteaching` · `test:microteaching` 이 센다.
 - **일정표는 학생에게 늘 보인다** — 신청 단추만 여는 때부터 (강의자 지시 2026-10-16). 신청한 본인은 자기 자리에 **발표 내용**(학년 · 단원은 `shared/textbook.ts` 목록, 주제, 수업 방식 `MT_METHODS`)을 적고 같은 반 모두가 본다 — 서버 `/api/microteaching/detail` 이 자리 문서와 신청 기록에 함께 적어, 옮기거나 취소 · 재신청해도 남는다(취소는 신청 기록에서 자리만 뺀다).
 - **수업계획안** — 강사가 양식을 올리면(`/api/microteaching/template`, 클래스 문서 `mtTemplate`) 수강생이 내려받고, 신청한 학생은 자기 계획안을 올린다(`/api/microteaching/plan`, 신청 기록 `plan` — 본인과 강사만). 파일은 R2 `TEXTBOOK_BUCKET` 의 `microteaching/`, 내려받기는 10분 서명 주소(`file-url` → `file`). `npm run test:mt-files` 가 처리기를 그대로 불러 센다.
+- **마이크로티칭 기록** (강의자 지시 2026-10-17) — 학생 「발표 기록」(`/microteaching/record`) · 강사 클래스 관리 「마이크로티칭 기록」 탭(`mtrecord`). 화면은 `components/microteaching/RecordBoard.tsx` 하나. 지도안 피드백 · 수업 영상 · 후기 · 수업 피드백은 신청 기록(`mtApplications/{uid}`)에, 동료 의견은 `mtPeer/{발표자}__{쓴이}` 에 — 규칙은 쓴 사람과 강사만 읽고, **발표자는 서버 `/api/microteaching/peer-list` 가 쓴 사람을 지우고 번호만 붙여 준다**(익명). 영상은 강사만 올린다 — 48 MB 조각(`uploadMtVideo` → `video-start · video-part · video-finish · video-abort`, R2 multipart 바인딩), 2시간 서명 주소 + Range 로 재생. 처리기 열 개 모두 `whoCalls`/`instructorAndStudent` 로 호출자를 보고 `verify:api` ⑤가 센다. `npm run test:mt-files` 가 83항목.
 
 ## 차시 활동 기록 (강의자 지시 2026-10-09)
 

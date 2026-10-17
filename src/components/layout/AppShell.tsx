@@ -341,6 +341,9 @@ export function AppShell({
           <NavLink to="/microteaching/apply" className="caption">
             발표 신청
           </NavLink>
+          <NavLink to="/microteaching/record" className="caption">
+            발표 기록
+          </NavLink>
           <a
             className="caption"
             href="https://labbitory.com"

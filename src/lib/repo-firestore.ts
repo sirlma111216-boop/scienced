@@ -25,7 +25,7 @@ import type { TextbookDoc } from '@shared/textbook'
 import { apiPost } from './api'
 import { pairDeltas, pairKey } from '@shared/groups-core'
 import type {
-  MtApplication, MtSlot,
+  MtApplication, MtPeerDoc, MtSlot,
   AiLog,
   AiProposal,
   AppUser,
@@ -482,6 +482,16 @@ export function createFirestoreRepo(db: Firestore): Repo {
     },
     async saveMtDetail(classId, _uid, d) {
       return apiPost('/api/microteaching/detail', { classId, ...d })
+    },
+    watchMtPeerMine(classId, authorUid, cb, onError) {
+      return onSnapshot(
+        query(cc(db, classId, 'mtPeer'), where('authorUid', '==', authorUid)),
+        (snap) => cb(snap.docs.map((s) => s.data() as MtPeerDoc)),
+        (err) => {
+          console.error('[마이크로티칭] 내 동료 의견을 읽지 못했다:', err)
+          onError?.('내가 적은 의견을 읽지 못했습니다. 새로 고쳐 보세요.')
+        },
+      )
     },
     async cancelMicroteaching(classId, uid) {
       return apiPost('/api/microteaching/cancel', { classId, uid })
