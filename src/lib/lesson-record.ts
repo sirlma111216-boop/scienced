@@ -34,7 +34,7 @@ export function answerText(field: FieldDef, value: unknown): string {
         .map((it) => ({ label: it.label, n: Number(v[it.id]) || 0 }))
         .filter((x) => x.n > 0)
         .sort((a, b) => b.n - a.n)
-        .map((x) => `${x.label} ${x.n}`)
+        .map((x) => `${x.label} ${x.n}${field.unit ?? ''}`)
         .join(' · ')
     }
     case 'rank':

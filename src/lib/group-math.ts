@@ -12,12 +12,13 @@ export interface MemberValue {
   reason?: string
 }
 
-/** allocation — 요소별 모둠 평균 (정수) */
+/** allocation — 요소별 모둠 평균. 100점이면 정수, 8시간처럼 총합이 작으면 소수 한 자리 */
 export function allocationAverage(field: FieldDef, members: MemberValue[]): Array<{ id: string; label: string; avg: number }> {
   const items = field.items ?? []
   return items.map((it) => {
     const xs = members.map((m) => Number((m.value as Record<string, number> | undefined)?.[it.id]) || 0)
-    const avg = xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0
+    const scale = (field.total ?? 100) < 20 ? 10 : 1
+    const avg = xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * scale) / scale : 0
     return { id: it.id, label: it.label, avg }
   })
 }
@@ -71,7 +72,7 @@ export function summarize(format: GroupFormat, field: FieldDef, members: MemberV
   switch (format) {
     case 'allocation': {
       const top = [...allocationAverage(field, members)].sort((a, b) => b.avg - a.avg)[0]
-      return top ? `${top.label} ${top.avg}점이 가장 높다` : ''
+      return top ? `${top.label} ${top.avg}${field.unit ?? '점'}이 가장 많다` : ''
     }
     case 'rank': {
       const first = rankSum(field, members)[0]

@@ -272,7 +272,7 @@ function AllocationField({ def, value, onChange, error, disabled }: FieldProps) 
                 요소
               </th>
               <th scope="col" className="caption" style={{ textAlign: 'left', padding: '8px 0' }}>
-                점수
+                {def.unit ?? '점수'}
               </th>
               <th scope="col" className="caption" style={{ textAlign: 'left', padding: '8px 0' }}>
                 비율
@@ -346,10 +346,10 @@ function AllocationField({ def, value, onChange, error, disabled }: FieldProps) 
       >
         합계 <span className="font-mono">{sum}</span> / {total} ·{' '}
         {left === 0
-          ? '점수가 남지 않았습니다'
+          ? (def.unit ? '모두 나눴습니다' : '점수가 남지 않았습니다')
           : left > 0
-            ? `${left}점 남았습니다`
-            : `${-left}점 넘었습니다`}
+            ? `${left}${def.unit ?? '점'} 남았습니다`
+            : `${-left}${def.unit ?? '점'} 넘었습니다`}
       </p>
       {error ? (
         <p role="alert" className="text-body-sm" style={{ fontWeight: 480 }}>

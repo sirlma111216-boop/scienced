@@ -110,6 +110,8 @@ export interface FieldDef {
   options?: string[]
   /** allocation 전용: 총합을 강제한다 */
   total?: number
+  /** allocation 전용: 나누는 것의 단위 — 「시간」처럼. 없으면 점수(100점)다 (교육론 5강 전환기 8시간, 2026-10-19) */
+  unit?: string
   requiresStimulus?: string[]
   gate?: Gate
   /** allocation / rank / sort 전용: 카드 목록 */

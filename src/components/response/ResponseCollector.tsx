@@ -117,7 +117,7 @@ export function ResponseCollector({
         const alloc = (v ?? {}) as Record<string, number>
         const sum = (f.items ?? []).reduce((s, it) => s + (Number(alloc[it.id]) || 0), 0)
         if (sum !== (f.total ?? 100)) {
-          next[f.key] = `합계가 ${f.total ?? 100}이어야 합니다. 지금은 ${sum}입니다.`
+          next[f.key] = `합계가 ${f.total ?? 100}${f.unit ?? ''}이어야 합니다. 지금은 ${sum}${f.unit ?? ''}입니다.`
         }
         continue
       }
