@@ -1,6 +1,5 @@
 import type { Env } from '../../../shared/ai-core'
-import { MT_CONTENT_TYPE, MT_FILE_MAX_MB, MT_METHODS, MT_METHOD_OTHER_MAX, MT_NOTE_MAX, MT_PEER_MAX, MT_TOPIC_MAX, MT_VIDEO_CONTENT_TYPE, MT_VIDEO_MAX_MB, MT_VIDEO_PART_MB, isMtSlot, mtFileKind, mtVideoKind, type MtCourseId } from '../../../shared/microteaching'
-import { TEXTBOOK_UNITS } from '../../../shared/textbook'
+import { MT_CONTENT_TYPE, MT_FILE_MAX_MB, MT_NOTE_MAX, MT_PEER_MAX, MT_TOPIC_MAX, MT_VIDEO_CONTENT_TYPE, MT_VIDEO_MAX_MB, MT_VIDEO_PART_MB, isMtSlot, mtFileKind, mtVideoKind, type MtCourseId } from '../../../shared/microteaching'
 import { fail, isInstructorUid, json, verifyIdToken } from './auth'
 import { firestoreRest } from './lumi'
 import { hmac, parseRange, sameText, type R2BucketLike, type R2UploadedPartLike } from './textbook'
@@ -158,37 +157,24 @@ function carriedDetail(pointer: Record<string, Value> | null | undefined): Recor
 
 /**
  * 발표 내용 저장 — 신청한 본인만. 자리 문서와 가리킴에 같은 것을 적는다.
- * 학년 · 단원은 교과서 목록(shared/textbook)에서 고른 것만 받는다. 주제와 방식이 비면 받지 않는다.
+ * 주제만 받는다. 기존 학년 · 단원 · 방식은 저장된 기록에 보존한다.
  */
 export async function saveMtDetail(
   env: MtEnv,
-  a: { classId: string; uid: string; grade: unknown; unitId: unknown; topic: unknown; methods: unknown; methodOther: unknown; now: number },
+  a: { classId: string; uid: string; topic: unknown; now: number },
 ): Promise<MtOutcome> {
   const L = await load(env, a.classId, a.uid)
   if ('error' in L) return { ok: false, message: L.error }
   if (!L.enrollment || str(L.enrollment, 'status') !== 'active') return { ok: false, message: '이 클래스의 수강생만 적을 수 있습니다.' }
   if (!L.prevSlotId) return { ok: false, message: '먼저 발표 자리를 신청하세요.' }
-  const unit = TEXTBOOK_UNITS.find((u) => u.id === a.unitId)
-  if (!unit || unit.grade !== a.grade) return { ok: false, message: '학년과 단원을 고르세요.' }
-  const topic = String(a.topic ?? '').trim()
+  const topic = typeof a.topic === 'string' ? a.topic.trim() : ''
   if (!topic) return { ok: false, message: '발표 주제를 적으세요.' }
   if (topic.length > MT_TOPIC_MAX) return { ok: false, message: `주제는 ${MT_TOPIC_MAX}자 이하로 적으세요.` }
-  const methods = Array.isArray(a.methods) ? [...new Set(a.methods.filter((m): m is string => typeof m === 'string' && (MT_METHODS as readonly string[]).includes(m)))] : []
-  const other = String(a.methodOther ?? '').trim()
-  if (other.length > MT_METHOD_OTHER_MAX) return { ok: false, message: `기타 방식은 ${MT_METHOD_OTHER_MAX}자 이하로 적으세요.` }
-  if (!methods.length && !other) return { ok: false, message: '수업 방식을 하나 이상 고르세요.' }
-  const fields: Record<string, Value> = {
-    grade: I(unit.grade),
-    unitId: S(unit.id),
-    unitTitle: S(unit.title),
-    topic: S(topic),
-    methods: { arrayValue: { values: methods.map(S) } },
-    methodOther: S(other),
-    detailAt: I(a.now),
-  }
+  const fields: Record<string, Value> = { topic: S(topic), detailAt: I(a.now) }
+  const topicPaths = ['topic', 'detailAt']
   const writes = [
-    { update: { name: `${L.base}/classes/${a.classId}/mtSlots/${L.prevSlotId}`, fields }, updateMask: { fieldPaths: DETAIL_PATHS }, currentDocument: { exists: true } },
-    { update: { name: `${L.base}/classes/${a.classId}/mtApplications/${a.uid}`, fields }, updateMask: { fieldPaths: DETAIL_PATHS } },
+    { update: { name: `${L.base}/classes/${a.classId}/mtSlots/${L.prevSlotId}`, fields }, updateMask: { fieldPaths: topicPaths }, currentDocument: { exists: true } },
+    { update: { name: `${L.base}/classes/${a.classId}/mtApplications/${a.uid}`, fields }, updateMask: { fieldPaths: topicPaths } },
   ]
   const res = await fetch(L.rest.commit, { method: 'POST', headers: L.h, body: JSON.stringify({ writes }) })
   if (!res.ok) {
@@ -417,18 +403,18 @@ export async function handleMtFile(env: MtEnv, request: Request, now = Date.now(
   return new Response(obj.body, { status: 200, headers })
 }
 
-/** POST /api/microteaching/detail — { classId, grade, unitId, topic, methods, methodOther } 발표 내용 저장 (본인) */
+/** POST /api/microteaching/detail — { classId, topic } 발표 내용 저장 (본인) */
 export async function handleMtDetail(env: MtEnv, request: Request, now = Date.now()): Promise<Response> {
   const c = await whoCalls(env, request)
   if (c instanceof Response) return c
-  let b: { classId?: string; grade?: unknown; unitId?: unknown; topic?: unknown; methods?: unknown; methodOther?: unknown }
+  let b: { classId?: string; topic?: unknown }
   try {
     b = (await request.json()) as typeof b
   } catch {
     return fail('요청 형식이 올바르지 않습니다.')
   }
   if (!b.classId || !CLASS_ID_RE.test(b.classId)) return fail('클래스 id 가 없습니다.')
-  return json(await saveMtDetail(env, { classId: b.classId, uid: c.uid, grade: b.grade, unitId: b.unitId, topic: b.topic, methods: b.methods, methodOther: b.methodOther, now }))
+  return json(await saveMtDetail(env, { classId: b.classId, uid: c.uid, topic: b.topic, now }))
 }
 
 /* ─────────────────────── 글 — 지도안 피드백 · 수업 피드백 · 후기 (2026-10-17) ─────────────────────── */

@@ -6,7 +6,6 @@
  * test-textbook 과 같은 방식이다. 에뮬레이터(Java)가 없어도 돈다.
  */
 const lib = await import('../functions/api/_lib/microteaching.ts')
-const { TEXTBOOK_UNITS } = await import('../shared/textbook.ts')
 
 const PROJECT = 'mt-test'
 const EMU = 'emu.local:8080'
@@ -175,18 +174,16 @@ const slotOf = (u) => [...store.entries()].find(([k, f]) => k.startsWith(`classe
 const pdf = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(500, 0x41)])
 const docx = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(800, 0x42)])
 const hwp = Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(300, 0x43)])
-const unit = TEXTBOOK_UNITS.find((u) => u.grade === 2)
-const detail = { classId: CID, grade: 2, unitId: unit.id, topic: '밀도로 물질 구별하기', methods: ['시범실험', '모둠활동'], methodOther: '' }
+const detail = { classId: CID, topic: '밀도로 물질 구별하기' }
 
 console.log('발표 내용')
 ok((await post(lib.handleMtDetail, S1, detail)).ok === false, '자리를 신청하기 전에는 발표 내용을 적을 수 없다')
 ok((await lib.applyMicroteaching(env, { classId: CID, uid: S1, slotId: '2026-11-02_1', now: 10 })).ok, 's1 이 11월 2일 첫 번째 자리를 신청했다')
-ok((await post(lib.handleMtDetail, S1, { ...detail, unitId: TEXTBOOK_UNITS.find((u) => u.grade === 1).id })).ok === false, '학년과 맞지 않는 단원은 받지 않는다')
 ok((await post(lib.handleMtDetail, S1, { ...detail, topic: ' ' })).ok === false, '주제가 비면 받지 않는다')
-ok((await post(lib.handleMtDetail, S1, { ...detail, methods: [], methodOther: '' })).ok === false, '수업 방식이 없으면 받지 않는다')
-ok((await post(lib.handleMtDetail, S1, detail)).ok, '발표 내용을 저장했다')
-ok(slotOf(S1)?.topic?.stringValue === detail.topic && slotOf(S1)?.unitTitle?.stringValue === unit.title, '자리 문서(같은 반 모두가 봄)에 주제 · 단원이 적혔다')
-ok(slotOf(S1)?.methods?.arrayValue?.values?.map((v) => v.stringValue).join() === '시범실험,모둠활동', '수업 방식이 적혔다')
+ok((await post(lib.handleMtDetail, S1, { ...detail, topic: { text: '주제' } })).ok === false, '문자열이 아닌 주제는 받지 않는다')
+ok((await post(lib.handleMtDetail, S1, { ...detail, topic: '가'.repeat(1000) })).ok === false, '너무 긴 주제는 받지 않는다')
+ok((await post(lib.handleMtDetail, S1, detail)).ok, '주제 하나만 보내도 저장한다')
+ok(slotOf(S1)?.topic?.stringValue === detail.topic, '자리 문서(같은 반 모두가 봄)에 주제가 적혔다')
 ok(doc(`classes/${CID}/mtApplications/${S1}`)?.topic?.stringValue === detail.topic, '신청 기록에도 같이 적혔다')
 
 console.log('자리 옮기기 · 취소 · 다시 신청')

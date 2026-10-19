@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { MT_FILE_ACCEPT, MT_FILE_MAX_MB, MT_METHODS, MT_METHOD_OTHER_MAX, MT_ORDER_LABEL, MT_SCHEDULE, MT_TOPIC_MAX, mtDateLabel, mtOpenState, mtSlotId, type MtCourseId } from '@shared/microteaching'
-import { TEXTBOOK_GRADES, TEXTBOOK_UNITS, fileSizeText, gradeLongLabel } from '@shared/textbook'
+import { MT_FILE_ACCEPT, MT_FILE_MAX_MB, MT_ORDER_LABEL, MT_SCHEDULE, MT_TOPIC_MAX, mtDateLabel, mtOpenState, mtSlotId, type MtCourseId } from '@shared/microteaching'
+import { fileSizeText } from '@shared/textbook'
 import { checkMtFile, openMtFile, uploadMtFile } from '@/lib/microteaching-files'
 import type { Enrollment, MtApplication, MtFileMeta, MtSlot } from '@/lib/types'
 import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
@@ -15,7 +15,7 @@ import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/com
  *
  * 2026-10-16 강의자 지시:
  *   · 일정표는 학생 모두에게 늘 보인다 — 신청 기간 전에도. 신청 단추만 기간에 열린다.
- *   · 자리마다 발표 소재(학년 · 단원 · 주제)와 수업 방식을 신청한 본인이 적고, 같은 반 모두가 본다.
+ *   · 자리마다 발표 주제를 신청한 본인이 적고, 같은 반 모두가 본다.
  *   · 맨 아래 「수업계획안」 — 강사가 양식을 올리면 수강생이 내려받고, 신청한 사람은 자기 계획안을 올린다(본인과 강사만 본다).
  */
 export function ApplyBoard({
@@ -42,7 +42,7 @@ export function ApplyBoard({
   template: MtFileMeta | null | undefined
   /** 신청 기록 — 학생은 자기 것 하나, 강사는 전부 */
   apps: Array<MtApplication & { uid: string }>
-  onSaveDetail: (d: { grade: number; unitId: string; topic: string; methods: string[]; methodOther: string }) => Promise<{ ok: boolean; message?: string }>
+  onSaveDetail: (d: { topic: string }) => Promise<{ ok: boolean; message?: string }>
   courseId: MtCourseId
   uid: string
   isInstructor: boolean
@@ -83,7 +83,7 @@ export function ApplyBoard({
                 : '날짜 상자에서 발표 순서 하나를 누르세요.'}
         </p>
         <p className="text-body" style={{ marginTop: 12 }}>
-          {schedule.minutes}. 한 사람이 한 자리입니다. 내 자리는 취소하고 다른 날짜나 순서로 옮길 수 있습니다. 신청한 뒤에는 내 자리에서 「발표 내용 적기」로 학년 · 단원 · 주제와 수업 방식을 적습니다.
+          {schedule.minutes}. 한 사람이 한 자리입니다. 내 자리는 취소하고 다른 날짜나 순서로 옮길 수 있습니다. 신청한 뒤에는 내 자리에서 「주제 적기」로 발표 주제만 적습니다. 나머지는 수업계획안에 적어 주세요.
         </p>
         <Caption>
           신청 {slots.length} / {schedule.total}
@@ -276,29 +276,22 @@ function InstructorPanel({
 
 /* ─────────────── 발표 내용 (2026-10-16) ─────────────── */
 
-/** 「중2 · 물질의 특성 — 주제 · 강의 · 시범실험」 */
+/** 일정표에는 발표 주제만 표시한다. */
 function detailLine(s: MtSlot): string {
-  const where = [s.grade ? `중${s.grade}` : '', s.unitTitle ?? ''].filter(Boolean).join(' · ')
-  const how = [...(s.methods ?? []), ...(s.methodOther ? [s.methodOther] : [])].join(' · ')
-  return [where, s.topic ?? '', how].filter(Boolean).join(' — ')
+  return s.topic ?? ''
 }
 
-function SlotDetail({ slot, editable, onSave }: { slot: MtSlot; editable: boolean; onSave: (d: { grade: number; unitId: string; topic: string; methods: string[]; methodOther: string }) => Promise<{ ok: boolean; message?: string }> }) {
+function SlotDetail({ slot, editable, onSave }: { slot: MtSlot; editable: boolean; onSave: (d: { topic: string }) => Promise<{ ok: boolean; message?: string }> }) {
   const [open, setOpen] = useState(false)
-  const [grade, setGrade] = useState<number>(slot.grade ?? 1)
-  const [unitId, setUnitId] = useState<string>(slot.unitId ?? '')
   const [topic, setTopic] = useState(slot.topic ?? '')
-  const [methods, setMethods] = useState<string[]>(slot.methods ?? [])
-  const [other, setOther] = useState(slot.methodOther ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const units = TEXTBOOK_UNITS.filter((u) => u.grade === grade)
   const has = Boolean(slot.topic)
 
   async function save() {
     setBusy(true)
     setError(null)
-    const r = await onSave({ grade, unitId, topic, methods, methodOther: other })
+    const r = await onSave({ topic })
     setBusy(false)
     if (!r.ok) setError(r.message ?? '저장하지 못했습니다.')
     else setOpen(false)
@@ -308,80 +301,32 @@ function SlotDetail({ slot, editable, onSave }: { slot: MtSlot; editable: boolea
     <div style={{ margin: '6px 0 4px', paddingLeft: 10, borderLeft: '3px solid #e5e5e5' }}>
       {has ? (
         <p className="text-body-sm" style={{ margin: 0 }}>
-          <span style={{ opacity: 0.75 }}>
-            중{slot.grade} · {slot.unitTitle}
-          </span>
-          <br />
           <span style={{ fontWeight: 480 }}>{slot.topic}</span>
-          <br />
-          <span style={{ opacity: 0.75 }}>{[...(slot.methods ?? []), ...(slot.methodOther ? [slot.methodOther] : [])].join(' · ')}</span>
         </p>
       ) : editable ? null : (
         <p className="text-body-sm" style={{ margin: 0, opacity: 0.55 }}>
-          발표 내용을 아직 적지 않았습니다
+          발표 주제를 아직 적지 않았습니다
         </p>
       )}
       {editable && !open ? (
         <Button variant={has ? 'tertiary' : 'secondary'} onClick={() => setOpen(true)} style={{ whiteSpace: 'nowrap', paddingLeft: has ? 0 : undefined }}>
-          {has ? '발표 내용 고치기' : '발표 내용 적기'}
+          {has ? '주제 고치기' : '주제 적기'}
         </Button>
       ) : null}
       {editable && open ? (
         <div style={{ marginTop: 8, padding: 12, borderRadius: 12, background: '#faf8f2', display: 'grid', gap: 8 }}>
           <label className="text-body-sm" style={{ fontWeight: 480 }}>
-            학년
-            <select
-              className="field"
-              value={grade}
-              onChange={(e) => {
-                setGrade(Number(e.target.value))
-                setUnitId('')
-              }}
-              style={{ display: 'block', marginTop: 4 }}
-            >
-              {TEXTBOOK_GRADES.map((g) => (
-                <option key={g} value={g}>
-                  {gradeLongLabel(g)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-body-sm" style={{ fontWeight: 480 }}>
-            단원
-            <select className="field" value={unitId} onChange={(e) => setUnitId(e.target.value)} style={{ display: 'block', marginTop: 4 }}>
-              <option value="">단원 고르기</option>
-              {units.map((u, i) => (
-                <option key={u.id} value={u.id}>
-                  {i + 1}. {u.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-body-sm" style={{ fontWeight: 480 }}>
             주제
             <input className="field" value={topic} maxLength={MT_TOPIC_MAX} onChange={(e) => setTopic(e.target.value)} placeholder="예: 세포 관찰로 생물의 공통점 찾기" style={{ display: 'block', marginTop: 4, width: '100%' }} />
           </label>
-          <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend className="text-body-sm" style={{ fontWeight: 480 }}>
-              수업 방식 (여럿 고를 수 있습니다)
-            </legend>
-            <div className="flex gap-xs" style={{ flexWrap: 'wrap', marginTop: 4 }}>
-              {MT_METHODS.map((m) => (
-                <label key={m} className="text-body-sm flex items-center gap-xxs">
-                  <input type="checkbox" checked={methods.includes(m)} onChange={(e) => setMethods((cur) => (e.target.checked ? [...cur, m] : cur.filter((x) => x !== m)))} />
-                  {m}
-                </label>
-              ))}
-            </div>
-            <input className="field" value={other} maxLength={MT_METHOD_OTHER_MAX} onChange={(e) => setOther(e.target.value)} placeholder="기타 방식이 있으면 적기" style={{ display: 'block', marginTop: 6, width: '100%' }} />
-          </fieldset>
+          <Caption>학년, 단원, 수업 방식 등은 수업계획안에 적어 주세요.</Caption>
           {error ? (
             <p role="alert" className="text-body-sm" style={{ margin: 0, fontWeight: 480 }}>
               ⚠ {error}
             </p>
           ) : null}
           <div className="flex gap-xs">
-            <Button disabled={busy || !unitId || !topic.trim() || (!methods.length && !other.trim())} onClick={() => void save()}>
+            <Button disabled={busy || !topic.trim()} onClick={() => void save()}>
               {busy ? '저장하는 중' : '저장'}
             </Button>
             <Button variant="tertiary" onClick={() => setOpen(false)}>
