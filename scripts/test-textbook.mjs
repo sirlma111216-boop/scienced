@@ -133,13 +133,22 @@ const pdf = (n, fill = 0x41) => {
 const upload = async (tok, id, bytes, name = 'chapter.pdf', type = 'application/pdf') =>
   (await lib.handleUpload(env, new Request(`https://x/api/textbook/upload?id=${id}`, { method: 'PUT', headers: { authorization: `Bearer ${tok}`, 'content-type': type, 'content-length': String(bytes.length), 'x-file-name': encodeURIComponent(name) }, body: bytes, duplex: 'half' }))).json()
 const docOf = (id) => lib.fromFields(store.get(`textbook/${id}`) ?? {})
-const unit = TEXTBOOK_UNITS[0].id
+// 저장된 교과서 연결은 표시 순서가 바뀌어도 같은 단원을 가리켜야 한다.
+const unit = 'g1u1'
+ok(TEXTBOOK_UNITS.find((u) => u.id === unit)?.title === '생물의 구성과 다양성', '첫 단원 추가 뒤에도 기존 생물 교과서의 id 가 유지된다')
+ok(TEXTBOOK_UNITS.find((u) => u.id === 'g2u8')?.title === '수권과 해수의 순환', '중2 기존 단원 id 가 유지된다')
 
 console.log('권한')
 ok((await post(lib.handleSave, null, { unitId: unit, title: 'x' })).ok === false, '토큰 없이 목차를 만들 수 없다')
 ok((await post(lib.handleSave, tokS, { unitId: unit, title: 'x' })).ok === false, '학생은 목차를 만들 수 없다')
 ok((await post(lib.handleConfig, tokS, {})).ok === false, '학생은 설정을 읽을 수 없다')
 ok(store.size === 0, '거절된 요청은 아무것도 쓰지 않았다')
+
+console.log('추가 단원 저장')
+for (const [unitId, grade] of [['g1u7', 1], ['g2u9', 2]]) {
+  const saved = await post(lib.handleSave, tokT, { unitId, title: '새 단원의 소단원' })
+  ok(saved.ok && saved.textbook.grade === grade && saved.textbook.unitId === unitId, `${unitId} 소단원을 올바른 학년으로 저장한다`)
+}
 
 console.log('만들기 · 순서')
 const a = await post(lib.handleSave, tokT, { unitId: unit, title: '1. 생물을 이루는 세포', description: '세포의 구조' })
