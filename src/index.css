@@ -165,9 +165,8 @@
 
   .mt-template-row {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 16px;
     padding: 20px;
     border: 1px solid #d8ccec;
