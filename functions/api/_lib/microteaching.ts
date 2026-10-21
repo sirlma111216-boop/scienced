@@ -129,6 +129,34 @@ export async function applyMicroteaching(env: MtEnv, a: { classId: string; uid: 
   return { ok: false, message: `저장하지 못했습니다 (${res.status}). 잠시 뒤 다시 누르세요.` }
 }
 
+/** 강사 이동 — 원본과 신청 가리킴의 버전을 확인해 한 번에 옮긴다. 첨부 자료는 그대로 둔다. */
+export async function moveMicroteaching(env: MtEnv, a: { classId: string; uid: string; actorUid: string; fromSlotId: string; slotId: string }): Promise<MtOutcome> {
+  const rest = await firestoreRest(env)
+  if ('error' in rest) return { ok: false, message: rest.error }
+  const teacher = await getDoc(`${rest.docs}/instructors/${a.actorUid}`, rest.headers)
+  if (!teacher || teacher === 'error') return { ok: false, message: '강사만 발표 일정을 옮길 수 있습니다.' }
+  const L = await load(env, a.classId, a.uid)
+  if ('error' in L) return { ok: false, message: L.error }
+  if (!isMtSlot(L.courseId, a.slotId)) return { ok: false, message: '없는 자리입니다.' }
+  if (a.slotId === a.fromSlotId) return { ok: false, message: '다른 자리를 고르세요.' }
+  const oldName = `${L.base}/classes/${a.classId}/mtSlots/${a.fromSlotId}`
+  const pointerName = `${L.base}/classes/${a.classId}/mtApplications/${a.uid}`
+  const readVersion = async (name: string) => {
+    const r = await fetch(`${L.fs}/${name.slice(L.base.length + 1)}`, { headers: L.h })
+    return r.ok ? await r.json() as { fields: Record<string, Value>; updateTime: string } : null
+  }
+  const [old, pointer] = await Promise.all([readVersion(oldName), readVersion(pointerName)])
+  if (!old?.updateTime || !pointer?.updateTime || str(old.fields, 'uid') !== a.uid || str(pointer.fields, 'slotId') !== a.fromSlotId) return { ok: false, message: '신청 현황이 바뀌었습니다. 다시 확인하세요.' }
+  const [date, order] = a.slotId.split('_')
+  const writes = [
+    { update: { name: `${L.base}/classes/${a.classId}/mtSlots/${a.slotId}`, fields: { ...old.fields, slotId: S(a.slotId), date: S(date), order: I(Number(order)) } }, currentDocument: { exists: false } },
+    { update: { name: pointerName, fields: { slotId: S(a.slotId) } }, updateMask: { fieldPaths: ['slotId'] }, currentDocument: { updateTime: pointer.updateTime } },
+    { delete: oldName, currentDocument: { updateTime: old.updateTime } },
+  ]
+  const r = await fetch(L.rest.commit, { method: 'POST', headers: L.h, body: JSON.stringify({ writes }) })
+  return r.ok ? { ok: true, slotId: a.slotId } : { ok: false, message: '옮기지 못했습니다. 다른 신청자가 있는지 확인하고 다시 시도하세요. 기존 신청은 유지됩니다.' }
+}
+
 /** 취소 — 가리킴이 가리키는 자리와 가리킴을 지운다. 본인 또는 강사가 부른다 */
 export async function cancelMicroteaching(env: MtEnv, a: { classId: string; uid: string; byInstructor: boolean }): Promise<MtOutcome> {
   const L = await load(env, a.classId, a.uid)

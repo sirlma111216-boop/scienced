@@ -89,6 +89,7 @@ export function MicroteachingApply({ admin = false }: { admin?: boolean }) {
       note={note}
       onApply={(slotId) => void run('신청', () => repo!.applyMicroteaching(classId, slotId, user?.uid ?? ''))}
       onCancel={(uid) => void run('취소', () => repo!.cancelMicroteaching(classId, uid))}
+      onMove={(uid, from, to) => void run('일정 이동', () => repo!.moveMicroteaching(classId, uid, from, to))}
       onSetOpenAt={(at) =>
         void run('공개 시각 저장', async () => {
           await repo!.updateClass(classId, { microteachingOpenAt: at })

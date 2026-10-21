@@ -132,6 +132,7 @@ export interface Repo {
   /* ── 마이크로티칭 신청 (강의자 지시 2026-10-03) — 쓰기는 서버 함수가 한다 ── */
   watchMtSlots(classId: string, cb: (list: MtSlot[]) => void): () => void
   applyMicroteaching(classId: string, slotId: string, uid: string): Promise<{ ok: boolean; message?: string }>
+  moveMicroteaching(classId: string, uid: string, fromSlotId: string, slotId: string): Promise<{ ok: boolean; message?: string }>
   /** 본인은 자기 것을, 강사는 uid 를 적어 남의 것을 취소한다 */
   cancelMicroteaching(classId: string, uid: string): Promise<{ ok: boolean; message?: string }>
   /** 신청 기록(발표 내용 · 계획안) — uid 를 주면 그 사람 것(학생 본인), null 이면 전부(강사) */

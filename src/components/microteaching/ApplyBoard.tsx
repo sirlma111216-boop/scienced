@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { MT_FILE_ACCEPT, MT_FILE_MAX_MB, MT_ORDER_LABEL, MT_SCHEDULE, MT_TOPIC_MAX, mtDateLabel, mtOpenState, mtSlotId, type MtCourseId } from '@shared/microteaching'
+import { MT_FILE_ACCEPT, MT_FILE_MAX_MB, MT_ORDER_LABEL, MT_SCHEDULE, MT_TOPIC_MAX, mtDateLabel, mtOpenState, mtSlotId, mtSlots, type MtCourseId } from '@shared/microteaching'
 import { fileSizeText } from '@shared/textbook'
 import { checkMtFile, openMtFile, uploadMtFile } from '@/lib/microteaching-files'
 import type { Enrollment, MtApplication, MtFileMeta, MtSlot } from '@/lib/types'
@@ -35,6 +35,7 @@ export function ApplyBoard({
   note,
   onApply,
   onCancel,
+  onMove,
   onSetOpenAt,
 }: {
   classId: string
@@ -57,6 +58,7 @@ export function ApplyBoard({
   note: string | null
   onApply: (slotId: string) => void
   onCancel: (uid: string) => void
+  onMove: (uid: string, fromSlotId: string, slotId: string) => void
   onSetOpenAt?: (at: number | null) => void
 }) {
   const schedule = MT_SCHEDULE[courseId]
@@ -95,6 +97,8 @@ export function ApplyBoard({
           </p>
         ) : null}
       </ColorBlock>
+
+      {isInstructor ? <MovePanel courseId={courseId} slots={slots} busy={busy} onMove={onMove} /> : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, marginTop: 24 }}>
         {schedule.days.map((d) => (
@@ -202,6 +206,34 @@ export function ApplyBoard({
 
 const th: React.CSSProperties = { textAlign: 'left', padding: '8px 12px', borderBottom: '2px solid #000', whiteSpace: 'nowrap' }
 const td: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid #e5e5e5', whiteSpace: 'nowrap' }
+
+function MovePanel({ courseId, slots, busy, onMove }: { courseId: MtCourseId; slots: MtSlot[]; busy: boolean; onMove: (uid: string, fromSlotId: string, slotId: string) => void }) {
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const student = slots.find((s) => s.slotId === from)
+  const empty = mtSlots(courseId).filter((s) => !slots.some((taken) => taken.slotId === s.slotId))
+  return (
+    <details style={{ marginTop: 20 }}>
+      <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 600 }}>강사 — 발표 일정 옮기기</summary>
+      <p className="text-body-sm">학생과 빈자리를 고른 뒤 옮기기를 누르세요. 발표 주제와 제출 자료는 유지됩니다.</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12 }}>
+        <label>옮길 학생
+          <select value={student ? from : ''} disabled={busy} onChange={(e) => setFrom(e.target.value)} style={{ display: 'block', minHeight: 44 }}>
+            <option value="">학생 선택</option>
+            {slots.map((s) => <option key={s.slotId} value={s.slotId}>{s.studentId} {s.name || s.nickname} · {mtDateLabel(s.date)} {MT_ORDER_LABEL[s.order - 1]}</option>)}
+          </select>
+        </label>
+        <label>새 발표 자리
+          <select value={empty.some((s) => s.slotId === to) ? to : ''} disabled={busy} onChange={(e) => setTo(e.target.value)} style={{ display: 'block', minHeight: 44 }}>
+            <option value="">빈자리 선택</option>
+            {empty.map((s) => <option key={s.slotId} value={s.slotId}>{mtDateLabel(s.date)} {MT_ORDER_LABEL[s.order - 1]}</option>)}
+          </select>
+        </label>
+        <Button disabled={busy || !student || !empty.some((s) => s.slotId === to)} onClick={() => { if (student) onMove(student.uid, from, to) }}>선택한 자리로 옮기기</Button>
+      </div>
+    </details>
+  )
+}
 
 function fmt(ms: number): string {
   const d = new Date(ms)

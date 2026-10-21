@@ -45,13 +45,16 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await db.doc(`classes/${CID}/roster/${S1}`).set({ uid: S1, rosterName: '김민준', memo: '' })
 })
 
-const readAll = async () =>
-  env.withSecurityRulesDisabled(async (ctx) => {
+const readAll = async () => {
+  let result
+  await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
     const slots = (await db.collection(`classes/${CID}/mtSlots`).get()).docs.map((d) => d.data())
     const apps = Object.fromEntries((await db.collection(`classes/${CID}/mtApplications`).get()).docs.map((d) => [d.id, d.data()]))
-    return { slots, apps }
+    result = { slots, apps }
   })
+  return result
+}
 
 const SLOT = '2026-11-02_1'
 

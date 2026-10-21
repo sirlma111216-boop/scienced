@@ -17,7 +17,7 @@ const { MT_SCHEDULE, MT_ORDER_LABEL, isMtSlot, mtDateLabel, mtOpenState, mtSched
 {
   const probs = mtScheduleProblems()
   for (const p of probs) fail('일정', p)
-  const want = { edu: [19, '2026-11-02', '2026-12-14', 7], method: [14, '2026-10-27', '2026-12-01', 6] }
+  const want = { edu: [19, '2026-11-02', '2026-12-14', 7], method: [14, '2026-11-03', '2026-12-01', 5] }
   for (const [k, [total, first, last, days]] of Object.entries(want)) {
     const s = MT_SCHEDULE[k]
     if (s.total !== total) fail('일정', `${s.title} 인원 ${s.total} (기대 ${total})`)
@@ -25,9 +25,9 @@ const { MT_SCHEDULE, MT_ORDER_LABEL, isMtSlot, mtDateLabel, mtOpenState, mtSched
     if (mtSlots(k).length !== total) fail('일정', `${s.title} 자리 ${mtSlots(k).length}개`)
   }
   if (MT_SCHEDULE.edu.days.map((d) => d.count).join() !== '2,2,3,3,3,3,3') fail('일정', `교육론 인원 배열이 ${MT_SCHEDULE.edu.days.map((d) => d.count).join()}`)
-  if (MT_SCHEDULE.method.days.map((d) => d.count).join() !== '2,2,2,2,3,3') fail('일정', `교수법 인원 배열이 ${MT_SCHEDULE.method.days.map((d) => d.count).join()}`)
+  if (MT_SCHEDULE.method.days.map((d) => d.count).join() !== '3,3,2,3,3') fail('일정', `교수법 인원 배열이 ${MT_SCHEDULE.method.days.map((d) => d.count).join()}`)
   if (!/10분/.test(MT_SCHEDULE.edu.minutes) || !/15분.*20분/.test(MT_SCHEDULE.method.minutes)) fail('일정', '발표 시간 안내가 지시(교육론 10분 안팎 · 교수법 15~20분)와 다르다')
-  if (probs.length === 0) pass('일정', '교육론 19자리(11/2~12/14 · 2·2·3·3·3·3·3) · 교수법 14자리(10/27~12/1 · 2·2·2·2·3·3)가 수강 인원과 맞는다')
+  if (probs.length === 0) pass('일정', '교육론 19자리(11/2~12/14 · 2·2·3·3·3·3·3) · 교수법 14자리(11/3~12/1 · 3·3·2·3·3)가 수강 인원과 맞는다')
 }
 
 /* ── 순수 함수 ── */
@@ -42,7 +42,11 @@ const { MT_SCHEDULE, MT_ORDER_LABEL, isMtSlot, mtDateLabel, mtOpenState, mtSched
   check('자리 id', mtSlotId('2026-11-02', 1), '2026-11-02_1')
   check('있는 자리', isMtSlot('edu', '2026-11-02_2'), true)
   check('그날 인원 밖', isMtSlot('edu', '2026-11-02_3'), false)
-  check('다른 과목의 날짜', isMtSlot('edu', '2026-10-27_1'), false)
+  check('다른 과목의 날짜', isMtSlot('edu', '2026-11-03_1'), false)
+  check('폐지된 교수법 날짜', isMtSlot('method', '2026-10-27_1'), false)
+  check('교수법 11월 3일 세 번째 자리', isMtSlot('method', '2026-11-03_3'), true)
+  check('교수법 11월 10일 세 번째 자리', isMtSlot('method', '2026-11-10_3'), true)
+  check('교수법 11월 17일 세 번째 자리는 없음', isMtSlot('method', '2026-11-17_3'), false)
   check('때를 안 정했으면 닫힘', mtOpenState(null, 100), 'closed')
   check('때가 아직이면 예정', mtOpenState(200, 100), 'scheduled')
   check('때가 지나면 열림', mtOpenState(100, 100), 'open')

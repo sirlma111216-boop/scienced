@@ -35,6 +35,7 @@
     "test:textbook": "node --import ./scripts/_loader.mjs scripts/test-textbook.mjs",
     "test:mt-files": "node --import ./scripts/_loader.mjs scripts/test-mt-files.mjs",
     "test:microteaching": "node --import ./scripts/_loader.mjs scripts/test-microteaching.mjs",
+    "test:mt-move": "node --import ./scripts/_loader.mjs scripts/test-mt-move.mjs",
     "verify:theory": "node --import ./scripts/_loader.mjs scripts/verify-theory.mjs",
     "verify:groups": "node --import ./scripts/_loader.mjs scripts/verify-groups.mjs",
     "verify": "node scripts/verify-all.mjs",

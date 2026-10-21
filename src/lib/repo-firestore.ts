@@ -466,6 +466,9 @@ export function createFirestoreRepo(db: Firestore): Repo {
     async applyMicroteaching(classId, slotId) {
       return apiPost('/api/microteaching/apply', { classId, slotId })
     },
+    async moveMicroteaching(classId, uid, fromSlotId, slotId) {
+      return apiPost('/api/microteaching/move', { classId, uid, fromSlotId, slotId })
+    },
     watchMtApplications(classId, uid, cb, onError) {
       const fail = (err: unknown) => {
         console.error('[마이크로티칭] 신청 기록을 읽지 못했다:', err)

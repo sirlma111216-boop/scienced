@@ -368,6 +368,16 @@ export function createLocalRepo(): Repo {
       write(kMtSlots(classId), [...list.filter((s) => s.uid !== uid), { slotId, date, order: Number(order), uid, studentId: enr.studentId ?? '', name, nickname: enr.nickname, at: Date.now() }])
       return { ok: true }
     },
+    async moveMicroteaching(classId, uid, fromSlotId, slotId) {
+      const cls = read<ClassDoc[]>('classes', []).find((c) => c.id === classId)
+      if (!cls || cls.status !== 'active' || !isMtSlot(cls.courseId ?? courseIdFromTitle(cls.courseTitle), slotId)) return { ok: false, message: '없는 자리입니다.' }
+      const list = read<MtSlot[]>(kMtSlots(classId), [])
+      const old = list.find((s) => s.slotId === fromSlotId && s.uid === uid)
+      if (!old || list.some((s) => s.slotId === slotId)) return { ok: false, message: '신청 현황이 바뀌었습니다. 다시 확인하세요.' }
+      const [date, order] = slotId.split('_')
+      write(kMtSlots(classId), list.map((s) => s === old ? { ...s, slotId, date, order: Number(order) } : s))
+      return { ok: true }
+    },
     async cancelMicroteaching(classId, uid) {
       write(kMtSlots(classId), read<MtSlot[]>(kMtSlots(classId), []).filter((s) => s.uid !== uid))
       return { ok: true }
