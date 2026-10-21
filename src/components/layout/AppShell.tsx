@@ -1,8 +1,9 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useRef, useState, type ReactNode } from 'react'
 import { buildShortName } from '@/content/classes'
 import { useAuth } from '@/lib/auth'
 import { Badge, Button } from '@/components/ui'
+import { FooterNav } from './FooterNav'
 
 /**
  * 상단바 + 단계 네비게이션.
@@ -316,42 +317,19 @@ export function AppShell({
         )}
       </main>
 
-      <footer className="no-print" style={{ boxShadow: 'inset 0 1px 0 #f1f1f1' }}>
-        <div
-          className="shell flex flex-wrap items-center gap-md"
-          style={{ paddingTop: 32, paddingBottom: 32 }}
-        >
-          <span className="caption">경희대학교 · 과학교육론 · 과학교과교수법</span>
-          <span className="flex-1" />
-          <NavLink to="/portfolio" className="caption">
-            포트폴리오
-          </NavLink>
-          <NavLink to="/concept-map" className="caption">
-            개념 지도
-          </NavLink>
-          <NavLink to="/curriculum" className="caption">
-            교육과정
-          </NavLink>
-          <NavLink to="/textbook" className="caption">
-            교과서
-          </NavLink>
-          <NavLink to="/microteaching" className="caption">
-            마이크로티칭
-          </NavLink>
-          <NavLink to="/microteaching/apply" className="caption">
-            발표 신청
-          </NavLink>
-          <NavLink to="/microteaching/record" className="caption">
-            발표 기록
-          </NavLink>
-          <a
-            className="caption"
-            href="https://labbitory.com"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            labbitory.com
-          </a>
+      <footer className="app-footer no-print">
+        <div className="shell">
+          <FooterNav />
+          <div className="footer-info">
+            <span>경희대학교 · 과학교육론 · 과학교과교수법</span>
+            <a
+              href="https://labbitory.com"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              labbitory.com
+            </a>
+          </div>
         </div>
       </footer>
     </div>

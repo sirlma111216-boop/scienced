@@ -42,6 +42,91 @@
 }
 
 @layer components {
+  .app-footer {
+    @apply bg-surface-soft;
+    border-top: 1px solid #e6e6e6;
+    padding: 32px 0;
+  }
+  .footer-menu-title {
+    margin: 0 0 16px;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .footer-menu-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .footer-menu-list > li {
+    min-width: 0;
+  }
+  .footer-menu-link {
+    @apply bg-mint text-ink rounded-pill;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 80px;
+    height: 100%;
+    padding: 12px;
+    border: 1px solid #000;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    text-decoration: none;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+  }
+  .footer-menu-link[data-tone='teaching'] {
+    @apply bg-lilac;
+  }
+  .footer-menu-link:hover {
+    @apply bg-canvas;
+    box-shadow: inset 0 0 0 1px #000;
+  }
+  .footer-menu-link[aria-current='page'] {
+    @apply bg-ink text-canvas;
+  }
+  .footer-menu-link:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+    border-radius: 50px;
+  }
+  .footer-menu-status {
+    font-size: 13px;
+    font-weight: 480;
+    line-height: 1.4;
+  }
+  .footer-info {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 24px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .footer-info a {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  @media (min-width: 768px) {
+    .footer-menu-list {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1200px) {
+    .footer-menu-list {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+  }
+
   /* ─────────── DESIGN.md components: 버튼은 전부 알약, 아이콘은 전부 원 ─────────── */
   .btn {
     @apply inline-flex items-center justify-center gap-xs rounded-pill text-button;
