@@ -177,19 +177,25 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     flex-shrink: 0;
     min-height: 56px;
     width: 100%;
-    padding: 14px 24px;
+    padding: 14px 12px;
     border: 2px solid #000;
     border-radius: 999px;
     background: #000;
     color: #fff;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     line-height: 1.4;
+    white-space: nowrap;
     cursor: pointer;
+  }
+  .mt-template-download svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
   }
   .mt-template-download:hover {
     background: #333;
@@ -201,6 +207,13 @@
   @media (min-width: 640px) {
     .mt-template-download {
       width: auto;
+      padding: 14px 24px;
+      font-size: 18px;
+      gap: 10px;
+    }
+    .mt-template-download svg {
+      width: 24px;
+      height: 24px;
     }
   }
 
