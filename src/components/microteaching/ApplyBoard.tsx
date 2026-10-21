@@ -456,12 +456,17 @@ function PlanSection({
       </p>
       <Card>
         {template ? (
-          <p className="text-body" style={{ margin: 0 }}>
-            양식 — {template.name} <span style={{ opacity: 0.6 }}>({fileSizeText(template.size)})</span>{' '}
-            <Button variant="tertiary" onClick={() => void download('template')}>
+          <div className="mt-template-row">
+            <p className="text-body" style={{ margin: 0, minWidth: 0, overflowWrap: 'anywhere' }}>
+              양식 — {template.name} <span style={{ opacity: 0.6 }}>({fileSizeText(template.size)})</span>
+            </p>
+            <Button className="mt-template-download" onClick={() => void download('template')}>
+              <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />
+              </svg>
               양식 내려받기
             </Button>
-          </p>
+          </div>
         ) : (
           <p className="text-body" style={{ margin: 0, opacity: 0.75 }}>
             수업계획안 양식은 강의자가 올리면 여기에 뜹니다. 그 뒤에 양식을 내려받아 작성하고 이곳에 올립니다.

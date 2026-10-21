@@ -163,6 +163,48 @@
     height: 44px;
   }
 
+  .mt-template-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid #d8ccec;
+    border-radius: 20px;
+    background: #f2ecff;
+  }
+  .mt-template-download {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-shrink: 0;
+    min-height: 56px;
+    width: 100%;
+    padding: 14px 24px;
+    border: 2px solid #000;
+    border-radius: 999px;
+    background: #000;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+  .mt-template-download:hover {
+    background: #333;
+  }
+  .mt-template-download:focus-visible {
+    outline: 3px solid #6842a6;
+    outline-offset: 4px;
+  }
+  @media (min-width: 640px) {
+    .mt-template-download {
+      width: auto;
+    }
+  }
+
   /* 알약 토글: 선택 = 기본 표면 (DESIGN.md pricing-tab 패턴) */
   .tab {
     @apply btn bg-canvas text-ink;
