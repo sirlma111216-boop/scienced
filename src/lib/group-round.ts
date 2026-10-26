@@ -11,12 +11,13 @@ import type { ClassDoc, GroupRound } from './types'
  * 모둠을 새로 나누는 차시 (강의자가 확정 2026-09-22).
  *
  *   과학교육론    매 차시 앞에서 나눈다.
- *   과학교과교수법 12강까지는 홀수 차시(1·3·5·7·9·11)에 나누고 그다음 짝수 차시는 앞 차시의 모둠을 따른다.
- *                 **13강부터는 매 차시 앞에서 나눈다** (13·14·15·16·17·18).
+ *   과학교과교수법 14강까지는 홀수 차시(1·3·5·7·9·11·13)에 나누고 그다음 짝수 차시는 앞 차시의 모둠을 따른다.
+ *                 15강부터는 매 차시 앞에서 나눈다 (15·16·17·18).
+ *                 14강은 13강 모둠을 이어 쓴다 (강의자 지시 2026-10-26).
  *
  * 이 함수 하나가 규칙이다 — 화면·강사 화면·검사기가 전부 여기를 부른다. 다른 곳에 홀짝 계산을 두지 않는다.
  */
-export const METHOD_PAIRED_UNTIL = 12
+export const METHOD_PAIRED_UNTIL = 14
 
 export function defaultFormationLessons(courseId: CourseId): LessonId[] {
   const ids = lessonIndex(courseId).map((l) => l.id)
@@ -28,18 +29,25 @@ export function defaultFormationLessons(courseId: CourseId): LessonId[] {
 }
 
 export function formationLessons(cls: ClassDoc | null | undefined, courseId: CourseId): LessonId[] {
-  return cls?.groupFormationLessons?.length ? cls.groupFormationLessons : defaultFormationLessons(courseId)
+  const lessons = cls?.groupFormationLessons?.length ? cls.groupFormationLessons : defaultFormationLessons(courseId)
+  // 기존 클래스에 저장된 14강 나누기 설정도 새 진행 방식에 맞춘다.
+  if (courseId === 'method') return [...new Set([...lessons.filter((id) => id !== '14'), '13'])].sort()
+  return lessons
 }
 
 /**
  * 이 차시에서 쓰는 모둠.
  *   · 모둠을 새로 나누는 차시(defaultFormationLessons)는 **이 차시에서 확정한 회차만** — 나누기 전에는 없다.
  *     지난 회차를 보이면 「같은 답끼리 모인다」는 질문 아래에 지난주 모둠이 떠 있어 헷갈린다 (강의자 지적 2026-09-22).
- *   · 나누지 않는 차시(교수법 2~12강의 짝수 차시)는 **바로 앞 나누는 차시**의 회차만 이어 쓴다. 그것이 없으면 없다.
+ *   · 나누지 않는 차시(교수법 2~14강의 짝수 차시)는 **바로 앞 나누는 차시**의 회차만 이어 쓴다. 그것이 없으면 없다.
  *     더 옛 회차를 끌어오지 않는다 — 5강에서 아직 안 나눴는데 6강에 3강 모둠이 떠 있었다 (강의자 지적 2026-09-22).
  *     이 차시에서 직접 나눈 회차가 있으면(강사가 짝수 차시에 나눈 경우) 그것이 먼저다.
  */
 export function roundForLesson(lessonId: LessonId, rounds: GroupRound[], formation: LessonId[]): GroupRound | null {
+  // 14강의 옛 회차가 남아 있어도 이번 수업은 지정된 13강 모둠을 쓴다.
+  if (lessonId === '14' && !formation.includes('14') && formation.includes('13')) {
+    return rounds.find((r) => r.lessonId === '13') ?? null
+  }
   const here = rounds.find((r) => r.lessonId === lessonId) ?? null
   if (formation.includes(lessonId) || here) return here
   const prev = followedLesson(lessonId, formation)

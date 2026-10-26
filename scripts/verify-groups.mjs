@@ -16,7 +16,7 @@ const { answeredUids, attendanceEdit, attendingStudents, withAttendance, attenda
 const { assignGroups, applyRound, feasibility, groupSizes } = await import('../shared/groups-core.ts')
 const { lessonIndex } = await import('../src/content/courses/index.ts')
 /* 규칙은 앱이 쓰는 그 파일에서 그대로 부른다 — 검사기가 규칙을 다시 쓰면 둘이 어긋난다 */
-const { defaultFormationLessons, roundForLesson, METHOD_PAIRED_UNTIL } = await import('../src/lib/group-round.ts')
+const { defaultFormationLessons, formationLessons, attendanceLessonOf, roundForLesson, METHOD_PAIRED_UNTIL } = await import('../src/lib/group-round.ts')
 
 const mk = (lessonId, name) => ({ id: 'r-' + lessonId, round: Number(lessonId), lessonId, gameId: 'q', groups: [{ id: '1', name, memberUids: ['a'] }], absentUids: [], seed: '', cost: 0, createdBy: 't', createdAt: 0, manualEdits: [], plannedNext: [], followedPlan: true, lateJoins: [] })
 
@@ -248,6 +248,13 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
     ['교수법 6강(짝수) — 5강 회차가 없으면 3강 것을 끌어오지 않는다', roundForLesson('06', rounds, method), null],
     ['교수법 6강(짝수) — 5강 회차가 있으면 그것', roundForLesson('06', [...rounds, mk('05', '5강 모둠')], method)?.lessonId, '05'],
     ['교수법 6강 — 6강에서 직접 나눴으면 그것이 먼저', roundForLesson('06', [...rounds, mk('05', '5강 모둠'), mk('06', '6강 모둠')], method)?.lessonId, '06'],
+    ['교수법 14강 — 13강 모둠을 잇는다', roundForLesson('14', [mk('13', '13강 모둠')], method)?.lessonId, '13'],
+    ['교수법 14강 — 옛 14강 회차보다 13강을 쓴다', roundForLesson('14', [mk('13', '13강 모둠'), mk('14', '옛 모둠')], method)?.lessonId, '13'],
+    ['교수법 14강 — 13강 모둠이 없으면 옛 14강 것을 쓰지 않는다', roundForLesson('14', [mk('14', '옛 모둠')], method), null],
+    ['교수법 14강 — 출석도 13강에서 읽는다', attendanceLessonOf('14', method), '13'],
+    ['교수법 기존 설정 — 14강 나누기를 제거한다', formationLessons({ groupFormationLessons: ['01', '13', '14', '15'] }, 'method').join(','), '01,13,15'],
+    ['교수법 기존 설정 — 13강을 이어 쓸 수 있다', attendanceLessonOf('14', formationLessons({ groupFormationLessons: ['01', '14', '15'] }, 'method')), '13'],
+    ['교육론 설정은 그대로 둔다', formationLessons({ groupFormationLessons: ['01', '02'] }, 'edu').join(','), '01,02'],
     ['교수법 13강(나누는 회차 밖) — 바로 앞 나누는 차시인 11강 것', roundForLesson('13', [mk('11', '11강 모둠')], ['01', '03', '05', '07', '09', '11']), '11강 모둠'].map((v, i) => (i === 1 ? v?.groups?.[0]?.name : v)),
   ]
   let bad = 0
@@ -263,16 +270,16 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
 /*
  * ── 전수조사 — 두 과목의 모든 차시가 규칙대로인가 (강의자 확정 2026-09-22) ──
  *   교육론    12차시 전부 나눈다.
- *   교수법    12강까지 홀수(1·3·5·7·9·11)에 나누고 그다음 짝수는 앞 차시를 따른다. 13강부터는 매 차시 나눈다.
+ *   교수법    14강까지 홀수(1·3·5·7·9·11·13)에 나누고 그다음 짝수는 앞 차시를 따른다. 15강부터는 매 차시 나눈다.
  * 차시 하나하나를 적어 놓고 센다 — 「홀수면 된다」로 세면 13강부터가 빠진다.
  */
 {
   const EXPECT = {
     edu: { form: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'], follow: {} },
     method: {
-      form: ['01', '03', '05', '07', '09', '11', '13', '14', '15', '16', '17', '18'],
+      form: ['01', '03', '05', '07', '09', '11', '13', '15', '16', '17', '18'],
       /* 따르는 차시 → 따라야 할 차시 */
-      follow: { '02': '01', '04': '03', '06': '05', '08': '07', '10': '09', '12': '11' },
+      follow: { '02': '01', '04': '03', '06': '05', '08': '07', '10': '09', '12': '11', '14': '13' },
     },
   }
   let bad = 0
@@ -314,7 +321,7 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
       }
     }
   }
-  if (bad === 0) pass('전수조사', `교육론 12차시는 매 차시 나누고, 교수법은 ${METHOD_PAIRED_UNTIL}강까지 홀수에 나눈 뒤 짝수가 따르며 13강부터 매 차시 나눈다 — 30차시 전부 확인`)
+  if (bad === 0) pass('전수조사', `교육론 12차시는 매 차시 나누고, 교수법은 ${METHOD_PAIRED_UNTIL}강까지 홀수에 나눈 뒤 짝수가 따르며 15강부터 매 차시 나눈다 — 30차시 전부 확인`)
 }
 
 report('verify:groups')
