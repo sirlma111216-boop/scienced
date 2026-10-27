@@ -755,6 +755,41 @@ const studentRepo = createFirestoreRepo(env.authenticatedContext(STUDENT).firest
     else pass('게임 입력', `자기 입력만 쓰고 모두가 읽는다 · 같은 입력으로 앱의 계산(game-core)이 발표자를 낸다 (${d.reason})`)
   }
 
+  /* 14강 빙고: 실제 학생 입력 → 마지막 두 명 계산 → 결과·기록·발표 횟수 저장 */
+  {
+    const { derive, bingoItemsOf } = await import('../src/lib/game-core.ts')
+    const { finalizeGame } = await import('../src/lib/game-record.ts')
+    const { lesson } = await import('../src/content/courses/method/lesson14.ts')
+    const roster = ['g-a', 'g-b', 'g-c', 'g-d']
+    const t0 = Date.now() - 45000
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(`classes/${CID2}/lessonState/14`).set({ lessonId: '14', published: true })
+    })
+    const state = { kind: 'bingo', stepId: 'activity', phase: 'running', round: 1, seed: 'writes::bingo-last', startedAt: t0, state: { roster }, result: null, updatedAt: t0 }
+    await teacherRepo.setGame(CID2, '14', 'activity', state)
+    for (const [i, uid] of roster.entries()) {
+      const student = createFirestoreRepo(env.authenticatedContext(uid).firestore())
+      await student.setGameInput(CID2, '14', { uid, stepId: 'activity', round: 1, joinedAt: t0, value: { claim: t0 + 40100 + i * 100 }, updatedAt: Date.now() })
+    }
+    const inputs = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { stop(); reject(Error('빙고 입력 구독 시간 초과')) }, 5000)
+      const stop = sA.watchGameInputs(CID2, '14', 'activity', (list) => {
+        if (list.length === roster.length) { clearTimeout(timer); stop(); resolve(list) }
+      })
+    })
+    const d = derive({ state, inputs, now: t0 + 45000, groups: [], bingoItems: bingoItemsOf(lesson.activity), options: lesson.activity.gameOptions })
+    if (d.winnerUids.join(',') !== 'g-d,g-c') fail('14강 빙고 저장', `마지막 두 명이 아니다: ${d.winnerUids}`)
+    else {
+      await finalizeGame(teacherRepo, { classId: CID2, lessonId: '14', stepId: 'activity', gameId: '14-activity-bingo', base: state, winnerUids: d.winnerUids, reason: d.reason, candidateUids: roster, presentCount: {}, runBy: TEACHER })
+      const db = env.authenticatedContext('g-a').firestore()
+      const result = (await db.doc(`classes/${CID2}/sessions/14`).get()).data()?.games?.activity?.result
+      const picks = (await db.collection(`classes/${CID2}/picks`).get()).docs.map((doc) => doc.data()).filter((p) => p.gameId === '14-activity-bingo')
+      const counts = await Promise.all(roster.map(async (uid) => (await db.doc(`classes/${CID2}/participation/${uid}`).get()).data()?.presentCount ?? 0))
+      if (result?.winnerUids.join(',') !== 'g-d,g-c' || picks[0]?.winnerUids.join(',') !== 'g-d,g-c' || counts.join(',') !== '0,0,1,1') fail('14강 빙고 저장', `결과·기록·발표 횟수 불일치: ${JSON.stringify({ result, picks, counts })}`)
+      else pass('14강 빙고 저장', '실제 학생 입력을 읽고 늦게 외친 두 명만 세션·기록·발표 횟수에 반영했다')
+    }
+  }
+
   /* 학생은 자기 등록의 모둠 자리를 못 옮긴다 */
   let moved = false
   try {

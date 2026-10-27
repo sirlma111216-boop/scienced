@@ -234,4 +234,39 @@ const { GAME_LIBRARY, LEGACY_KINDS, LIBRARY_KINDS } = await import('../src/conte
   for (const [k, g] of text) if (!/두 사람/.test(g.rule)) fail('전수조사', `${k} 의 규칙 한 줄이 발표자가 둘임을 말하지 않는다 — 「${g.rule}」`)
 }
 
+/* 교수법 14강: 처음 두 명에서 멈추지 않고 마지막 두 명을 고른다. */
+{
+  const { derive, bingoItemsOf } = await import('../src/lib/game-core.ts')
+  const { lesson } = await import('../src/content/courses/method/lesson14.ts')
+  const { gameRule } = await import('../src/content/games.ts')
+  const t0 = 1_000_000
+  const roster = ['a', 'b', 'c', 'd']
+  const run = (times, elapsed = 45000, options = lesson.activity.gameOptions) => derive({
+    state: { kind: 'bingo', stepId: 'activity', phase: 'running', round: 1, seed: 'bingo-last', startedAt: t0, state: { roster }, result: null, updatedAt: t0 },
+    inputs: times.map((time, i) => ({ uid: roster[i], stepId: 'activity', round: 1, joinedAt: t0, value: time === null ? {} : { claim: t0 + time }, updatedAt: t0 })),
+    now: t0 + elapsed, groups: [], bingoItems: bingoItemsOf(lesson.activity), options,
+  })
+  const cases = [
+    ['14강은 늦게 외친 순서', lesson.activity.gameOptions?.pick, 'slowest'],
+    ['처음 둘이 외쳐도 계속 진행', run([40100, 40200, null, null], 40300).finished, false],
+    ['전원 외치면 마감 전에도 종료', run([40100, 40200, 40300, 40400], 40400).finished, true],
+    ['마지막 두 명 선정', run([40100, 40200, 40300, 40400]).winnerUids.join(','), 'd,c'],
+    ['미입력 우선 다음은 가장 늦은 사람', run([40100, 40200, 40300, null]).winnerUids.join(','), 'd,c'],
+    ['둘이 미입력이면 그 둘', [...run([40100, 40200, null, null]).winnerUids].sort().join(','), 'c,d'],
+    ['모두 미입력도 마감 전에는 진행', run([null, null, null, null], 44999).finished, false],
+    ['모두 미입력도 마감에 두 명 선정', run([null, null, null, null]).winnerUids.length, 2],
+    ['마감 이후 입력은 인정하지 않음', run([40100, 40200, 40300, 46000], 47000).view.claimedUids.includes('d'), false],
+    ['한 줄 전 입력은 인정하지 않음', run([0, 40200, 40300, 40400]).view.claimedUids.includes('a'), false],
+    ['다른 차시 기본 규칙 유지', run([40100, 40200, null, null], 40300, {}).winnerUids.join(','), 'a,b'],
+    ['화면에 늦게 누른 사람 안내', gameRule('bingo', lesson.activity.gameOptions).includes('가장 늦게'), true],
+  ]
+  const tied = run([40100, 40200, 40400, 40400])
+  cases.push(['동률도 마지막 둘만 선정', [...tied.winnerUids].sort().join(','), 'c,d'])
+  let bad = 0
+  for (const [label, got, expected] of cases) {
+    if (got !== expected) { bad++; fail('늦게 빙고', `${label}: ${got} (기대 ${expected})`) }
+  }
+  if (!bad) pass('늦게 빙고', `14강 종료 시점·순서·미입력·동률·무효 입력·기본 규칙 ${cases.length}종 통과`)
+}
+
 report('verify:games')

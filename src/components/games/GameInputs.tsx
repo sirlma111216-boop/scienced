@@ -205,11 +205,12 @@ export function StudentGameInput({
       const boards = (view.boards as Record<string, string[]> | undefined) ?? {}
       const board = boards[uid] ?? []
       const drawn = new Set((view.drawn as string[] | undefined) ?? [])
-      const claimed = typeof v.claim === 'number'
+      const claimed = ((view.claimedUids as string[] | undefined) ?? []).includes(uid)
+      const eligible = ((view.eligibleUids as string[] | undefined) ?? []).includes(uid)
       return (
         <div>
           <p className="text-body" style={{ margin: 0 }}>
-            5초마다 하나씩 뽑힌다. 한 줄이 되면 「빙고」를 누른다. 먼저 누른 두 사람이 발표한다.
+            5초마다 하나씩 뽑힌다. 한 줄이 되면 「빙고」를 누른다. {view.pick === 'slowest' ? '모두 누르거나 45초가 지나면 늦게 누른 두 사람이 발표한다. 끝까지 안 누른 사람을 우선한다.' : '먼저 누른 두 사람이 발표한다.'}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 10, maxWidth: 360 }}>
             {board.map((item) => (
@@ -219,7 +220,7 @@ export function StudentGameInput({
             ))}
           </div>
           <div style={{ marginTop: 10 }}>
-            <Button disabled={claimed} onClick={() => onPatch({ claim: now })}>
+            <Button disabled={claimed || !eligible || derived.finished} onClick={() => onPatch({ claim: now })}>
               {claimed ? '빙고를 외쳤다' : '빙고'}
             </Button>
           </div>

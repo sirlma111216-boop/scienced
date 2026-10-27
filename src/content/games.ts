@@ -119,6 +119,7 @@ export const GAME_LIBRARY: Record<GameKind, GameSpec> = {
     scope: 'individual',
     seconds: 120,
     winner: '먼저 빙고를 외친 두 사람',
+    options: { pick: { label: '누가 발표하는가', values: ['fastest', 'slowest'], default: 'fastest' } },
   },
   estimate: {
     kind: 'estimate',
@@ -206,6 +207,7 @@ export function gameRule(kind: GameKind, options?: Record<string, unknown> | nul
   const rule = GAME_LIBRARY[kind].rule
   if (kind === 'rps') return `${rule} ${options?.pick === 'firstOut' ? '가장 먼저 진 두 사람이 발표합니다.' : '끝까지 이긴 두 사람이 발표합니다.'}`
   if (kind === 'flash') return `${rule} ${options?.pick === 'slowest' ? '가장 늦게 누른 두 사람이 발표합니다.' : '가장 빨리 누른 두 사람이 발표합니다.'}`
+  if (kind === 'bingo' && options?.pick === 'slowest') return '한 줄이 되면 빙고를 누르세요. 모두 누르거나 45초가 지나면 가장 늦게 누른 두 사람이 발표합니다. 끝까지 안 누른 사람을 우선합니다.'
   return rule
 }
 

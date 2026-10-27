@@ -457,12 +457,13 @@ export function bingoItemsOf(activity: { fields: Array<{ items?: Array<{ label: 
   return [...new Set([...labels, ...BINGO_FILLERS])].slice(0, 9)
 }
 
-/** 빙고 — 항목 9개로 3×3. 5초마다 하나씩 뽑힌다. 먼저 빙고를 외친 두 사람 */
+/** 빙고 — 항목 9개로 3×3. 차시별로 먼저/늦게 외친 두 사람을 고른다. */
 function bingo(ctx: GameContext): Derived {
   const ps = participants(ctx)
   const t0 = started(ctx)
   const items = (ctx.bingoItems ?? []).slice(0, 9)
   const draws = shuffleSeeded(ctx.state.seed, 'bingo-draw', items)
+  const slowest = ctx.options?.pick === 'slowest'
   if (!t0 || items.length < 9) return { finished: false, winnerUids: [], reason: '', view: { drawn: [], boards: {}, ready: items.length >= 9 } }
   const drawnCount = Math.min(items.length, Math.floor((ctx.now - t0) / 5000) + 1)
   const drawn = draws.slice(0, drawnCount)
@@ -471,17 +472,32 @@ function bingo(ctx: GameContext): Derived {
     [0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6],
   ]
   const hasLine = (board: string[], set: Set<string>) => lines.some((l) => l.every((i) => set.has(board[i])))
+  const deadline = t0 + items.length * 5000
   const claims = ps
     .map((p) => ({ uid: p.uid, t: num(val(p).claim) }))
-    .filter((c): c is { uid: string; t: number } => c.t !== null && c.t >= t0 && c.t <= ctx.now)
+    .filter((c): c is { uid: string; t: number } => c.t !== null && c.t >= t0 && c.t <= Math.min(ctx.now, deadline))
     .filter((c) => hasLine(boardOf(c.uid), new Set(draws.slice(0, Math.min(items.length, Math.floor((c.t - t0) / 5000) + 1)))))
   const want = Math.min(PRESENTER_COUNT, ps.length)
-  /* 둘이 외치면 끝난다. 아무도 안 외쳐도 아홉 개가 다 뽑히고 5초 뒤에는 끝난다 */
-  const finished = claims.length >= want || ctx.now >= t0 + items.length * 5000
+  /* 늦게 외친 사람을 고를 때는 전원의 입력을 기다린다. 마지막 추첨 뒤 5초가 마감이다. */
+  const finished = claims.length >= (slowest ? ps.length : want) || ctx.now >= deadline
   const boards: Record<string, string[]> = Object.fromEntries(ps.map((p) => [p.uid, boardOf(p.uid)]))
-  if (!finished) return { finished, winnerUids: [], reason: '', view: { drawn, boards, ready: true } }
+  const view = {
+    drawn, boards, ready: true, pick: slowest ? 'slowest' : 'fastest',
+    claimedUids: claims.map((c) => c.uid),
+    eligibleUids: ps.filter((p) => hasLine(boardOf(p.uid), new Set(drawn))).map((p) => p.uid),
+  }
+  if (!finished) return { finished, winnerUids: [], reason: '', view }
+  if (slowest) {
+    const unclaimed = ps.filter((p) => !claims.some((c) => c.uid === p.uid))
+    const ranking = [
+      ...rankBy(ctx, 'bingo-unclaimed', unclaimed, () => 0),
+      ...rankBy(ctx, 'bingo', claims, (c) => -c.t),
+    ]
+    const { winners } = pickTwo(ctx, ranking)
+    return { finished, winnerUids: winners, reason: '가장 늦게 빙고를 외친 순서로 둘 · 끝까지 안 외친 사람 우선 · 동률은 시드로 결정', view }
+  }
   const { winners, filled } = pickTwo(ctx, rankBy(ctx, 'bingo', claims, (c) => c.t))
-  return { finished, winnerUids: winners, reason: `가장 먼저 빙고를 외친 사람${claims.length >= want ? ' 둘' : ` ${claims.length}명`}${fillNote(filled)}`, view: { drawn, boards, ready: true } }
+  return { finished, winnerUids: winners, reason: `가장 먼저 빙고를 외친 사람${claims.length >= want ? ' 둘' : ` ${claims.length}명`}${fillNote(filled)}`, view }
 }
 
 /** 추정 — 오늘 모둠 질문의 답 하나를 고른 사람 수를 맞힌다. 가까운 순서로 둘 */
