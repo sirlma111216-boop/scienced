@@ -330,7 +330,7 @@ function TableBlock({ s }: { s: Stimulus }) {
   if (!s.table) return null
   return (
     <ScrollX>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12, minWidth: 420 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12, minWidth: s.sourceLinks?.length ? 680 : 420 }}>
         <thead>
           <tr>
             {s.table.head.map((h) => (
@@ -351,8 +351,8 @@ function TableBlock({ s }: { s: Stimulus }) {
               {row.map((cell, j) => (
                 <td
                   key={j}
-                  className={j === 0 ? 'text-body' : 'text-body font-mono'}
-                  style={{ padding: '10px 12px 10px 0' }}
+                  className={j === 0 || s.sourceLinks?.length ? 'text-body' : 'text-body font-mono'}
+                  style={{ padding: '10px 12px 10px 0', ...(s.sourceLinks?.length ? { verticalAlign: 'top', width: j === 0 ? 120 : undefined } : {}) }}
                 >
                   {cell}
                 </td>
@@ -377,7 +377,7 @@ export function StimulusView({ stimulus }: { stimulus: Stimulus }) {
   return (
     <section className="card" style={{ marginTop: 24 }} aria-labelledby={`stim-${s.id}`}>
       <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-        <Caption>{FORMAT_LABEL[s.format]}</Caption>
+        <Caption>{s.sourceLinks?.length ? '연구 자료' : FORMAT_LABEL[s.format]}</Caption>
         {/* 가상 자료라는 사실을 화면에서 감추지 않는다 (H.5) */}
         {s.label ? <Badge>{s.label}</Badge> : null}
       </div>
@@ -392,12 +392,27 @@ export function StimulusView({ stimulus }: { stimulus: Stimulus }) {
       ) : null}
 
       {s.format === 'image' ? <ImageBlock s={s} isInstructor={isInstructor} /> : null}
-      {s.format === 'dataTable' ? <TableBlock s={s} /> : null}
+      {s.format === 'dataTable' && !s.sourceLinks?.length ? <TableBlock s={s} /> : null}
 
       {s.body ? (
         <div style={quoted ? { paddingLeft: 16, boxShadow: 'inset 2px 0 0 #000' } : undefined}>
           <Body body={s.body} />
         </div>
+      ) : null}
+      {s.format === 'dataTable' && s.sourceLinks?.length ? <TableBlock s={s} /> : null}
+      {s.sourceLinks?.length ? (
+        <details style={{ marginTop: 16 }}>
+          <summary className="text-body" style={{ cursor: 'pointer', fontWeight: 700 }}>연구 출처·원자료 확인</summary>
+          <ul style={{ paddingLeft: 20, marginTop: 12 }}>
+            {s.sourceLinks.map((link) => (
+              <li key={link.url} style={{ marginBottom: 10 }}>
+                <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', textDecoration: 'underline', overflowWrap: 'anywhere' }}>
+                  {link.label} (새 창)
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
       ) : null}
     </section>
   )

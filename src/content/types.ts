@@ -89,6 +89,8 @@ export interface Stimulus {
   /** 「수업용으로 만든 가상 자료」 같은 꼬리표 */
   label?: string
   source?: string
+  /** 연구 자료의 원문·원자료를 직접 확인할 수 있는 링크 */
+  sourceLinks?: { label: string; url: string }[]
   body: string
   table?: { head: string[]; rows: string[][] }
   imageSpec?: ImageSpec
