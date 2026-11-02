@@ -167,6 +167,31 @@ export const MT_CONTENT_TYPE: Record<(typeof MT_FILE_EXTS)[number], string> = {
   doc: 'application/msword',
 }
 
+/**
+ * 강의용 PT(발표 슬라이드) — 파워포인트 · PDF (강의자 지시 2026-11-02).
+ * 그림이 많아 지도안보다 크다. 요청 하나가 100 MB 를 넘지 못하므로 90 MB 까지.
+ * Google 슬라이드 · Keynote 는 pptx 나 PDF 로 내보내 올린다.
+ */
+export const MT_SLIDES_EXTS = ['pptx', 'ppt', 'pdf'] as const
+export const MT_SLIDES_MAX_MB = 90
+export const MT_SLIDES_ACCEPT = '.pptx,.ppt,.pdf'
+
+/** 파일 머리로 형식을 본다 — pptx 는 zip(PK\x03\x04) · ppt 는 OLE(D0 CF 11 E0) · pdf 는 %PDF- */
+export function mtSlidesKind(name: string, head: Uint8Array): (typeof MT_SLIDES_EXTS)[number] | null {
+  const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase()
+  if (!(MT_SLIDES_EXTS as readonly string[]).includes(ext)) return null
+  const starts = (bytes: number[]) => bytes.every((b, i) => head[i] === b)
+  if (ext === 'pdf') return starts([0x25, 0x50, 0x44, 0x46, 0x2d]) ? 'pdf' : null
+  if (ext === 'pptx') return starts([0x50, 0x4b, 0x03, 0x04]) ? 'pptx' : null
+  return starts([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) ? 'ppt' : null
+}
+
+export const MT_SLIDES_CONTENT_TYPE: Record<(typeof MT_SLIDES_EXTS)[number], string> = {
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  ppt: 'application/vnd.ms-powerpoint',
+  pdf: 'application/pdf',
+}
+
 /* ─────────────── 수업 영상 · 성찰 · 교수 피드백 · 동료 의견 (강의자 지시 2026-10-17 · 2026-11-02 고침) ─────────────── */
 
 /** 글 하나 — 성찰 · 피드백. 누가 언제 썼는지 함께 */

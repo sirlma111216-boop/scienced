@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
-import { MT_FILE_ACCEPT, MT_FILE_MAX_MB, MT_ORDER_LABEL, MT_SCHEDULE, MT_TOPIC_MAX, mtDateLabel, mtOpenState, mtSlotId, mtSlots, type MtCourseId } from '@shared/microteaching'
+import { MT_FILE_ACCEPT, MT_FILE_MAX_MB, MT_SLIDES_ACCEPT, MT_SLIDES_MAX_MB, MT_ORDER_LABEL, MT_SCHEDULE, MT_TOPIC_MAX, mtDateLabel, mtOpenState, mtSlotId, mtSlots, type MtCourseId } from '@shared/microteaching'
 import { fileSizeText } from '@shared/textbook'
-import { checkMtFile, openMtFile, uploadMtFile } from '@/lib/microteaching-files'
+import { checkMtFile, checkMtSlides, openMtFile, uploadMtFile } from '@/lib/microteaching-files'
 import type { Enrollment, MtApplication, MtFileMeta, MtSlot } from '@/lib/types'
 import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/components/ui'
 
@@ -17,6 +17,7 @@ import { Badge, Button, Caption, Card, ColorBlock, Notice, ScrollX } from '@/com
  *   · 일정표는 학생 모두에게 늘 보인다 — 신청 기간 전에도. 신청 단추만 기간에 열린다.
  *   · 자리마다 발표 주제를 신청한 본인이 적고, 같은 반 모두가 본다.
  *   · 맨 아래 「수업계획안」 — 강사가 양식을 올리면 수강생이 내려받고, 신청한 사람은 자기 계획안을 올린다(본인과 강사만 본다).
+ * 2026-11-02 강의자 지시: 계획안 옆에 「강의용 PT」 — 신청한 사람이 파워포인트 · PDF 를 올리고, 「마이크로티칭」 일정표에서 같은 반 누구나 내려받는다.
  */
 export function ApplyBoard({
   classId,
@@ -373,7 +374,8 @@ function SlotDetail({ slot, editable, onSave }: { slot: MtSlot; editable: boolea
 
 /* ─────────────── 수업계획안 (2026-10-16) ─────────────── */
 
-function FileUploadRow({ classId, kind, label, onDone }: { classId: string; kind: 'template' | 'plan'; label: string; onDone?: () => void }) {
+function FileUploadRow({ classId, kind, label, onDone }: { classId: string; kind: 'template' | 'plan' | 'slides'; label: string; onDone?: () => void }) {
+  const slides = kind === 'slides'
   const input = useRef<HTMLInputElement | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -381,7 +383,7 @@ function FileUploadRow({ classId, kind, label, onDone }: { classId: string; kind
   async function pick(file: File | null) {
     if (!file) return
     setMsg(null)
-    const problem = await checkMtFile(file)
+    const problem = await (slides ? checkMtSlides(file) : checkMtFile(file))
     if (problem) return setMsg({ ok: false, text: problem })
     setProgress(0)
     const r = await uploadMtFile(classId, kind, file, (s, t) => setProgress(Math.round((s / t) * 100)))
@@ -402,14 +404,18 @@ function FileUploadRow({ classId, kind, label, onDone }: { classId: string; kind
       <input
         ref={input}
         type="file"
-        accept={MT_FILE_ACCEPT}
+        accept={slides ? MT_SLIDES_ACCEPT : MT_FILE_ACCEPT}
         style={{ display: 'none' }}
         onChange={(e) => {
           void pick(e.target.files?.[0] ?? null)
           e.target.value = ''
         }}
       />
-      <Caption>한글(hwp · hwpx) · 워드(docx · doc) · PDF, {MT_FILE_MAX_MB} MB 까지. 다시 올리면 바뀝니다.</Caption>
+      <Caption>
+        {slides
+          ? `파워포인트(pptx · ppt) · PDF, ${MT_SLIDES_MAX_MB} MB 까지. Google 슬라이드는 「파일 → 다운로드」에서 pptx 나 PDF 로 받아 올립니다. 다시 올리면 바뀝니다.`
+          : `한글(hwp · hwpx) · 워드(docx · doc) · PDF, ${MT_FILE_MAX_MB} MB 까지. 다시 올리면 바뀝니다.`}
+      </Caption>
       {msg ? (
         <p role={msg.ok ? 'status' : 'alert'} className="text-body-sm" style={{ margin: '6px 0 0', fontWeight: 480 }}>
           {msg.ok ? '✓ ' : '⚠ '}
@@ -441,18 +447,20 @@ function PlanSection({
 }) {
   const [err, setErr] = useState<string | null>(null)
   const myPlan = apps.find((a) => a.plan)?.plan ?? null
-  const download = async (kind: 'template' | 'plan', uid?: string) => {
+  const mySlides = apps.find((a) => a.slides)?.slides ?? null
+  const download = async (kind: 'template' | 'plan' | 'slides', uid?: string) => {
     setErr(null)
     const e = await openMtFile(classId, kind, uid)
     if (e) setErr(e)
   }
   const ordered = [...slots].sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order)
   const planOf = (uid: string) => apps.find((a) => a.uid === uid)?.plan ?? null
+  const slidesOf = (uid: string) => apps.find((a) => a.uid === uid)?.slides ?? null
 
   return (
     <section aria-labelledby="mt-plan-title" style={{ marginTop: 32 }}>
       <p className="eyebrow" style={{ margin: 0 }} id="mt-plan-title">
-        수업계획안
+        수업계획안 · 강의 PT
       </p>
       <Card>
         {template ? (
@@ -477,12 +485,13 @@ function PlanSection({
           <>
             <FileUploadRow classId={classId} kind="template" label={template ? '양식 바꾸기' : '양식 올리기'} />
             <p className="text-body-sm" style={{ margin: '16px 0 0', fontWeight: 480 }}>
-              낸 계획안 {ordered.filter((s) => planOf(s.uid)).length} / {ordered.length}
+              낸 계획안 {ordered.filter((s) => planOf(s.uid)).length} / {ordered.length} · 강의 PT {ordered.filter((s) => slidesOf(s.uid)).length} / {ordered.length}
             </p>
             {ordered.length ? (
               <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', display: 'grid', gap: 6 }}>
                 {ordered.map((s) => {
                   const p = planOf(s.uid)
+                  const pt = slidesOf(s.uid)
                   return (
                     <li key={s.slotId} className="text-body-sm flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
                       <span style={{ minWidth: 150 }}>
@@ -496,6 +505,13 @@ function PlanSection({
                       ) : (
                         <span style={{ opacity: 0.55 }}>아직 안 냄</span>
                       )}
+                      {pt ? (
+                        <Button variant="tertiary" onClick={() => void download('slides', s.uid)}>
+                          PT {pt.name} 내려받기
+                        </Button>
+                      ) : (
+                        <span style={{ opacity: 0.55 }}>PT 없음</span>
+                      )}
                     </li>
                   )
                 })}
@@ -503,7 +519,8 @@ function PlanSection({
             ) : null}
           </>
         ) : mine ? (
-          template ? (
+          <div>
+          {template ? (
             <div style={{ marginTop: 12 }}>
               {myPlan ? (
                 <p className="text-body-sm" style={{ margin: 0 }}>
@@ -518,12 +535,32 @@ function PlanSection({
                 </p>
               )}
               <FileUploadRow classId={classId} kind="plan" label={myPlan ? '계획안 다시 올리기' : '내 계획안 올리기'} />
-              <Caption>올린 계획안은 나와 강의자만 볼 수 있습니다.</Caption>
+              <Caption>올린 계획안은 「마이크로티칭」 일정표의 [수업지도안]으로 같은 반 수강생과 강의자가 내려받습니다.</Caption>
             </div>
-          ) : null
-        ) : template ? (
-          <Caption>발표 자리를 신청하면 여기에서 계획안을 올릴 수 있습니다.</Caption>
-        ) : null}
+          ) : null}
+            <div style={{ marginTop: 12 }}>
+              <p className="text-body" style={{ margin: 0, fontWeight: 480 }}>
+                강의용 PT
+              </p>
+              {mySlides ? (
+                <p className="text-body-sm" style={{ margin: '4px 0 0' }}>
+                  올린 PT — {mySlides.name} <span style={{ opacity: 0.6 }}>({fileSizeText(mySlides.size)})</span>{' '}
+                  <Button variant="tertiary" onClick={() => void download('slides')}>
+                    내려받기
+                  </Button>
+                </p>
+              ) : (
+                <p className="text-body-sm" style={{ margin: '4px 0 0' }}>
+                  아직 PT 를 올리지 않았습니다.
+                </p>
+              )}
+              <FileUploadRow classId={classId} kind="slides" label={mySlides ? 'PT 다시 올리기' : '강의용 PT 올리기'} />
+              <Caption>올린 PT 는 「마이크로티칭」 일정표의 [강의 PT]로 같은 반 수강생과 강의자가 내려받습니다.</Caption>
+            </div>
+          </div>
+        ) : (
+          <Caption>발표 자리를 신청하면 여기에서 {template ? '계획안과 ' : ''}강의용 PT 를 올릴 수 있습니다.</Caption>
+        )}
         {err ? (
           <p role="alert" className="text-body-sm" style={{ margin: '8px 0 0', fontWeight: 480 }}>
             ⚠ {err}

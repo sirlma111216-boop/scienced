@@ -1,5 +1,5 @@
 import type { Env } from '../../../shared/ai-core'
-import { MT_CONTENT_TYPE, MT_FILE_MAX_MB, MT_NOTE_FIELDS, MT_NOTE_MAX, MT_PEER_FIELD_KEYS, MT_PEER_MAX, MT_TOPIC_MAX, MT_VIDEO_CONTENT_TYPE, MT_VIDEO_MAX_MB, MT_VIDEO_PART_MB, isMtNoteField, isMtSlot, mtFileKind, mtVideoKind, type MtCourseId, type MtPeerField } from '../../../shared/microteaching'
+import { MT_CONTENT_TYPE, MT_FILE_MAX_MB, MT_SLIDES_CONTENT_TYPE, MT_SLIDES_MAX_MB, mtSlidesKind, MT_NOTE_FIELDS, MT_NOTE_MAX, MT_PEER_FIELD_KEYS, MT_PEER_MAX, MT_TOPIC_MAX, MT_VIDEO_CONTENT_TYPE, MT_VIDEO_MAX_MB, MT_VIDEO_PART_MB, isMtNoteField, isMtSlot, mtFileKind, mtVideoKind, type MtCourseId, type MtPeerField } from '../../../shared/microteaching'
 import { fail, isInstructorUid, json, verifyIdToken } from './auth'
 import { firestoreRest } from './lumi'
 import { hmac, parseRange, sameText, type R2BucketLike, type R2UploadedPartLike } from './textbook'
@@ -14,7 +14,7 @@ import { hmac, parseRange, sameText, type R2BucketLike, type R2UploadedPartLike 
  *
  * 저장
  *   classes/{cid}/mtSlots/{slotId}        자리 하나 — { slotId, date, order, uid, studentId, name, nickname, at }
- *   classes/{cid}/mtApplications/{uid}    내 자리 가리킴 — { slotId, at, 발표 내용…, plan }  본인과 강사만 읽는다
+ *   classes/{cid}/mtApplications/{uid}    내 자리 가리킴 — { slotId, at, 발표 내용…, plan, slides }  본인과 강사만 읽는다
  *
  * 발표 내용(학년 · 단원 · 주제 · 수업 방식, 2026-10-16)은 자리 문서와 가리킴 둘 다에 적는다.
  *   자리 문서 — 같은 반 모두가 일정표에서 본다. 가리킴 — 자리를 옮기거나 취소했다 다시 신청해도 남는다(새 자리에 옮겨 적는다).
@@ -24,6 +24,7 @@ import { hmac, parseRange, sameText, type R2BucketLike, type R2UploadedPartLike 
  *   가리킴에 더 적는 것   video(강사가 올린 수업 영상) · reflectionGood · reflectionBad(발표한 본인의 성찰 둘) · feedbackGood · feedbackImprove(강사 피드백 둘)
  *                       — 칸 이름은 shared/microteaching.ts 의 MT_NOTE_FIELDS 하나다. 영상이 없어도 쓴다.
  *   수업계획안 내려받기   같은 반 수강생 누구나 — 일정표에서 발표자 이름 옆의 [수업지도안] (2026-11-02). 영상은 그대로 본인과 강사만.
+ *   강의용 PT            가리킴 slides — 신청한 본인이 올리고(양식 없이도), 같은 반 수강생 누구나 일정표의 [강의 PT]로 내려받는다 (2026-11-02).
  *   동료 의견            classes/{cid}/mtPeer/{presenterUid}__{authorUid} — 다른 수강생이 수업을 보며 적는 세 칸(좋았던 점 · 아쉬웠던 점 · 내가 이 수업을 한다면).
  *                       강사는 이름과 함께, 발표자는 **익명으로 번호만** 본다(서버가 섞어서 준다). 쓴 사람은 자기 것만 본다.
  *   영상은 조각 올리기(R2 multipart) — 요청 하나가 100 MB 를 넘지 못하므로 48 MB 씩 잘라 올리고 마지막에 합친다.
@@ -237,13 +238,13 @@ async function whoCalls(env: MtEnv, request: Request): Promise<{ uid: string; in
 
 declare const FixedLengthStream: undefined | (new (length: number) => { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array> })
 
-/** 머리 여덟 바이트로 형식을 본다 — 이름과 맞지 않으면 스트림을 끊는다 */
-function kindGate(name: string, state: { bad: boolean }): TransformStream<Uint8Array, Uint8Array> {
+/** 머리 여덟 바이트로 형식을 본다 — 이름과 맞지 않으면 스트림을 끊는다. 지도안은 mtFileKind, PT 는 mtSlidesKind */
+function kindGate(name: string, state: { bad: boolean }, kindOf: (name: string, head: Uint8Array) => string | null = mtFileKind): TransformStream<Uint8Array, Uint8Array> {
   let head = new Uint8Array(0)
   let checked = false
   const check = (ctl: TransformStreamDefaultController<Uint8Array>) => {
     checked = true
-    if (!mtFileKind(name, head)) {
+    if (!kindOf(name, head)) {
       state.bad = true
       ctl.error(new Error('BAD_KIND'))
       return false
@@ -267,12 +268,13 @@ function kindGate(name: string, state: { bad: boolean }): TransformStream<Uint8A
 }
 
 /**
- * PUT /api/microteaching/{template|plan}?classId=… — 본문이 파일 그대로. 머리 x-file-name(encodeURIComponent).
+ * PUT /api/microteaching/{template|plan|slides}?classId=… — 본문이 파일 그대로. 머리 x-file-name(encodeURIComponent).
  *   template  강사만. 클래스 문서 mtTemplate 에 적는다 — 수강생 모두가 내려받는다.
- *   plan      신청한 본인만, 양식이 올라온 뒤에. 가리킴 plan 에 적는다 — 본인과 강사만 내려받는다.
+ *   plan      신청한 본인만, 양식이 올라온 뒤에. 가리킴 plan 에 적는다 — 같은 반 수강생과 강사가 내려받는다.
+ *   slides    신청한 본인만(양식과 상관없이). 파워포인트 · PDF. 가리킴 slides 에 적는다 — 같은 반 수강생과 강사가 내려받는다 (2026-11-02).
  * 새 파일을 넣고 크기를 확인해 연결한 뒤에 옛 파일을 지운다. 실패하면 새 파일을 지우고 옛 것은 그대로다.
  */
-export async function handleMtUpload(env: MtEnv, request: Request, kind: 'template' | 'plan', now = Date.now()): Promise<Response> {
+export async function handleMtUpload(env: MtEnv, request: Request, kind: 'template' | 'plan' | 'slides', now = Date.now()): Promise<Response> {
   const c = await whoCalls(env, request)
   if (c instanceof Response) return c
   const bucket = env.TEXTBOOK_BUCKET
@@ -281,9 +283,12 @@ export async function handleMtUpload(env: MtEnv, request: Request, kind: 'templa
   if (!CLASS_ID_RE.test(classId)) return fail('클래스 id 가 없습니다.')
   if (kind === 'template' && !c.instructor) return fail('양식은 강사만 올릴 수 있습니다.')
 
+  const slides = kind === 'slides'
+  const maxMb = slides ? MT_SLIDES_MAX_MB : MT_FILE_MAX_MB
+  const types: Record<string, string> = slides ? MT_SLIDES_CONTENT_TYPE : MT_CONTENT_TYPE
   const len = Number(request.headers.get('content-length'))
   if (!Number.isFinite(len) || len <= 0) return fail('파일 크기를 알 수 없습니다. 다시 고르세요.')
-  if (len > MT_FILE_MAX_MB * 1024 * 1024) return fail(`파일이 너무 큽니다 — ${MT_FILE_MAX_MB} MB 까지 올릴 수 있습니다.`)
+  if (len > maxMb * 1024 * 1024) return fail(`파일이 너무 큽니다 — ${maxMb} MB 까지 올릴 수 있습니다.`)
   let name = ''
   try {
     name = decodeURIComponent(request.headers.get('x-file-name') ?? '').trim()
@@ -291,31 +296,31 @@ export async function handleMtUpload(env: MtEnv, request: Request, kind: 'templa
     name = ''
   }
   name = name.replace(/[\\/\0]/g, '_').slice(-200)
-  const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase() as keyof typeof MT_CONTENT_TYPE
-  if (!MT_CONTENT_TYPE[ext]) return fail('한글(hwp · hwpx) · 워드(docx · doc) · PDF 파일만 올릴 수 있습니다.')
+  const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase()
+  if (!types[ext]) return fail(slides ? '파워포인트(pptx · ppt) · PDF 파일만 올릴 수 있습니다.' : '한글(hwp · hwpx) · 워드(docx · doc) · PDF 파일만 올릴 수 있습니다.')
   if (!request.body) return fail('파일이 비어 있습니다.')
 
   const L = await load(env, classId, c.uid)
   if ('error' in L) return fail(L.error ?? '클래스를 읽지 못했습니다.')
-  if (kind === 'plan') {
+  if (kind !== 'template') {
     if (!L.enrollment || str(L.enrollment, 'status') !== 'active') return fail('이 클래스의 수강생만 낼 수 있습니다.')
     if (!L.prevSlotId) return fail('먼저 발표 자리를 신청하세요.')
-    if (!fileMetaOf(L.cls.mtTemplate)) return fail('강의자가 수업계획안 양식을 올린 뒤에 낼 수 있습니다.')
+    if (kind === 'plan' && !fileMetaOf(L.cls.mtTemplate)) return fail('강의자가 수업계획안 양식을 올린 뒤에 낼 수 있습니다.')
   }
-  const old = kind === 'template' ? fileMetaOf(L.cls.mtTemplate) : fileMetaOf(L.pointer?.plan)
-  const key = kind === 'template' ? `microteaching/${classId}/template/${crypto.randomUUID()}.${ext}` : `microteaching/${classId}/plans/${c.uid}/${crypto.randomUUID()}.${ext}`
+  const old = kind === 'template' ? fileMetaOf(L.cls.mtTemplate) : fileMetaOf(L.pointer?.[kind])
+  const key = kind === 'template' ? `microteaching/${classId}/template/${crypto.randomUUID()}.${ext}` : `microteaching/${classId}/${kind === 'plan' ? 'plans' : 'slides'}/${c.uid}/${crypto.randomUUID()}.${ext}`
 
   const state = { bad: false }
-  const gated = request.body.pipeThrough(kindGate(name, state))
+  const gated = request.body.pipeThrough(kindGate(name, state, slides ? mtSlidesKind : mtFileKind))
   let stream: ReadableStream<Uint8Array> = gated
   if (typeof FixedLengthStream === 'function') {
     const fixed = new FixedLengthStream(len)
     void gated.pipeTo(fixed.writable).catch(() => {})
     stream = fixed.readable
   }
-  const notKind = '파일 내용이 이름의 형식(한글 · 워드 · PDF)과 맞지 않습니다. 파일을 다시 확인하세요.'
+  const notKind = `파일 내용이 이름의 형식(${slides ? '파워포인트 · PDF' : '한글 · 워드 · PDF'})과 맞지 않습니다. 파일을 다시 확인하세요.`
   try {
-    await bucket.put(key, stream, { httpMetadata: { contentType: MT_CONTENT_TYPE[ext] }, customMetadata: { classId, kind, uid: c.uid } })
+    await bucket.put(key, stream, { httpMetadata: { contentType: types[ext] }, customMetadata: { classId, kind, uid: c.uid } })
   } catch (err) {
     await bucket.delete(key).catch(() => {})
     if (state.bad) return fail(notKind)
@@ -335,7 +340,7 @@ export async function handleMtUpload(env: MtEnv, request: Request, kind: 'templa
   const write =
     kind === 'template'
       ? { update: { name: `${L.base}/classes/${classId}`, fields: { mtTemplate: fileMetaValue(meta) } }, updateMask: { fieldPaths: ['mtTemplate'] }, currentDocument: { exists: true } }
-      : { update: { name: `${L.base}/classes/${classId}/mtApplications/${c.uid}`, fields: { plan: fileMetaValue(meta) } }, updateMask: { fieldPaths: ['plan'] } }
+      : { update: { name: `${L.base}/classes/${classId}/mtApplications/${c.uid}`, fields: { [kind]: fileMetaValue(meta) } }, updateMask: { fieldPaths: [kind] } }
   const res = await fetch(L.rest.commit, { method: 'POST', headers: L.h, body: JSON.stringify({ writes: [write] }) })
   if (!res.ok) {
     await bucket.delete(key).catch(() => {})
@@ -349,8 +354,8 @@ export async function handleMtUpload(env: MtEnv, request: Request, kind: 'templa
 const signText = (classId: string, kind: string, owner: string, key: string, exp: number) => `mt\n${classId}\n${kind}\n${owner}\n${key}\n${exp}`
 
 /**
- * POST /api/microteaching/file-url — { classId, kind: 'template' | 'plan' | 'video', uid? } → { ok, url, name }
- *   template  수강생(등록 active)과 강사.   plan  같은 반 수강생 누구나(uid 로 발표자를 가리켜) · 강사 (2026-11-02 — 일정표의 [수업지도안]).
+ * POST /api/microteaching/file-url — { classId, kind: 'template' | 'plan' | 'slides' | 'video', uid? } → { ok, url, name }
+ *   template  수강생(등록 active)과 강사.   plan · slides  같은 반 수강생 누구나(uid 로 발표자를 가리켜) · 강사 (2026-11-02 — 일정표의 [수업지도안] · [강의 PT]).
  *   video     본인(uid 없이) 또는 강사(uid 를 적어).
  * 주소는 10분짜리 서명 주소다. 서명에 파일 키가 들어가 파일을 바꾸면 옛 주소가 죽는다.
  */
@@ -363,7 +368,7 @@ export async function handleMtFileUrl(env: MtEnv, request: Request, now = Date.n
   } catch {
     return fail('요청 형식이 올바르지 않습니다.')
   }
-  if (!b.classId || !CLASS_ID_RE.test(b.classId) || (b.kind !== 'template' && b.kind !== 'plan' && b.kind !== 'video')) return fail('요청 형식이 올바르지 않습니다.')
+  if (!b.classId || !CLASS_ID_RE.test(b.classId) || !isFileKind(b.kind)) return fail('요청 형식이 올바르지 않습니다.')
   if (!env.TEXTBOOK_SECRET) return fail('파일 내려받기 설정이 아직 끝나지 않았습니다. 사이트 관리자에게 알려 주세요.')
   const owner = b.kind === 'template' ? '-' : b.uid && b.uid !== c.uid ? b.uid : c.uid
   if (b.kind === 'video' && owner !== c.uid && !c.instructor) return fail('다른 사람의 수업 영상은 강사만 볼 수 있습니다.')
@@ -374,9 +379,9 @@ export async function handleMtFileUrl(env: MtEnv, request: Request, now = Date.n
   if (b.kind === 'template') meta = fileMetaOf(L.cls.mtTemplate)
   else {
     const p = owner === c.uid ? L.pointer : await getDoc(`${L.fs}/classes/${b.classId}/mtApplications/${owner}`, L.h)
-    meta = p && p !== 'error' ? fileMetaOf(b.kind === 'video' ? p.video : p.plan) : null
+    meta = p && p !== 'error' ? fileMetaOf(p[b.kind]) : null
   }
-  if (!meta) return fail(b.kind === 'template' ? '아직 올라온 양식이 없습니다.' : b.kind === 'video' ? '아직 올라온 수업 영상이 없습니다.' : '아직 낸 계획안이 없습니다.')
+  if (!meta) return fail(b.kind === 'template' ? '아직 올라온 양식이 없습니다.' : b.kind === 'video' ? '아직 올라온 수업 영상이 없습니다.' : b.kind === 'slides' ? '아직 올린 강의 PT 가 없습니다.' : '아직 낸 계획안이 없습니다.')
   /* 영상은 보는 동안 주소가 살아 있어야 한다 — 2시간. 문서는 10분 */
   const exp = now + (b.kind === 'video' ? 2 * 60 * 60 * 1000 : 10 * 60 * 1000)
   const sig = await hmac(env.TEXTBOOK_SECRET, signText(b.classId, b.kind, owner, meta.key, exp))
@@ -384,6 +389,9 @@ export async function handleMtFileUrl(env: MtEnv, request: Request, now = Date.n
   const inline = b.kind === 'video' || (b.inline === true && meta.ext === 'pdf')
   return json({ ok: true, name: meta.name, ext: meta.ext, size: meta.size, inline, url: `/api/microteaching/file?c=${encodeURIComponent(b.classId)}&k=${b.kind}&u=${encodeURIComponent(owner)}&exp=${exp}&sig=${sig}${inline ? '&i=1' : ''}` })
 }
+
+type FileKindName = 'template' | 'plan' | 'slides' | 'video'
+const isFileKind = (k: unknown): k is FileKindName => k === 'template' || k === 'plan' || k === 'slides' || k === 'video'
 
 const plainText = (status: number, text: string) => new Response(text, { status, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } })
 
@@ -396,19 +404,24 @@ export async function handleMtFile(env: MtEnv, request: Request, now = Date.now(
   const exp = Number(u.searchParams.get('exp'))
   const sig = u.searchParams.get('sig') ?? ''
   const inline = u.searchParams.get('i') === '1'
-  if (!CLASS_ID_RE.test(classId) || (kind !== 'template' && kind !== 'plan' && kind !== 'video') || !owner || !Number.isFinite(exp) || !/^[0-9a-f]{64}$/.test(sig)) return plainText(400, '주소가 올바르지 않습니다.')
+  if (!CLASS_ID_RE.test(classId) || !isFileKind(kind) || !owner || !Number.isFinite(exp) || !/^[0-9a-f]{64}$/.test(sig)) return plainText(400, '주소가 올바르지 않습니다.')
   if (now > exp) return plainText(403, '주소의 유효 시간이 지났습니다. 화면에서 다시 누르세요.')
   if (!env.TEXTBOOK_SECRET || !env.TEXTBOOK_BUCKET) return plainText(503, '파일 저장소가 아직 연결되지 않았습니다.')
   const rest = await firestoreRest(env)
   if ('error' in rest) return plainText(503, '서버 설정이 없습니다.')
   const doc = await getDoc(kind === 'template' ? `${rest.docs}/classes/${classId}` : `${rest.docs}/classes/${classId}/mtApplications/${owner}`, rest.headers)
-  const meta = doc && doc !== 'error' ? fileMetaOf(kind === 'template' ? doc.mtTemplate : kind === 'video' ? doc.video : doc.plan) : null
+  const meta = doc && doc !== 'error' ? fileMetaOf(kind === 'template' ? doc.mtTemplate : doc[kind]) : null
   if (!meta) return plainText(404, '파일이 없습니다.')
   const want = await hmac(env.TEXTBOOK_SECRET, signText(classId, kind, owner, meta.key, exp))
   if (!sameText(want, sig)) return plainText(403, '파일이 바뀌었거나 주소가 맞지 않습니다. 화면에서 다시 누르세요.')
   const head = await env.TEXTBOOK_BUCKET.head(meta.key)
   if (!head) return plainText(404, '파일이 없습니다.')
-  const type = (kind === 'video' ? MT_VIDEO_CONTENT_TYPE[meta.ext as keyof typeof MT_VIDEO_CONTENT_TYPE] : MT_CONTENT_TYPE[meta.ext as keyof typeof MT_CONTENT_TYPE]) ?? 'application/octet-stream'
+  const type =
+    (kind === 'video'
+      ? MT_VIDEO_CONTENT_TYPE[meta.ext as keyof typeof MT_VIDEO_CONTENT_TYPE]
+      : kind === 'slides'
+        ? MT_SLIDES_CONTENT_TYPE[meta.ext as keyof typeof MT_SLIDES_CONTENT_TYPE]
+        : MT_CONTENT_TYPE[meta.ext as keyof typeof MT_CONTENT_TYPE]) ?? 'application/octet-stream'
   const headers = new Headers({
     'content-type': type,
     'accept-ranges': 'bytes',

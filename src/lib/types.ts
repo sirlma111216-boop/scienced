@@ -72,7 +72,7 @@ export interface MtSlot {
   detailAt?: number | null
 }
 
-/** 올린 파일 하나 — 양식(클래스 문서 mtTemplate) · 계획안(가리킴 plan). 저장 키는 서버만 쓴다 */
+/** 올린 파일 하나 — 양식(클래스 문서 mtTemplate) · 계획안(가리킴 plan) · 강의 PT(가리킴 slides). 저장 키는 서버만 쓴다 */
 export interface MtFileMeta {
   key: string
   name: string
@@ -93,6 +93,8 @@ export interface MtApplication {
   methodOther?: string
   detailAt?: number | null
   plan?: MtFileMeta | null
+  /** 강의용 PT — 파워포인트 · PDF (2026-11-02). 같은 반 수강생이 일정표의 [강의 PT]로 내려받는다 */
+  slides?: MtFileMeta | null
   /* 마이크로티칭 기록 (2026-10-17 · 2026-11-02) — 수업 영상(강사가 올림) · 본인의 성찰 둘 · 강사의 피드백 둘. 본인과 강사만 읽는다. 칸 이름은 shared/microteaching.ts 의 MT_NOTE_FIELDS */
   video?: MtFileMeta | null
   reflectionGood?: MtNote | null

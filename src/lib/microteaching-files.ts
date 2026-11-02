@@ -1,4 +1,4 @@
-import { MT_FILE_MAX_MB, MT_VIDEO_MAX_MB, mtFileKind, mtVideoKind, type MtNoteField, type MtPeerField } from '@shared/microteaching'
+import { MT_FILE_MAX_MB, MT_SLIDES_MAX_MB, MT_VIDEO_MAX_MB, mtFileKind, mtSlidesKind, mtVideoKind, type MtNoteField, type MtPeerField } from '@shared/microteaching'
 import type { MtPeerView } from './types'
 import { apiPost, apiUpload } from './api'
 
@@ -7,6 +7,7 @@ import { apiPost, apiUpload } from './api'
  *
  *   양식 올리기    uploadMtFile(classId, 'template', file)   강사만. 클래스마다 하나 — 다시 올리면 바뀐다
  *   계획안 올리기  uploadMtFile(classId, 'plan', file)       신청한 본인, 양식이 올라온 뒤에. 다시 올리면 바뀐다
+ *   강의 PT 올리기 uploadMtFile(classId, 'slides', file)     신청한 본인(양식과 상관없이). 파워포인트 · PDF. 같은 반 누구나 내려받는다 (2026-11-02)
  *   내려받기      openMtFile(classId, kind, uid?)            10분짜리 서명 주소를 받아 바로 내려받는다
  *   화면에서 보기  mtFileUrl(classId, kind, uid?, inline)      PDF 지도안 · 수업 영상은 서명 주소를 받아 <iframe> · <video> 에 건다 (2026-10-17)
  *   지도안은 같은 반 수강생 누구나 uid 를 적어 내려받는다 (2026-11-02 — 일정표의 [수업지도안]). 영상은 본인과 강사만.
@@ -31,7 +32,22 @@ export async function checkMtFile(file: File): Promise<string | null> {
   return null
 }
 
-export const uploadMtFile = (classId: string, kind: 'template' | 'plan', file: File, onProgress?: (sent: number, total: number) => void) =>
+/** 강의 PT — 파워포인트(pptx · ppt) · PDF 인지 본다. 문제가 없으면 null */
+export async function checkMtSlides(file: File): Promise<string | null> {
+  if (file.size <= 0) return '빈 파일입니다.'
+  if (file.size > MT_SLIDES_MAX_MB * 1024 * 1024) return `파일이 너무 큽니다 — ${MT_SLIDES_MAX_MB} MB 까지 올릴 수 있습니다. 그림을 줄이거나 PDF 로 내보내 보세요.`
+  let head = new Uint8Array(0)
+  try {
+    head = new Uint8Array(await file.slice(0, 8).arrayBuffer())
+  } catch (err) {
+    console.warn('[마이크로티칭] 파일 머리를 읽지 못했다 — 서버가 다시 본다:', err)
+    return null
+  }
+  if (!mtSlidesKind(file.name, head)) return '파워포인트(pptx · ppt) · PDF 파일만 올릴 수 있습니다. Google 슬라이드 · Keynote 는 pptx 나 PDF 로 내보내 올리세요.'
+  return null
+}
+
+export const uploadMtFile = (classId: string, kind: 'template' | 'plan' | 'slides', file: File, onProgress?: (sent: number, total: number) => void) =>
   apiUpload<{ ok: boolean; message?: string; file?: { name: string; size: number; ext: string; at: number } }>(
     `/api/microteaching/${kind}?classId=${encodeURIComponent(classId)}`,
     file,
@@ -39,7 +55,7 @@ export const uploadMtFile = (classId: string, kind: 'template' | 'plan', file: F
     onProgress,
   )
 
-export type MtFileKind = 'template' | 'plan' | 'video'
+export type MtFileKind = 'template' | 'plan' | 'slides' | 'video'
 export interface MtSignedFile {
   url: string
   name: string
@@ -56,7 +72,7 @@ export async function mtFileUrl(classId: string, kind: MtFileKind, uid?: string,
 }
 
 /** 내려받기 — 주소를 받아 그 자리에서 연다(파일은 내려받기로 온다). 실패하면 이유를 돌려준다 */
-export async function openMtFile(classId: string, kind: 'template' | 'plan', uid?: string): Promise<string | null> {
+export async function openMtFile(classId: string, kind: 'template' | 'plan' | 'slides', uid?: string): Promise<string | null> {
   const r = await mtFileUrl(classId, kind, uid)
   if (typeof r === 'string') return r
   window.location.href = r.url

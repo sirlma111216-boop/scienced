@@ -232,6 +232,33 @@ ok((await get(mine.url, Date.now() + 11 * 60 * 1000)).status === 403, '10분이 
 await put('plan', S1, docx, '세 번째.docx')
 ok((await get(mine.url)).status === 403, '계획안을 바꾸면 전에 받은 주소는 죽는다')
 
+console.log('강의 PT (2026-11-02)')
+const pptx = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(900, 0x44)])
+ok((await put('slides', S2, pptx, '발표.pptx')).ok === false, '자리를 신청하지 않은 학생은 PT 를 올릴 수 없다')
+ok((await put('slides', OUT, pptx, '발표.pptx')).ok === false, '수강생이 아니면 PT 를 올릴 수 없다')
+const badPt = await put('slides', S1, docx, '발표.docx')
+ok(badPt.ok === false, `워드 파일은 PT 로 받지 않는다 — ${badPt.message}`)
+const fakePt = await put('slides', S1, pdf, '발표.pptx')
+ok(fakePt.ok === false, `이름(pptx)과 내용(PDF)이 다르면 받지 않는다 — ${fakePt.message}`)
+const before = objects.size
+ok((await put('slides', S1, pptx, '김계획 강의.pptx')).ok, 's1 이 파워포인트 PT 를 올렸다 — 계획안 양식과 상관없이')
+const pt1 = doc(`classes/${CID}/mtApplications/${S1}`)?.slides?.mapValue?.fields?.key?.stringValue
+ok(Boolean(pt1) && objects.has(pt1) && /\/slides\//.test(pt1) && objects.size === before + 1, 'PT 는 신청 기록 slides 에, 저장소 slides/ 아래에 있다')
+ok(Boolean(doc(`classes/${CID}/mtApplications/${S1}`)?.plan?.mapValue), 'PT 를 올려도 계획안(plan)은 그대로다')
+const ptMate = await post(lib.handleMtFileUrl, S2, { classId: CID, kind: 'slides', uid: S1 })
+const ptRes = ptMate.ok ? await get(ptMate.url) : null
+ok(ptRes?.status === 200 && /presentationml/.test(ptRes.headers.get('content-type')) && /attachment/.test(ptRes.headers.get('content-disposition')) && Buffer.from(await ptRes.arrayBuffer()).equals(pptx), '같은 반 학생이 다른 사람의 PT 를 그대로 내려받는다')
+ok((await post(lib.handleMtFileUrl, OUT, { classId: CID, kind: 'slides', uid: S1 })).ok === false, '수강생이 아니면 남의 PT 를 받지 못한다')
+const noPt = await post(lib.handleMtFileUrl, S2, { classId: CID, kind: 'slides', uid: S2 })
+ok(noPt.ok === false && /PT/.test(noPt.message), `올린 PT 가 없으면 그렇게 답한다 — ${noPt.message}`)
+ok((await post(lib.handleMtFileUrl, T, { classId: CID, kind: 'slides', uid: S1 })).ok, '강사도 PT 를 받는다')
+ok((await put('slides', S1, pdf, '김계획 강의.pdf')).ok, 'PDF 로 다시 올렸다')
+const pt2 = doc(`classes/${CID}/mtApplications/${S1}`)?.slides?.mapValue?.fields?.key?.stringValue
+ok(pt2 !== pt1 && objects.has(pt2) && !objects.has(pt1), '새 PT 가 연결된 뒤 옛 PT 를 지웠다')
+ok((await get(ptMate.url)).status === 403, 'PT 를 바꾸면 전에 받은 주소는 죽는다')
+const ptInline = await post(lib.handleMtFileUrl, T, { classId: CID, kind: 'slides', uid: S1, inline: true })
+ok(ptInline.ok && ptInline.inline && /inline/.test((await get(ptInline.url)).headers.get('content-disposition')), 'PDF PT 는 화면 안에서 연다(inline)')
+
 console.log('성찰 · 피드백 — 영상이 없어도 쓴다 (2026-11-02)')
 const note = (who, body) => post(lib.handleMtNote, who, { classId: CID, ...body })
 const noteText = (uid, field) => doc(`classes/${CID}/mtApplications/${uid}`)?.[field]?.mapValue?.fields?.text?.stringValue

@@ -149,7 +149,9 @@ function NoteBox({
 
 /* ─────────────── 수업지도안 — 내려받기 (같은 반 누구나) · 강사는 화면에서 보기 ─────────────── */
 
-function PlanButton({ classId, uid, plan, canView }: { classId: string; uid: string; plan?: MtFileMeta | null; canView?: boolean }) {
+/** [수업지도안] · [강의 PT] — 같은 반 누구나 내려받는다. 파일 정보(plan)는 본인과 강사에게만 있다 */
+function PlanButton({ classId, uid, plan, canView, kind = 'plan' }: { classId: string; uid: string; plan?: MtFileMeta | null; canView?: boolean; kind?: 'plan' | 'slides' }) {
+  const label = kind === 'slides' ? '강의 PT' : '수업지도안'
   const [err, setErr] = useState<string | null>(null)
   const [view, setView] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -157,7 +159,7 @@ function PlanButton({ classId, uid, plan, canView }: { classId: string; uid: str
   async function open() {
     setBusy(true)
     setErr(null)
-    const r = await mtFileUrl(classId, 'plan', uid, true)
+    const r = await mtFileUrl(classId, kind, uid, true)
     setBusy(false)
     if (typeof r === 'string') return setErr(r)
     setView(r.url)
@@ -171,13 +173,13 @@ function PlanButton({ classId, uid, plan, canView }: { classId: string; uid: str
           onClick={() => {
             setErr(null)
             setBusy(true)
-            void openMtFile(classId, 'plan', uid).then((e) => {
+            void openMtFile(classId, kind, uid).then((e) => {
               setBusy(false)
               if (e) setErr(e)
             })
           }}
         >
-          수업지도안
+          {label}
         </Button>
         {plan ? (
           <Caption style={{ margin: 0 }}>
@@ -190,7 +192,7 @@ function PlanButton({ classId, uid, plan, canView }: { classId: string; uid: str
           </Button>
         ) : null}
       </div>
-      {view ? <iframe title={`수업지도안 — ${plan?.name ?? ''}`} src={`${view}#toolbar=0`} style={{ width: '100%', height: '75vh', border: '1px solid var(--line, #ddd)', borderRadius: 8, marginTop: 8, background: '#fff' }} /> : null}
+      {view ? <iframe title={`${label} — ${plan?.name ?? ''}`} src={`${view}#toolbar=0`} style={{ width: '100%', height: '75vh', border: '1px solid var(--line, #ddd)', borderRadius: 8, marginTop: 8, background: '#fff' }} /> : null}
       <Problem text={err} />
     </div>
   )
@@ -456,6 +458,7 @@ function PeerPanel({ classId, slot, who, mine }: { classId: string; slot: MtSlot
       <PanelHead slot={slot} who={who}>
         <div style={{ marginTop: 8 }}>
           <PlanButton classId={classId} uid={slot.uid} />
+          <PlanButton classId={classId} uid={slot.uid} kind="slides" />
         </div>
       </PanelHead>
       <Section id="mt-peer-form" title="이 수업에 의견 남기기">
@@ -476,7 +479,8 @@ function SelfPanel({ classId, slot, app }: { classId: string; slot: MtSlot; app:
       <PanelHead slot={slot} who="내 수업">
         <div style={{ marginTop: 8 }}>
           <PlanButton classId={classId} uid={slot.uid} plan={app?.plan} />
-          <Caption>지도안을 내거나 바꾸는 곳은 「발표 신청」 화면의 수업계획안 칸입니다.</Caption>
+          <PlanButton classId={classId} uid={slot.uid} plan={app?.slides} kind="slides" />
+          <Caption>지도안과 강의 PT 를 내거나 바꾸는 곳은 「발표 신청」 화면의 「수업계획안 · 강의 PT」 칸입니다.</Caption>
         </div>
       </PanelHead>
       <Section id="mt-self-video" title="내 수업의 모습">
@@ -510,6 +514,7 @@ function InstructorPanel({ classId, slot, who, app, nameOf }: { classId: string;
       <PanelHead slot={slot} who={who}>
         <div style={{ marginTop: 8 }}>
           <PlanButton classId={classId} uid={slot.uid} plan={app?.plan} canView />
+          <PlanButton classId={classId} uid={slot.uid} plan={app?.slides} kind="slides" canView />
           {app?.plan && app.plan.ext !== 'pdf' ? <Caption>한글 · 워드 파일은 내려받아 봅니다. 화면에서 바로 보려면 PDF 로 내도록 안내하세요.</Caption> : null}
         </div>
       </PanelHead>
@@ -588,7 +593,7 @@ export function MtBoard({
 
   const byDate = schedule.days.map((d) => ({ ...d, rows: Array.from({ length: d.count }, (_, i) => ordered.find((s) => s.date === d.date && s.order === i + 1) ?? null) }))
   const counts = admin
-    ? { plan: ordered.filter((s) => appOf(s.uid)?.plan).length, video: ordered.filter((s) => appOf(s.uid)?.video).length, fb: ordered.filter((s) => appOf(s.uid)?.feedbackGood?.text || appOf(s.uid)?.feedbackImprove?.text).length }
+    ? { plan: ordered.filter((s) => appOf(s.uid)?.plan).length, slides: ordered.filter((s) => appOf(s.uid)?.slides).length, video: ordered.filter((s) => appOf(s.uid)?.video).length, fb: ordered.filter((s) => appOf(s.uid)?.feedbackGood?.text || appOf(s.uid)?.feedbackImprove?.text).length }
     : null
 
   return (
@@ -598,12 +603,12 @@ export function MtBoard({
           마이크로티칭 · {schedule.title}
         </p>
         <p className="text-body" style={{ margin: '8px 0 0' }}>
-          {counts ? `발표자 ${ordered.length}명 · 지도안 ${counts.plan} · 영상 ${counts.video} · 피드백 ${counts.fb}` : schedule.minutes}
+          {counts ? `발표자 ${ordered.length}명 · 지도안 ${counts.plan} · PT ${counts.slides} · 영상 ${counts.video} · 피드백 ${counts.fb}` : schedule.minutes}
         </p>
         <Caption style={{ marginTop: 8 }}>
           {admin
-            ? '발표자 이름을 누르면 수업 영상을 올리고 피드백을 적습니다. [수업지도안]은 그 사람이 낸 지도안을 내려받습니다.'
-            : '발표자 이름을 누르면 그 수업에 의견을 적습니다. 내 이름을 누르면 내 수업 영상 · 성찰 · 동료 의견 · 교수 피드백이 보입니다. [수업지도안]은 누구 것이든 내려받습니다.'}
+            ? '발표자 이름을 누르면 수업 영상을 올리고 피드백을 적습니다. [수업지도안] · [강의 PT]는 그 사람이 낸 파일을 내려받습니다.'
+            : '발표자 이름을 누르면 그 수업에 의견을 적습니다. 내 이름을 누르면 내 수업 영상 · 성찰 · 동료 의견 · 교수 피드백이 보입니다. [수업지도안] · [강의 PT]는 누구 것이든 내려받습니다.'}
         </Caption>
       </ColorBlock>
       {note ? (
@@ -648,6 +653,7 @@ export function MtBoard({
                           {s.uid === uid ? ' (나)' : ''}
                         </button>
                         <PlanButton classId={classId} uid={s.uid} />
+                        <PlanButton classId={classId} uid={s.uid} kind="slides" />
                       </div>
                       <p className="text-body-sm" style={{ margin: '4px 0 0', opacity: 0.75 }}>
                         {s.topic ? s.topic : '주제 미정'}
