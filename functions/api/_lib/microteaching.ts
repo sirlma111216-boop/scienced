@@ -566,12 +566,17 @@ export async function handleMtPeerList(env: MtEnv, request: Request): Promise<Re
   const L = await load(env, b.classId, c.uid)
   if ('error' in L) return fail(L.error ?? '클래스를 읽지 못했습니다.')
   if (!c.instructor && (!L.enrollment || str(L.enrollment, 'status') !== 'active')) return fail('이 클래스의 수강생만 볼 수 있습니다.')
-  const res = await fetch(`${L.fs}:runQuery`, {
+  /* 하위 모음(classes/{cid}/mtPeer)을 물을 때는 부모 문서가 주소에 들어간다 — {부모}:runQuery.
+     본문에는 structuredQuery 만. 본문에 parent 를 넣으면 Firestore 가 400 으로 거절한다 (2026-11-02 발표자에게 의견이 안 보이던 원인) */
+  const res = await fetch(`${L.fs}/classes/${b.classId}:runQuery`, {
     method: 'POST',
     headers: L.h,
-    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'mtPeer' }], where: { fieldFilter: { field: { fieldPath: 'presenterUid' }, op: 'EQUAL', value: S(presenter) } } }, parent: `${L.base}/classes/${b.classId}` }),
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'mtPeer' }], where: { fieldFilter: { field: { fieldPath: 'presenterUid' }, op: 'EQUAL', value: S(presenter) } } } }),
   })
-  if (!res.ok) return fail(`의견을 읽지 못했습니다 (${res.status}).`)
+  if (!res.ok) {
+    console.error('[마이크로티칭] 동료 의견을 읽지 못했다:', res.status, (await res.text()).slice(0, 300))
+    return fail(`의견을 읽지 못했습니다 (${res.status}). 잠시 뒤 [새로 읽기]를 누르세요.`)
+  }
   const rows = ((await res.json()) as Array<{ document?: { fields?: Record<string, Value> } }>).flatMap((r) => (r.document?.fields ? [r.document.fields] : []))
   const byAuthor = new Map(rows.map((f) => [str(f, 'authorUid') ?? '', f]))
   const order = await shuffledBy(`${b.classId}/${presenter}/${env.TEXTBOOK_SECRET ?? ''}`, [...byAuthor.keys()].filter(Boolean).sort())

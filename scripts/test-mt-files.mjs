@@ -79,8 +79,10 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (path.endsWith(':runQuery')) {
     const q = JSON.parse(init.body)
+    /* 진짜 Firestore 처럼 — 부모는 주소({부모}:runQuery)로만 받고, 본문에 모르는 칸(parent 등)이 있으면 400 */
+    if (Object.keys(q).some((k) => k !== 'structuredQuery')) return res(400, { error: { message: `Invalid JSON payload received. Unknown name "${Object.keys(q).find((k) => k !== 'structuredQuery')}"` } })
     const col = q.structuredQuery.from[0].collectionId
-    const parent = (q.parent ?? '').split('/documents/')[1] ?? ''
+    const parent = path.slice(0, -':runQuery'.length).replace(/^\//, '')
     const f = q.structuredQuery.where?.fieldFilter
     const rows = [...store.entries()]
       .filter(([k]) => k.startsWith(`${parent}/${col}/`) && k.split('/').length === parent.split('/').length + 2)
