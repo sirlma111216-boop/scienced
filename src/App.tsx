@@ -51,7 +51,8 @@ function lazyRoute<P extends object = Record<string, never>>(name: string, load:
 const Teach = lazyRoute('수업 화면', () => import('@/routes/Teach').then((m) => m.Teach))
 const Portfolio = lazyRoute('포트폴리오', () => import('@/routes/Portfolio').then((m) => m.Portfolio))
 const ConceptMap = lazyRoute('개념 지도', () => import('@/routes/ConceptMap').then((m) => m.ConceptMap))
-const Microteaching = lazyRoute('마이크로티칭', () => import('@/routes/Microteaching').then((m) => m.Microteaching))
+/* 마이크로티칭 — 일정표 · 수업지도안 · 동료 의견 · 내 수업 기록이 한 화면이다 (강의자 지시 2026-11-02). 강사는 클래스 관리의 「마이크로티칭 기록」 탭에서 같은 화면을 admin 으로 본다 */
+const Microteaching = lazyRoute('마이크로티칭', () => import('@/routes/MicroteachingRecord').then((m) => m.MicroteachingRecord))
 const Curriculum = lazyRoute('교육과정 맵', () => import('@/routes/Curriculum').then((m) => m.Curriculum))
 const InstructorStudents = lazyRoute('수강생 관리', () => import('@/routes/instructor/Students').then((m) => m.InstructorStudents))
 const InstructorAnalytics = lazyRoute('분석', () => import('@/routes/instructor/Analytics').then((m) => m.InstructorAnalytics))
@@ -218,14 +219,8 @@ export function App() {
               </Guard>
             }
           />
-          <Route
-            path="/microteaching/record"
-            element={
-              <Guard>
-                <MicroteachingRecord />
-              </Guard>
-            }
-          />
+          {/* 옛 「발표 기록」 주소 — 2026-11-02 부터 마이크로티칭 화면 하나에 합쳤다. 즐겨찾기가 남아 있을 수 있어 돌려보낸다 */}
+          <Route path="/microteaching/record" element={<Navigate to="/microteaching" replace />} />
 
           {/* 강사 — 수업 화면 하나 */}
           <Route

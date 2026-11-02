@@ -1,4 +1,4 @@
-import { MT_FILE_MAX_MB, MT_VIDEO_MAX_MB, mtFileKind, mtVideoKind } from '@shared/microteaching'
+import { MT_FILE_MAX_MB, MT_VIDEO_MAX_MB, mtFileKind, mtVideoKind, type MtNoteField, type MtPeerField } from '@shared/microteaching'
 import type { MtPeerView } from './types'
 import { apiPost, apiUpload } from './api'
 
@@ -9,8 +9,9 @@ import { apiPost, apiUpload } from './api'
  *   계획안 올리기  uploadMtFile(classId, 'plan', file)       신청한 본인, 양식이 올라온 뒤에. 다시 올리면 바뀐다
  *   내려받기      openMtFile(classId, kind, uid?)            10분짜리 서명 주소를 받아 바로 내려받는다
  *   화면에서 보기  mtFileUrl(classId, kind, uid?, inline)      PDF 지도안 · 수업 영상은 서명 주소를 받아 <iframe> · <video> 에 건다 (2026-10-17)
+ *   지도안은 같은 반 수강생 누구나 uid 를 적어 내려받는다 (2026-11-02 — 일정표의 [수업지도안]). 영상은 본인과 강사만.
  *   영상 올리기    uploadMtVideo(classId, uid, file)          강사만. 48 MB 조각으로 잘라 올리고 서버가 합친다 (요청 하나 100 MB 상한)
- *   글             saveMtNote · saveMtPeer · mtPeerList       지도안 피드백 · 수업 피드백 · 후기 · 동료 의견
+ *   글             saveMtNote · saveMtPeer · mtPeerList       성찰 둘(학생) · 피드백 둘(강사) · 동료 의견 세 칸 (2026-11-02)
  *
  * 쓰기 · 권한은 서버(functions/api/_lib/microteaching.ts)가 본다. 여기 검사는 기다리지 않게 미리 알려 주려는 것이다.
  */
@@ -114,15 +115,13 @@ export async function uploadMtVideo(
   return fin
 }
 
-/* ─────────────── 글 (2026-10-17) ─────────────── */
+/* ─────────────── 글 (2026-10-17 · 2026-11-02) ─────────────── */
 
-export type MtNoteField = 'planFeedback' | 'videoFeedback' | 'reflection'
-
-/** 강사(planFeedback · videoFeedback, uid 필요) · 학생(reflection). 빈 글이면 지운다 */
+/** 강사(feedbackGood · feedbackImprove, uid 필요) · 학생(reflectionGood · reflectionBad). 빈 글이면 지운다 */
 export const saveMtNote = (classId: string, field: MtNoteField, text: string, uid?: string) => apiPost<{ ok: boolean; message?: string; at?: number }>('/api/microteaching/note', { classId, field, text, ...(uid ? { uid } : null) })
 
-/** 다른 수강생의 수업에 훌륭한 점 · 개선점. 둘 다 비면 지운다 */
-export const saveMtPeer = (classId: string, presenterUid: string, good: string, improve: string) => apiPost<{ ok: boolean; message?: string }>('/api/microteaching/peer', { classId, presenterUid, good, improve })
+/** 다른 수강생의 수업에 세 칸(좋았던 점 · 아쉬웠던 점 · 내가 이 수업을 한다면). 셋 다 비면 지운다 */
+export const saveMtPeer = (classId: string, presenterUid: string, texts: Record<MtPeerField, string>) => apiPost<{ ok: boolean; message?: string }>('/api/microteaching/peer', { classId, presenterUid, ...texts })
 
 /** 발표자 본인(presenterUid 없음)은 익명 번호만, 강사는 쓴 사람과 함께 */
 export const mtPeerList = (classId: string, presenterUid?: string) => apiPost<{ ok: boolean; message?: string; comments?: MtPeerView[] }>('/api/microteaching/peer-list', { classId, ...(presenterUid ? { presenterUid } : null) })

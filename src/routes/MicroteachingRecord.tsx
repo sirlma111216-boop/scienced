@@ -1,24 +1,26 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { courseOf } from '@/lib/lesson-data'
 import type { MtApplication, MtPeerDoc, MtSlot } from '@/lib/types'
 import { AppShell } from '@/components/layout/AppShell'
 import { ClassAdminHeader } from '@/components/instructor/ClassAdmin'
 import { useRosterNames } from '@/components/instructor/roster-names'
-import { InstructorRecord, StudentRecord } from '@/components/microteaching/RecordBoard'
+import { MtBoard } from '@/components/microteaching/RecordBoard'
 
 /**
- * 마이크로티칭 기록 (강의자 지시 2026-10-17).
+ * 마이크로티칭 (강의자 지시 2026-10-17 · 2026-11-02 — 한 화면으로).
  *
- *   /microteaching/record                        학생 — 내 지도안 · 피드백 · 영상 · 후기 · 동료 의견(익명), 다른 사람 수업에 의견 적기
- *   /instructor/class/:classId/mtrecord          강사 — 클래스 관리의 한 탭. 발표자마다 지도안 · 피드백 · 영상 올리기 · 동료 의견(이름)
+ *   /microteaching                               학생 — 아래 메뉴 「마이크로티칭」. 일정표(이름 · [수업지도안]) + 누른 사람에 따라 동료 의견 칸 또는 내 기록
+ *   /instructor/class/:classId/mtrecord          강사 — 클래스 관리의 한 탭. 같은 일정표 + 영상 올리기 · 피드백
  *
+ * 누구를 눌렀는지는 주소의 ?who= 에 둔다 — 새로 고쳐도 그 사람이 열려 있다.
  * 쓰기는 전부 서버 함수(functions/api/microteaching/*)가 한다. 이 화면은 자리 · 신청 기록 · 내 동료 의견을 구독해 그린다.
  */
 export function MicroteachingRecord({ admin = false }: { admin?: boolean }) {
   const params = useParams()
   const navigate = useNavigate()
+  const [search, setSearch] = useSearchParams()
   const { repo, user, isInstructor, classId: myClassId, classes } = useAuth()
   const classId = (admin ? params.classId : myClassId) ?? ''
   const cls = classes.find((c) => c.id === classId) ?? null
@@ -45,19 +47,30 @@ export function MicroteachingRecord({ admin = false }: { admin?: boolean }) {
   if (admin && !isInstructor) return <Navigate to="/" replace />
   if (!classId) return <Navigate to={isInstructor ? '/instructor/classes' : '/class'} replace />
 
+  const board = (
+    <MtBoard
+      classId={classId}
+      courseId={courseId}
+      uid={user?.uid ?? ''}
+      admin={admin}
+      slots={slots}
+      apps={apps}
+      myPeer={myPeer}
+      nameOf={nameOf}
+      note={note}
+      selectedUid={search.get('who')}
+      onSelect={(u) => setSearch(u ? { who: u } : {}, { replace: true })}
+      onGoApply={() => navigate('/microteaching/apply')}
+    />
+  )
+
   if (admin) {
     return (
       <AppShell title="마이크로티칭 기록">
         <ClassAdminHeader classId={classId} cls={cls} here="mtrecord" />
-        <div style={{ marginTop: 24 }}>
-          <InstructorRecord classId={classId} courseId={courseId} slots={slots} apps={apps} nameOf={nameOf} note={note} />
-        </div>
+        <div style={{ marginTop: 24 }}>{board}</div>
       </AppShell>
     )
   }
-  return (
-    <AppShell title="마이크로티칭 기록">
-      <StudentRecord classId={classId} courseId={courseId} uid={user?.uid ?? ''} slots={slots} app={apps[0] ?? null} myPeer={myPeer} note={note} onGoApply={() => navigate('/microteaching/apply')} />
-    </AppShell>
-  )
+  return <AppShell title="마이크로티칭">{board}</AppShell>
 }

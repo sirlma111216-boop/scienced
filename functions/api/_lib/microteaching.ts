@@ -1,5 +1,5 @@
 import type { Env } from '../../../shared/ai-core'
-import { MT_CONTENT_TYPE, MT_FILE_MAX_MB, MT_NOTE_MAX, MT_PEER_MAX, MT_TOPIC_MAX, MT_VIDEO_CONTENT_TYPE, MT_VIDEO_MAX_MB, MT_VIDEO_PART_MB, isMtSlot, mtFileKind, mtVideoKind, type MtCourseId } from '../../../shared/microteaching'
+import { MT_CONTENT_TYPE, MT_FILE_MAX_MB, MT_NOTE_FIELDS, MT_NOTE_MAX, MT_PEER_FIELD_KEYS, MT_PEER_MAX, MT_TOPIC_MAX, MT_VIDEO_CONTENT_TYPE, MT_VIDEO_MAX_MB, MT_VIDEO_PART_MB, isMtNoteField, isMtSlot, mtFileKind, mtVideoKind, type MtCourseId, type MtPeerField } from '../../../shared/microteaching'
 import { fail, isInstructorUid, json, verifyIdToken } from './auth'
 import { firestoreRest } from './lumi'
 import { hmac, parseRange, sameText, type R2BucketLike, type R2UploadedPartLike } from './textbook'
@@ -20,9 +20,11 @@ import { hmac, parseRange, sameText, type R2BucketLike, type R2UploadedPartLike 
  *   자리 문서 — 같은 반 모두가 일정표에서 본다. 가리킴 — 자리를 옮기거나 취소했다 다시 신청해도 남는다(새 자리에 옮겨 적는다).
  * 수업계획안 파일은 가리킴에만(plan) — 본인과 강사만. 양식은 클래스 문서(mtTemplate) — 수강생 모두가 내려받는다.
  *
- * 2026-10-17 (강의자 지시 — 마이크로티칭이 임박):
- *   가리킴에 더 적는 것   planFeedback(강사가 지도안에) · video(강사가 올린 수업 영상) · reflection(학생 후기) · videoFeedback(강사가 수업에)
- *   동료 의견            classes/{cid}/mtPeer/{presenterUid}__{authorUid} — 다른 수강생이 수업을 들으며 적는 훌륭한 점 · 개선점.
+ * 2026-10-17 (강의자 지시 — 마이크로티칭이 임박) · 2026-11-02 (강의자 지시 — 화면 다섯 가지로 다시):
+ *   가리킴에 더 적는 것   video(강사가 올린 수업 영상) · reflectionGood · reflectionBad(발표한 본인의 성찰 둘) · feedbackGood · feedbackImprove(강사 피드백 둘)
+ *                       — 칸 이름은 shared/microteaching.ts 의 MT_NOTE_FIELDS 하나다. 영상이 없어도 쓴다.
+ *   수업계획안 내려받기   같은 반 수강생 누구나 — 일정표에서 발표자 이름 옆의 [수업지도안] (2026-11-02). 영상은 그대로 본인과 강사만.
+ *   동료 의견            classes/{cid}/mtPeer/{presenterUid}__{authorUid} — 다른 수강생이 수업을 보며 적는 세 칸(좋았던 점 · 아쉬웠던 점 · 내가 이 수업을 한다면).
  *                       강사는 이름과 함께, 발표자는 **익명으로 번호만** 본다(서버가 섞어서 준다). 쓴 사람은 자기 것만 본다.
  *   영상은 조각 올리기(R2 multipart) — 요청 하나가 100 MB 를 넘지 못하므로 48 MB 씩 잘라 올리고 마지막에 합친다.
  */
@@ -347,8 +349,9 @@ export async function handleMtUpload(env: MtEnv, request: Request, kind: 'templa
 const signText = (classId: string, kind: string, owner: string, key: string, exp: number) => `mt\n${classId}\n${kind}\n${owner}\n${key}\n${exp}`
 
 /**
- * POST /api/microteaching/file-url — { classId, kind: 'template' | 'plan', uid? } → { ok, url, name }
- *   template  수강생(등록 active)과 강사.   plan  본인(uid 없이) 또는 강사(uid 를 적어).
+ * POST /api/microteaching/file-url — { classId, kind: 'template' | 'plan' | 'video', uid? } → { ok, url, name }
+ *   template  수강생(등록 active)과 강사.   plan  같은 반 수강생 누구나(uid 로 발표자를 가리켜) · 강사 (2026-11-02 — 일정표의 [수업지도안]).
+ *   video     본인(uid 없이) 또는 강사(uid 를 적어).
  * 주소는 10분짜리 서명 주소다. 서명에 파일 키가 들어가 파일을 바꾸면 옛 주소가 죽는다.
  */
 export async function handleMtFileUrl(env: MtEnv, request: Request, now = Date.now()): Promise<Response> {
@@ -363,7 +366,7 @@ export async function handleMtFileUrl(env: MtEnv, request: Request, now = Date.n
   if (!b.classId || !CLASS_ID_RE.test(b.classId) || (b.kind !== 'template' && b.kind !== 'plan' && b.kind !== 'video')) return fail('요청 형식이 올바르지 않습니다.')
   if (!env.TEXTBOOK_SECRET) return fail('파일 내려받기 설정이 아직 끝나지 않았습니다. 사이트 관리자에게 알려 주세요.')
   const owner = b.kind === 'template' ? '-' : b.uid && b.uid !== c.uid ? b.uid : c.uid
-  if (b.kind !== 'template' && owner !== c.uid && !c.instructor) return fail(b.kind === 'video' ? '다른 사람의 수업 영상은 강사만 볼 수 있습니다.' : '다른 사람의 계획안은 강사만 내려받을 수 있습니다.')
+  if (b.kind === 'video' && owner !== c.uid && !c.instructor) return fail('다른 사람의 수업 영상은 강사만 볼 수 있습니다.')
   const L = await load(env, b.classId, c.uid)
   if ('error' in L) return fail(L.error ?? '클래스를 읽지 못했습니다.')
   if (!c.instructor && (!L.enrollment || str(L.enrollment, 'status') !== 'active')) return fail('이 클래스의 수강생만 내려받을 수 있습니다.')
@@ -450,9 +453,9 @@ export async function handleMtDetail(env: MtEnv, request: Request, now = Date.no
 const noteValue = (text: string, at: number): Value => ({ mapValue: { fields: { text: S(text), at: I(at) } } })
 
 /**
- * POST /api/microteaching/note — { classId, field, text, uid? }
- *   planFeedback · videoFeedback   강사만, uid 로 학생을 가리킨다. 신청한 학생이어야 한다
- *   reflection                     본인만. 자기 수업 영상이 올라온 뒤에 쓴다
+ * POST /api/microteaching/note — { classId, field, text, uid? }   칸은 MT_NOTE_FIELDS (2026-11-02)
+ *   feedbackGood · feedbackImprove    강사만, uid 로 학생을 가리킨다. 신청한 학생이어야 한다
+ *   reflectionGood · reflectionBad    발표한 본인만. 수업을 마친 뒤 적는다 — 영상이 올라오기를 기다리지 않는다
  * 빈 글을 보내면 지운다. 글은 신청 기록(가리킴)에만 있어 본인과 강사만 읽는다.
  */
 export async function handleMtNote(env: MtEnv, request: Request, now = Date.now()): Promise<Response> {
@@ -466,10 +469,10 @@ export async function handleMtNote(env: MtEnv, request: Request, now = Date.now(
   }
   if (!b.classId || !CLASS_ID_RE.test(b.classId)) return fail('클래스 id 가 없습니다.')
   const field = b.field
-  if (field !== 'planFeedback' && field !== 'videoFeedback' && field !== 'reflection') return fail('요청 형식이 올바르지 않습니다.')
+  if (!isMtNoteField(field)) return fail('요청 형식이 올바르지 않습니다.')
   const text = String(b.text ?? '').trim()
   if (text.length > MT_NOTE_MAX) return fail(`${MT_NOTE_MAX}자 이하로 적으세요.`)
-  const byInstructor = field !== 'reflection'
+  const byInstructor = MT_NOTE_FIELDS[field].by === 'instructor'
   if (byInstructor && !c.instructor) return fail('피드백은 강사만 쓸 수 있습니다.')
   const owner = byInstructor ? String(b.uid ?? '') : c.uid
   if (!owner) return fail('누구의 기록인지 적으세요.')
@@ -477,8 +480,6 @@ export async function handleMtNote(env: MtEnv, request: Request, now = Date.now(
   if ('error' in L) return fail(L.error ?? '클래스를 읽지 못했습니다.')
   if (!byInstructor && (!L.enrollment || str(L.enrollment, 'status') !== 'active')) return fail('이 클래스의 수강생만 쓸 수 있습니다.')
   if (!L.pointer || !L.prevSlotId) return fail(byInstructor ? '발표를 신청한 학생이 아닙니다.' : '먼저 발표 자리를 신청하세요.')
-  if (field === 'planFeedback' && !fileMetaOf(L.pointer.plan)) return fail('아직 낸 지도안이 없습니다.')
-  if (field !== 'planFeedback' && !fileMetaOf(L.pointer.video)) return fail(byInstructor ? '먼저 수업 영상을 올리세요.' : '수업 영상이 올라온 뒤에 후기를 쓸 수 있습니다.')
   const fields: Record<string, Value> = text ? { [field]: noteValue(text, now) } : {}
   const res = await fetch(L.rest.commit, {
     method: 'POST',
@@ -494,37 +495,36 @@ export async function handleMtNote(env: MtEnv, request: Request, now = Date.now(
 
 /* ─────────────────────── 동료 의견 (2026-10-17) ─────────────────────── */
 
-/** POST /api/microteaching/peer — { classId, presenterUid, good, improve } 수강생이 남의 수업에. 둘 다 비면 지운다 */
+/** POST /api/microteaching/peer — { classId, presenterUid, good, improve, ifMine } 수강생이 남의 수업에 세 칸(MT_PEER_FIELDS). 셋 다 비면 지운다 */
 export async function handleMtPeer(env: MtEnv, request: Request, now = Date.now()): Promise<Response> {
   const c = await whoCalls(env, request)
   if (c instanceof Response) return c
-  let b: { classId?: string; presenterUid?: string; good?: unknown; improve?: unknown }
+  let b: { classId?: string; presenterUid?: string } & Partial<Record<MtPeerField, unknown>>
   try {
     b = (await request.json()) as typeof b
   } catch {
     return fail('요청 형식이 올바르지 않습니다.')
   }
   if (!b.classId || !CLASS_ID_RE.test(b.classId) || !b.presenterUid) return fail('요청 형식이 올바르지 않습니다.')
-  if (b.presenterUid === c.uid) return fail('자기 수업에는 동료 의견 대신 후기를 씁니다.')
-  const good = String(b.good ?? '').trim()
-  const improve = String(b.improve ?? '').trim()
-  if (good.length > MT_PEER_MAX || improve.length > MT_PEER_MAX) return fail(`${MT_PEER_MAX}자 이하로 적으세요.`)
+  if (b.presenterUid === c.uid) return fail('자기 수업에는 동료 의견 대신 성찰을 씁니다.')
+  const texts = Object.fromEntries(MT_PEER_FIELD_KEYS.map((k) => [k, String(b[k] ?? '').trim()])) as Record<MtPeerField, string>
+  if (MT_PEER_FIELD_KEYS.some((k) => texts[k].length > MT_PEER_MAX)) return fail(`${MT_PEER_MAX}자 이하로 적으세요.`)
+  const any = MT_PEER_FIELD_KEYS.some((k) => texts[k])
   const L = await load(env, b.classId, c.uid)
   if ('error' in L) return fail(L.error ?? '클래스를 읽지 못했습니다.')
   if (!L.enrollment || str(L.enrollment, 'status') !== 'active') return fail('이 클래스의 수강생만 쓸 수 있습니다.')
   const presenter = await getDoc(`${L.fs}/classes/${b.classId}/mtApplications/${b.presenterUid}`, L.h)
   if (!presenter || presenter === 'error' || !str(presenter, 'slotId')) return fail('그 사람은 발표 자리를 신청하지 않았습니다.')
   const name = `${L.base}/classes/${b.classId}/mtPeer/${b.presenterUid}__${c.uid}`
-  const write =
-    good || improve
-      ? { update: { name, fields: { presenterUid: S(b.presenterUid), authorUid: S(c.uid), good: S(good), improve: S(improve), at: I(now) } } }
-      : { delete: name }
+  const write = any
+    ? { update: { name, fields: { presenterUid: S(b.presenterUid), authorUid: S(c.uid), ...Object.fromEntries(MT_PEER_FIELD_KEYS.map((k) => [k, S(texts[k])])), at: I(now) } } }
+    : { delete: name }
   const res = await fetch(L.rest.commit, { method: 'POST', headers: L.h, body: JSON.stringify({ writes: [write] }) })
   if (!res.ok) {
     console.error('[마이크로티칭] 동료 의견을 쓰지 못했다:', res.status, (await res.text()).slice(0, 300))
     return fail('저장하지 못했습니다. 잠시 뒤 다시 누르세요.')
   }
-  return json({ ok: true, at: now, deleted: !(good || improve) })
+  return json({ ok: true, at: now, deleted: !any })
 }
 
 /** 시드로 섞는다 — 발표자가 볼 번호가 쓴 순서나 이름과 이어지지 않게 */
@@ -534,7 +534,7 @@ async function shuffledBy(seed: string, items: string[]): Promise<string[]> {
 }
 
 /**
- * POST /api/microteaching/peer-list — { classId, presenterUid? } → { ok, comments: [{ n, good, improve, at }] }
+ * POST /api/microteaching/peer-list — { classId, presenterUid? } → { ok, comments: [{ n, good, improve, ifMine, at }] }
  * 발표자 본인(presenterUid 없음)은 **익명 번호**로만 받는다 — 쓴 사람의 uid · 이름이 없다. 강사는 uid 를 적어 누구 것이든 이름(authorUid)과 함께 받는다.
  * 다른 수강생은 남의 수업 의견 목록을 받지 못한다(자기 것은 규칙으로 직접 읽는다).
  */
@@ -564,7 +564,7 @@ export async function handleMtPeerList(env: MtEnv, request: Request): Promise<Re
   const order = await shuffledBy(`${b.classId}/${presenter}/${env.TEXTBOOK_SECRET ?? ''}`, [...byAuthor.keys()].filter(Boolean).sort())
   const comments = order.map((author, i) => {
     const f = byAuthor.get(author)!
-    const base = { n: i + 1, good: str(f, 'good') ?? '', improve: str(f, 'improve') ?? '', at: int(f, 'at') ?? 0 }
+    const base = { n: i + 1, ...Object.fromEntries(MT_PEER_FIELD_KEYS.map((k) => [k, str(f, k) ?? ''])), at: int(f, 'at') ?? 0 }
     return c.instructor ? { ...base, authorUid: author } : base
   })
   return json({ ok: true, comments })

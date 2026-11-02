@@ -167,14 +167,33 @@ export const MT_CONTENT_TYPE: Record<(typeof MT_FILE_EXTS)[number], string> = {
   doc: 'application/msword',
 }
 
-/* ─────────────── 지도안 피드백 · 수업 영상 · 후기 · 동료 의견 (강의자 지시 2026-10-17) ─────────────── */
+/* ─────────────── 수업 영상 · 성찰 · 교수 피드백 · 동료 의견 (강의자 지시 2026-10-17 · 2026-11-02 고침) ─────────────── */
 
-/** 글 하나 — 강사 피드백 · 학생 후기. 누가 언제 썼는지 함께 */
+/** 글 하나 — 성찰 · 피드백. 누가 언제 썼는지 함께 */
 export interface MtNote {
   text: string
   at: number
 }
 export const MT_NOTE_MAX = 3000
+
+/**
+ * 신청 기록(mtApplications/{uid})에 적는 글 칸 — 화면 · 서버 · 검사가 같은 표를 읽는다 (2026-11-02).
+ *   reflectionGood · reflectionBad    발표한 본인이 수업 뒤에 적는 성찰 둘
+ *   feedbackGood · feedbackImprove    강사가 적는 피드백 둘
+ * 영상이 없어도 쓴다 — 수업은 영상보다 먼저 끝난다.
+ */
+export const MT_NOTE_FIELDS = {
+  reflectionGood: { by: 'student', label: '잘된 점', hint: '수업에서 계획대로 되었거나 학생의 반응이 좋았던 장면을 적으세요.' },
+  reflectionBad: { by: 'student', label: '잘못된 점', hint: '계획과 달랐던 장면과 그 까닭, 다음에 바꿀 것을 적으세요.' },
+  feedbackGood: { by: 'instructor', label: '잘된 점', hint: '학생이 자기 성찰과 나란히 읽습니다.' },
+  feedbackImprove: { by: 'instructor', label: '개선할 점', hint: '다음 수업에서 바꿀 것 한두 가지와 그 이유를 적으세요.' },
+} as const
+export type MtNoteField = keyof typeof MT_NOTE_FIELDS
+export const MT_REFLECTION_FIELDS = ['reflectionGood', 'reflectionBad'] as const
+export const MT_FEEDBACK_FIELDS = ['feedbackGood', 'feedbackImprove'] as const
+export function isMtNoteField(v: unknown): v is MtNoteField {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(MT_NOTE_FIELDS, v)
+}
 
 /** 수업 영상 — 강사가 마이크로티칭 뒤에 올린다. 본인과 강사만 본다 */
 export const MT_VIDEO_EXTS = ['mp4', 'm4v', 'mov', 'webm'] as const
@@ -193,12 +212,25 @@ export function mtVideoKind(name: string, head: Uint8Array): (typeof MT_VIDEO_EX
   return head[4] === 0x66 && head[5] === 0x74 && head[6] === 0x79 && head[7] === 0x70 ? (ext as 'mp4' | 'm4v' | 'mov') : null
 }
 
-/** 동료 의견 — 다른 수강생이 수업을 들으며 적는다. 발표자에게는 익명으로 보인다 */
+/**
+ * 동료 의견 — 다른 수강생이 수업을 보며 적는 세 칸 (2026-11-02). 발표자에게는 익명으로 보인다.
+ *   good     이 수업에서 좋았던 점
+ *   improve  이 수업에서 아쉬웠던 점
+ *   ifMine   내가 이 수업을 한다면 — 같은 주제를 자기가 가르친다면 어떻게 풀어 가겠는가
+ */
+export const MT_PEER_FIELDS = {
+  good: { label: '이 수업에서 좋았던 점', hint: '배울 만했던 교사의 행동과 그때 학생의 반응을 적으세요.' },
+  improve: { label: '이 수업에서 아쉬웠던 점', hint: '다음에 바꾸면 좋을 장면과 그 이유를 적으세요.' },
+  ifMine: { label: '내가 이 수업을 한다면', hint: '같은 주제를 내가 가르친다면 어디를 어떻게 다르게 풀어 갈지 적으세요.' },
+} as const
+export type MtPeerField = keyof typeof MT_PEER_FIELDS
+export const MT_PEER_FIELD_KEYS = ['good', 'improve', 'ifMine'] as const
 export interface MtPeerComment {
   presenterUid: string
   authorUid: string
   good: string
   improve: string
+  ifMine: string
   at: number
 }
 export const MT_PEER_MAX = 800

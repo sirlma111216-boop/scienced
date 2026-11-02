@@ -93,14 +93,15 @@ export interface MtApplication {
   methodOther?: string
   detailAt?: number | null
   plan?: MtFileMeta | null
-  /* 마이크로티칭 기록 (2026-10-17) — 지도안에 강사가 · 수업 영상(강사가 올림) · 학생 후기 · 수업에 강사가. 본인과 강사만 읽는다 */
-  planFeedback?: MtNote | null
+  /* 마이크로티칭 기록 (2026-10-17 · 2026-11-02) — 수업 영상(강사가 올림) · 본인의 성찰 둘 · 강사의 피드백 둘. 본인과 강사만 읽는다. 칸 이름은 shared/microteaching.ts 의 MT_NOTE_FIELDS */
   video?: MtFileMeta | null
-  reflection?: MtNote | null
-  videoFeedback?: MtNote | null
+  reflectionGood?: MtNote | null
+  reflectionBad?: MtNote | null
+  feedbackGood?: MtNote | null
+  feedbackImprove?: MtNote | null
 }
 
-/** 글 한 토막 — 피드백 · 후기 */
+/** 글 한 토막 — 성찰 · 피드백 */
 export interface MtNote {
   text: string
   at: number
@@ -112,6 +113,8 @@ export interface MtPeerDoc {
   authorUid: string
   good: string
   improve: string
+  /** 내가 이 수업을 한다면 (2026-11-02) */
+  ifMine: string
   at: number
 }
 
@@ -120,6 +123,7 @@ export interface MtPeerView {
   n: number
   good: string
   improve: string
+  ifMine: string
   at: number
   authorUid?: string
 }

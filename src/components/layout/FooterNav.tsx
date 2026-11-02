@@ -7,7 +7,6 @@ const links = [
   { to: '/textbook', label: '교과서', tone: 'study' },
   { to: '/microteaching', label: '마이크로티칭', tone: 'teaching' },
   { to: '/microteaching/apply', label: '발표 신청', tone: 'teaching' },
-  { to: '/microteaching/record', label: '발표 기록', tone: 'teaching' },
 ] as const
 
 export function FooterNav() {

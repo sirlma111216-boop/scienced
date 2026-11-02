@@ -1,20 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { MT_NOTE_MAX, MT_ORDER_LABEL, MT_PEER_MAX, MT_SCHEDULE, MT_VIDEO_ACCEPT, mtDateLabel, type MtCourseId } from '@shared/microteaching'
+import {
+  MT_FEEDBACK_FIELDS,
+  MT_NOTE_FIELDS,
+  MT_NOTE_MAX,
+  MT_ORDER_LABEL,
+  MT_PEER_FIELDS,
+  MT_PEER_FIELD_KEYS,
+  MT_PEER_MAX,
+  MT_REFLECTION_FIELDS,
+  MT_SCHEDULE,
+  MT_VIDEO_ACCEPT,
+  mtDateLabel,
+  type MtCourseId,
+  type MtNoteField,
+  type MtPeerField,
+} from '@shared/microteaching'
 import { fileSizeText } from '@shared/textbook'
-import { checkMtVideo, mtFileUrl, mtPeerList, openMtFile, saveMtNote, saveMtPeer, uploadMtVideo, type MtNoteField } from '@/lib/microteaching-files'
+import { checkMtVideo, mtFileUrl, mtPeerList, openMtFile, saveMtNote, saveMtPeer, uploadMtVideo } from '@/lib/microteaching-files'
 import type { MtApplication, MtFileMeta, MtNote, MtPeerDoc, MtPeerView, MtSlot } from '@/lib/types'
 import { Button, Caption, Card, ColorBlock, Notice } from '@/components/ui'
 
 /**
- * 마이크로티칭 기록 (강의자 지시 2026-10-17 — 발표가 임박).
+ * 마이크로티칭 — 한 화면 (강의자 지시 2026-11-02).
  *
- *   학생 /microteaching/record                      내 지도안 · 강사의 지도안 피드백 · 내 수업 영상 · 내 후기 · 강사의 수업 피드백 · 동료 의견(익명)
- *                                                   + 다른 사람 수업에 훌륭한 점 · 개선점 적기
- *   강사 /instructor/class/:classId/mtrecord         발표자마다 — 지도안(내려받기 · 화면에서 보기) · 지도안 피드백 · 영상 올리기 · 학생 후기 · 수업 피드백 · 동료 의견(이름과 함께)
+ *   왼쪽   발표 일정표 — 날짜마다 발표자 이름 단추와 [수업지도안] 단추. 지도안은 같은 반 누구나 내려받는다.
+ *   오른쪽 이름을 누른 사람이 누구냐에 따라 셋 중 하나
+ *     다른 사람의 이름    그 수업에 동료 의견 세 칸 — 좋았던 점 · 아쉬웠던 점 · 내가 이 수업을 한다면 → [저장]
+ *     내 이름            네 묶음 — 내 수업의 모습(강사가 올린 영상) · 내 수업 성찰(잘된 점 · 잘못된 점) · 동료가 본 내 수업(익명) · 교수 피드백
+ *     강사(클래스 관리)   수업 영상 저장(올리면 학생 화면에 바로 뜬다) · 피드백(잘된 점 · 개선할 점) — 아래에 학생의 성찰과 동료 의견(이름)을 읽기만
  *
  * 누가 무엇을 보는가 (서버 functions/api/_lib/microteaching.ts 와 규칙이 지킨다 — 화면은 그 결과를 그린다):
- *   지도안 · 영상 · 피드백 · 후기   발표한 본인과 강사
- *   동료 의견                       쓴 사람은 자기 것 · 강사는 전부(이름) · 발표자는 익명 번호만
+ *   지도안              같은 반 수강생 전부와 강사
+ *   영상 · 성찰 · 피드백   발표한 본인과 강사
+ *   동료 의견            쓴 사람은 자기 것 · 강사는 전부(이름) · 발표자는 익명 번호만
  */
 
 const SAVED = '저장했습니다.'
@@ -33,20 +51,31 @@ function Problem({ text }: { text: string | null }) {
   ) : null
 }
 
-/* ─────────────── 글 한 칸 — 피드백 · 후기 ─────────────── */
+function Outcome({ msg }: { msg: { ok: boolean; text: string } | null }) {
+  return msg ? (
+    <p role={msg.ok ? 'status' : 'alert'} className="text-body-sm" style={{ margin: '6px 0 0', fontWeight: 480 }}>
+      {msg.ok ? '✓ ' : '⚠ '}
+      {msg.text}
+    </p>
+  ) : null
+}
+
+const slotLabel = (s: MtSlot) => `${mtDateLabel(s.date)} ${MT_ORDER_LABEL[s.order - 1] ?? `${s.order}번째`}`
+
+/* ─────────────── 글 한 칸 — 성찰 · 피드백 ─────────────── */
 
 function NoteBox({
   title,
+  hint,
   note,
   editable,
-  placeholder,
   emptyText,
   onSave,
 }: {
   title: string
+  hint?: string
   note: MtNote | null | undefined
   editable: boolean
-  placeholder?: string
   emptyText: string
   onSave?: (text: string) => Promise<{ ok: boolean; message?: string }>
 }) {
@@ -91,7 +120,7 @@ function NoteBox({
             value={text}
             maxLength={MT_NOTE_MAX}
             rows={5}
-            placeholder={placeholder}
+            placeholder={hint}
             style={{ width: '100%', marginTop: 6, resize: 'vertical' }}
             onChange={(e) => setText(e.target.value)}
           />
@@ -113,29 +142,18 @@ function NoteBox({
           {emptyText}
         </p>
       )}
-      {msg ? (
-        <p role={msg.ok ? 'status' : 'alert'} className="text-body-sm" style={{ margin: '6px 0 0', fontWeight: 480 }}>
-          {msg.ok ? '✓ ' : '⚠ '}
-          {msg.text}
-        </p>
-      ) : null}
+      <Outcome msg={msg} />
     </div>
   )
 }
 
-/* ─────────────── 지도안 — 내려받기 · 화면에서 보기 ─────────────── */
+/* ─────────────── 수업지도안 — 내려받기 (같은 반 누구나) · 강사는 화면에서 보기 ─────────────── */
 
-function PlanLine({ classId, uid, plan, canView }: { classId: string; uid?: string; plan: MtFileMeta | null | undefined; canView: boolean }) {
+function PlanButton({ classId, uid, plan, canView }: { classId: string; uid: string; plan?: MtFileMeta | null; canView?: boolean }) {
   const [err, setErr] = useState<string | null>(null)
   const [view, setView] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => setView(null), [plan?.key])
-  if (!plan)
-    return (
-      <p className="text-body-sm" style={{ margin: 0, opacity: 0.65 }}>
-        아직 낸 지도안이 없습니다.
-      </p>
-    )
   async function open() {
     setBusy(true)
     setErr(null)
@@ -146,27 +164,33 @@ function PlanLine({ classId, uid, plan, canView }: { classId: string; uid?: stri
   }
   return (
     <div>
-      <p className="text-body-sm flex items-center gap-xs" style={{ margin: 0, flexWrap: 'wrap' }}>
-        <span>
-          {plan.name} <span style={{ opacity: 0.6 }}>({fileSizeText(plan.size)} · {when(plan.at)})</span>
-        </span>
+      <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
         <Button
           variant="tertiary"
+          disabled={busy}
           onClick={() => {
             setErr(null)
-            void openMtFile(classId, 'plan', uid).then((e) => e && setErr(e))
+            setBusy(true)
+            void openMtFile(classId, 'plan', uid).then((e) => {
+              setBusy(false)
+              if (e) setErr(e)
+            })
           }}
         >
-          내려받기
+          수업지도안
         </Button>
-        {canView && plan.ext === 'pdf' ? (
+        {plan ? (
+          <Caption style={{ margin: 0 }}>
+            {plan.name} ({fileSizeText(plan.size)} · {when(plan.at)})
+          </Caption>
+        ) : null}
+        {canView && plan?.ext === 'pdf' ? (
           <Button variant="tertiary" disabled={busy} onClick={() => (view ? setView(null) : void open())}>
-            {view ? '닫기' : busy ? '여는 중' : '화면에서 보기'}
+            {view ? '닫기' : '화면에서 보기'}
           </Button>
         ) : null}
-      </p>
-      {canView && plan.ext !== 'pdf' ? <Caption>한글 · 워드 파일은 내려받아 봅니다. 화면에서 바로 보려면 PDF 로 내도록 안내하세요.</Caption> : null}
-      {view ? <iframe title={`지도안 — ${plan.name}`} src={`${view}#toolbar=0`} style={{ width: '100%', height: '75vh', border: '1px solid var(--line, #ddd)', borderRadius: 8, marginTop: 8, background: '#fff' }} /> : null}
+      </div>
+      {view ? <iframe title={`수업지도안 — ${plan?.name ?? ''}`} src={`${view}#toolbar=0`} style={{ width: '100%', height: '75vh', border: '1px solid var(--line, #ddd)', borderRadius: 8, marginTop: 8, background: '#fff' }} /> : null}
       <Problem text={err} />
     </div>
   )
@@ -174,7 +198,7 @@ function PlanLine({ classId, uid, plan, canView }: { classId: string; uid?: stri
 
 /* ─────────────── 수업 영상 ─────────────── */
 
-function VideoBox({ classId, uid, video }: { classId: string; uid?: string; video: MtFileMeta | null | undefined }) {
+function VideoBox({ classId, uid, video, mine }: { classId: string; uid?: string; video: MtFileMeta | null | undefined; mine: boolean }) {
   const [src, setSrc] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const load = useCallback(async () => {
@@ -190,7 +214,7 @@ function VideoBox({ classId, uid, video }: { classId: string; uid?: string; vide
   if (!video)
     return (
       <p className="text-body-sm" style={{ margin: 0, opacity: 0.65 }}>
-        아직 올라온 수업 영상이 없습니다.
+        {mine ? '강의자가 수업 영상을 올리면 여기에 뜹니다.' : '아직 올린 수업 영상이 없습니다.'}
       </p>
     )
   return (
@@ -240,7 +264,7 @@ function VideoUploadRow({ classId, uid, hasVideo }: { classId: string; uid: stri
     setProgress(null)
     cancel.current = null
     if (!r.ok) return setMsg({ ok: false, text: r.message ?? '올리지 못했습니다.' })
-    setMsg({ ok: true, text: `「${file.name}」을 올렸습니다. 학생에게 바로 보입니다.` })
+    setMsg({ ok: true, text: `「${file.name}」을 올렸습니다. 학생의 「내 수업의 모습」에 바로 보입니다.` })
   }
 
   const pct = progress ? Math.round((progress.sent / Math.max(1, progress.total)) * 100) : 0
@@ -273,12 +297,7 @@ function VideoUploadRow({ classId, uid, hasVideo }: { classId: string; uid: stri
         }}
       />
       <Caption>mp4 · mov · webm. 큰 파일은 잘라서 올리므로 시간이 걸립니다 — 끝날 때까지 이 화면을 닫지 마세요. 다시 올리면 바뀝니다.</Caption>
-      {msg ? (
-        <p role={msg.ok ? 'status' : 'alert'} className="text-body-sm" style={{ margin: '6px 0 0', fontWeight: 480 }}>
-          {msg.ok ? '✓ ' : '⚠ '}
-          {msg.text}
-        </p>
-      ) : null}
+      <Outcome msg={msg} />
     </div>
   )
 }
@@ -316,16 +335,13 @@ function PeerList({ classId, presenterUid, nameOf, refreshKey }: { classId: stri
                 {nameOf && c.authorUid ? nameOf(c.authorUid) || c.authorUid : `의견 ${c.n}`}
                 <span style={{ opacity: 0.55, fontWeight: 400 }}> · {when(c.at)}</span>
               </p>
-              {c.good ? (
-                <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
-                  <span style={{ fontWeight: 480 }}>훌륭한 점</span> {c.good}
-                </p>
-              ) : null}
-              {c.improve ? (
-                <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
-                  <span style={{ fontWeight: 480 }}>개선점</span> {c.improve}
-                </p>
-              ) : null}
+              {MT_PEER_FIELD_KEYS.map((k) =>
+                c[k] ? (
+                  <p key={k} style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
+                    <span style={{ fontWeight: 480 }}>{MT_PEER_FIELDS[k].label}</span> {c[k]}
+                  </p>
+                ) : null,
+              )}
             </li>
           ))}
         </ol>
@@ -341,320 +357,331 @@ function PeerList({ classId, presenterUid, nameOf, refreshKey }: { classId: stri
   )
 }
 
+const emptyPeer = (): Record<MtPeerField, string> => ({ good: '', improve: '', ifMine: '' })
+const peerTexts = (mine: MtPeerDoc | null): Record<MtPeerField, string> => ({ good: mine?.good ?? '', improve: mine?.improve ?? '', ifMine: mine?.ifMine ?? '' })
+
 function PeerForm({ classId, presenterUid, mine }: { classId: string; presenterUid: string; mine: MtPeerDoc | null }) {
-  const [good, setGood] = useState(mine?.good ?? '')
-  const [improve, setImprove] = useState(mine?.improve ?? '')
+  const [texts, setTexts] = useState<Record<MtPeerField, string>>(() => (mine ? peerTexts(mine) : emptyPeer()))
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const seen = useRef(mine?.at ?? 0)
   useEffect(() => {
     if ((mine?.at ?? 0) !== seen.current) {
       seen.current = mine?.at ?? 0
-      setGood(mine?.good ?? '')
-      setImprove(mine?.improve ?? '')
+      setTexts(peerTexts(mine))
     }
   }, [mine])
-  const dirty = good.trim() !== (mine?.good ?? '') || improve.trim() !== (mine?.improve ?? '')
+  /* 사람을 바꾸면 칸도 그 사람 것으로 */
+  useEffect(() => {
+    seen.current = mine?.at ?? 0
+    setTexts(mine ? peerTexts(mine) : emptyPeer())
+    setMsg(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presenterUid])
+  const saved = peerTexts(mine)
+  const dirty = MT_PEER_FIELD_KEYS.some((k) => texts[k].trim() !== saved[k])
+  const anyText = MT_PEER_FIELD_KEYS.some((k) => texts[k].trim())
   async function save() {
     setBusy(true)
     setMsg(null)
-    const r = await saveMtPeer(classId, presenterUid, good, improve)
+    const r = await saveMtPeer(classId, presenterUid, texts)
     setBusy(false)
     if (!r.ok) {
       console.warn('[마이크로티칭] 동료 의견을 저장하지 못했다:', r.message)
       return setMsg({ ok: false, text: r.message ?? '저장하지 못했습니다.' })
     }
-    setMsg({ ok: true, text: good.trim() || improve.trim() ? SAVED : '지웠습니다.' })
+    setMsg({ ok: true, text: anyText ? SAVED : '지웠습니다.' })
   }
-  const area = (label: string, value: string, set: (v: string) => void, placeholder: string) => (
-    <label className="text-body-sm" style={{ display: 'block', marginTop: 8 }}>
-      <span style={{ fontWeight: 480 }}>{label}</span>
-      <textarea className="input" value={value} maxLength={MT_PEER_MAX} rows={3} placeholder={placeholder} style={{ width: '100%', marginTop: 4, resize: 'vertical' }} onChange={(e) => set(e.target.value)} />
-    </label>
-  )
   return (
     <div>
-      {area('훌륭한 점', good, setGood, '수업에서 배울 만했던 것을 구체적으로 적으세요. 예: 학생의 틀린 답을 바로 고치지 않고 이유를 되물었다.')}
-      {area('개선점(아쉬운 점)', improve, setImprove, '다음 수업에서 바꾸면 좋을 것을 적으세요. 예: 실험 안내가 길어 학생이 손을 댈 시간이 짧았다.')}
-      <div className="flex items-center gap-xs" style={{ marginTop: 6, flexWrap: 'wrap' }}>
-        <Button variant="secondary" disabled={busy || !dirty} onClick={() => void save()}>
-          {busy ? '저장하는 중' : mine && !good.trim() && !improve.trim() ? '의견 지우기' : mine ? '고쳐 저장' : '의견 남기기'}
+      {MT_PEER_FIELD_KEYS.map((k) => (
+        <label key={k} className="text-body-sm" style={{ display: 'block', marginTop: 12 }}>
+          <span className="text-body" style={{ fontWeight: 480 }}>
+            {MT_PEER_FIELDS[k].label}
+          </span>
+          <textarea
+            className="input"
+            value={texts[k]}
+            maxLength={MT_PEER_MAX}
+            rows={4}
+            placeholder={MT_PEER_FIELDS[k].hint}
+            style={{ width: '100%', marginTop: 4, resize: 'vertical' }}
+            onChange={(e) => setTexts({ ...texts, [k]: e.target.value })}
+          />
+        </label>
+      ))}
+      <div className="flex items-center gap-xs" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+        <Button disabled={busy || !dirty} onClick={() => void save()}>
+          {busy ? '저장하는 중' : mine && !anyText ? '의견 지우기' : '저장'}
         </Button>
         {mine?.at ? <Caption style={{ margin: 0 }}>마지막 저장 {when(mine.at)}</Caption> : null}
       </div>
-      {msg ? (
-        <p role={msg.ok ? 'status' : 'alert'} className="text-body-sm" style={{ margin: '6px 0 0', fontWeight: 480 }}>
-          {msg.ok ? '✓ ' : '⚠ '}
-          {msg.text}
-        </p>
-      ) : null}
+      <Outcome msg={msg} />
     </div>
   )
 }
 
-/* ─────────────── 학생 화면 ─────────────── */
+/* ─────────────── 오른쪽 — 누구를 눌렀나 ─────────────── */
 
-const slotLabel = (s: MtSlot) => `${mtDateLabel(s.date)} ${MT_ORDER_LABEL[s.order - 1] ?? `${s.order}번째`}`
+function PanelHead({ slot, who, children }: { slot: MtSlot; who: string; children?: React.ReactNode }) {
+  return (
+    <div>
+      <p className="eyebrow" style={{ margin: 0 }}>
+        {slotLabel(slot)}
+      </p>
+      <h2 className="text-headline" id="mt-panel-title" tabIndex={-1} style={{ margin: '4px 0 0', outline: 'none' }}>
+        {who}
+        {slot.topic ? <span style={{ fontWeight: 400 }}> · {slot.topic}</span> : null}
+      </h2>
+      {children}
+    </div>
+  )
+}
 
-export function StudentRecord({
+function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <section aria-labelledby={id} style={{ marginTop: 20 }}>
+      <p className="eyebrow" id={id} style={{ margin: '0 0 4px' }}>
+        {title}
+      </p>
+      <Card>{children}</Card>
+    </section>
+  )
+}
+
+/** 다른 사람의 수업 — 동료 의견 세 칸 */
+function PeerPanel({ classId, slot, who, mine }: { classId: string; slot: MtSlot; who: string; mine: MtPeerDoc | null }) {
+  return (
+    <div>
+      <PanelHead slot={slot} who={who}>
+        <div style={{ marginTop: 8 }}>
+          <PlanButton classId={classId} uid={slot.uid} />
+        </div>
+      </PanelHead>
+      <Section id="mt-peer-form" title="이 수업에 의견 남기기">
+        <p className="text-body-sm" style={{ margin: 0 }}>
+          발표자에게는 이름 없이 전해지고, 강의자는 누가 적었는지 봅니다. 저장한 뒤에도 고칠 수 있습니다.
+        </p>
+        <PeerForm classId={classId} presenterUid={slot.uid} mine={mine} />
+      </Section>
+    </div>
+  )
+}
+
+/** 내 수업 — 네 묶음 */
+function SelfPanel({ classId, slot, app }: { classId: string; slot: MtSlot; app: MtApplication | null }) {
+  const save = (field: MtNoteField) => (text: string) => saveMtNote(classId, field, text)
+  return (
+    <div>
+      <PanelHead slot={slot} who="내 수업">
+        <div style={{ marginTop: 8 }}>
+          <PlanButton classId={classId} uid={slot.uid} plan={app?.plan} />
+          <Caption>지도안을 내거나 바꾸는 곳은 「발표 신청」 화면의 수업계획안 칸입니다.</Caption>
+        </div>
+      </PanelHead>
+      <Section id="mt-self-video" title="내 수업의 모습">
+        <VideoBox classId={classId} video={app?.video} mine />
+      </Section>
+      <Section id="mt-self-reflection" title="내 수업 성찰">
+        <p className="text-body-sm" style={{ margin: 0 }}>
+          수업을 마친 뒤 적고 저장하세요. 강의자가 읽고 피드백을 적습니다.
+        </p>
+        {MT_REFLECTION_FIELDS.map((f) => (
+          <NoteBox key={f} title={MT_NOTE_FIELDS[f].label} hint={MT_NOTE_FIELDS[f].hint} note={app?.[f]} editable emptyText="" onSave={save(f)} />
+        ))}
+      </Section>
+      <Section id="mt-self-peer" title="동료가 본 내 수업">
+        <PeerList classId={classId} />
+      </Section>
+      <Section id="mt-self-feedback" title="교수 피드백">
+        {MT_FEEDBACK_FIELDS.map((f) => (
+          <NoteBox key={f} title={MT_NOTE_FIELDS[f].label} note={app?.[f]} editable={false} emptyText="강의자가 적으면 여기에 뜹니다." />
+        ))}
+      </Section>
+    </div>
+  )
+}
+
+/** 강사 — 영상 저장 · 피드백 두 칸, 아래에 학생의 성찰과 동료 의견(이름) */
+function InstructorPanel({ classId, slot, who, app, nameOf }: { classId: string; slot: MtSlot; who: string; app: MtApplication | null; nameOf: (uid: string) => string }) {
+  const save = (field: MtNoteField) => (text: string) => saveMtNote(classId, field, text, slot.uid)
+  return (
+    <div>
+      <PanelHead slot={slot} who={who}>
+        <div style={{ marginTop: 8 }}>
+          <PlanButton classId={classId} uid={slot.uid} plan={app?.plan} canView />
+          {app?.plan && app.plan.ext !== 'pdf' ? <Caption>한글 · 워드 파일은 내려받아 봅니다. 화면에서 바로 보려면 PDF 로 내도록 안내하세요.</Caption> : null}
+        </div>
+      </PanelHead>
+      <Section id="mt-inst-video" title="수업 영상 저장">
+        <VideoBox classId={classId} uid={slot.uid} video={app?.video} mine={false} />
+        <VideoUploadRow classId={classId} uid={slot.uid} hasVideo={Boolean(app?.video)} />
+      </Section>
+      <Section id="mt-inst-feedback" title="피드백">
+        {MT_FEEDBACK_FIELDS.map((f) => (
+          <NoteBox key={f} title={MT_NOTE_FIELDS[f].label} hint={MT_NOTE_FIELDS[f].hint} note={app?.[f]} editable emptyText="" onSave={save(f)} />
+        ))}
+      </Section>
+      <Section id="mt-inst-reflection" title="학생의 성찰">
+        {MT_REFLECTION_FIELDS.map((f) => (
+          <NoteBox key={f} title={MT_NOTE_FIELDS[f].label} note={app?.[f]} editable={false} emptyText="학생이 수업 뒤에 적으면 여기에 뜹니다." />
+        ))}
+      </Section>
+      <Section id="mt-inst-peer" title="동료 의견">
+        <PeerList classId={classId} presenterUid={slot.uid} nameOf={nameOf} />
+      </Section>
+    </div>
+  )
+}
+
+/* ─────────────── 판 전체 ─────────────── */
+
+export function MtBoard({
   classId,
   courseId,
   uid,
+  admin,
   slots,
-  app,
+  apps,
   myPeer,
+  nameOf,
   note,
+  selectedUid,
+  onSelect,
   onGoApply,
 }: {
   classId: string
   courseId: MtCourseId
+  /** 보는 사람 */
   uid: string
+  /** 강사의 클래스 관리 탭 */
+  admin: boolean
   slots: MtSlot[]
-  /** 내 신청 기록 — 지도안 · 피드백 · 영상 · 후기 */
-  app: MtApplication | null
+  /** 학생은 내 신청 기록 하나, 강사는 전부 */
+  apps: Array<MtApplication & { uid: string }>
   /** 내가 다른 사람 수업에 적은 의견 */
   myPeer: MtPeerDoc[]
+  /** 강사만 실명 — 학생은 자리 문서의 이름 */
+  nameOf: (uid: string) => string
   note: string | null
+  selectedUid: string | null
+  onSelect: (uid: string | null) => void
   onGoApply: () => void
 }) {
   const schedule = MT_SCHEDULE[courseId]
-  const mine = slots.find((s) => s.uid === uid) ?? null
-  const others = [...slots].filter((s) => s.uid !== uid).sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order)
-  const save = (field: MtNoteField) => (text: string) => saveMtNote(classId, field, text)
-
-  return (
-    <div>
-      <ColorBlock tone="lime">
-        <p className="eyebrow" style={{ margin: 0 }}>
-          내 마이크로티칭 · {schedule.title}
-        </p>
-        {mine ? (
-          <p className="text-headline" style={{ margin: '8px 0 0' }}>
-            {slotLabel(mine)}
-            {mine.topic ? <span style={{ fontWeight: 400 }}> · {mine.topic}</span> : null}
-          </p>
-        ) : (
-          <p className="text-body" style={{ margin: '8px 0 0' }}>
-            아직 발표 자리를 신청하지 않았습니다. 자리를 신청하면 지도안 · 영상 · 피드백이 이곳에 모입니다.{' '}
-            <Button variant="tertiary" onClick={onGoApply}>
-              발표 신청으로 가기
-            </Button>
-          </p>
-        )}
-        <Caption style={{ marginTop: 8 }}>지도안 · 수업 영상 · 피드백 · 후기는 나와 강의자만 봅니다. 동료 의견은 누가 적었는지 보이지 않습니다.</Caption>
-      </ColorBlock>
-      {note ? (
-        <div style={{ marginTop: 12 }}>
-          <Notice>{note}</Notice>
-        </div>
-      ) : null}
-
-      {mine ? (
-        <>
-          <section aria-labelledby="rec-plan" style={{ marginTop: 24 }}>
-            <p className="eyebrow" id="rec-plan" style={{ margin: 0 }}>
-              교수학습지도안
-            </p>
-            <Card>
-              <PlanLine classId={classId} plan={app?.plan} canView={false} />
-              <Caption>지도안을 내거나 바꾸는 곳은 「발표 신청」 화면의 수업계획안 칸입니다.</Caption>
-              <NoteBox title="강의자의 지도안 피드백" note={app?.planFeedback} editable={false} emptyText="강의자가 지도안을 읽고 적으면 여기에 뜹니다." />
-            </Card>
-          </section>
-
-          <section aria-labelledby="rec-video" style={{ marginTop: 24 }}>
-            <p className="eyebrow" id="rec-video" style={{ margin: 0 }}>
-              수업 영상
-            </p>
-            <Card>
-              <VideoBox classId={classId} video={app?.video} />
-              <NoteBox
-                title="내 후기"
-                note={app?.reflection}
-                editable={Boolean(app?.video)}
-                placeholder="영상을 다시 보고 적으세요. 계획과 달랐던 장면, 학생의 반응에서 알게 된 것, 다음에 바꿀 것."
-                emptyText="수업 영상이 올라온 뒤에 후기를 쓸 수 있습니다."
-                onSave={save('reflection')}
-              />
-              <NoteBox title="강의자의 수업 피드백" note={app?.videoFeedback} editable={false} emptyText="강의자가 수업을 보고 적으면 여기에 뜹니다." />
-            </Card>
-          </section>
-
-          <section aria-labelledby="rec-peer" style={{ marginTop: 24 }}>
-            <p className="eyebrow" id="rec-peer" style={{ margin: 0 }}>
-              동료들이 내 수업에 적은 의견
-            </p>
-            <Card>
-              <PeerList classId={classId} />
-            </Card>
-          </section>
-        </>
-      ) : null}
-
-      <section aria-labelledby="rec-others" style={{ marginTop: 24 }}>
-        <p className="eyebrow" id="rec-others" style={{ margin: 0 }}>
-          다른 사람의 수업에 의견 남기기
-        </p>
-        <Card>
-          <p className="text-body-sm" style={{ margin: 0 }}>
-            수업을 들으면서 훌륭한 점과 개선점을 적으세요. 발표자에게는 이름 없이 전해지고, 강의자는 누가 적었는지 봅니다. 저장한 뒤에도 고칠 수 있습니다.
-          </p>
-          {others.length === 0 ? (
-            <p className="text-body-sm" style={{ margin: '8px 0 0', opacity: 0.65 }}>
-              아직 발표를 신청한 다른 사람이 없습니다.
-            </p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 0', display: 'grid', gap: 6 }}>
-              {others.map((s) => {
-                const mineOn = myPeer.find((p) => p.presenterUid === s.uid) ?? null
-                return (
-                  <li key={s.slotId}>
-                    <details className="card" style={{ padding: '8px 12px' }}>
-                      <summary className="text-body-sm" style={{ cursor: 'pointer' }}>
-                        <span style={{ fontWeight: 480 }}>{slotLabel(s)}</span> · {s.name || s.nickname}
-                        {s.topic ? <span style={{ opacity: 0.7 }}> · {s.topic}</span> : null}
-                        {mineOn ? <span style={{ opacity: 0.6 }}> · 적음</span> : null}
-                      </summary>
-                      <PeerForm classId={classId} presenterUid={s.uid} mine={mineOn} />
-                    </details>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </Card>
-      </section>
-    </div>
-  )
-}
-
-/* ─────────────── 강사 화면 ─────────────── */
-
-export function InstructorRecord({
-  classId,
-  courseId,
-  slots,
-  apps,
-  nameOf,
-  note,
-}: {
-  classId: string
-  courseId: MtCourseId
-  slots: MtSlot[]
-  apps: Array<MtApplication & { uid: string }>
-  nameOf: (uid: string) => string
-  note: string | null
-}) {
-  const schedule = MT_SCHEDULE[courseId]
   const ordered = [...slots].sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order)
-  const appOf = (uid: string) => apps.find((a) => a.uid === uid) ?? null
-  const who = (s: MtSlot) => (nameOf(s.uid) ? `${s.studentId} ${nameOf(s.uid)}` : `${s.studentId} ${s.name || s.nickname}`)
-  const counts = {
-    plan: ordered.filter((s) => appOf(s.uid)?.plan).length,
-    planFb: ordered.filter((s) => appOf(s.uid)?.planFeedback?.text).length,
-    video: ordered.filter((s) => appOf(s.uid)?.video).length,
-    videoFb: ordered.filter((s) => appOf(s.uid)?.videoFeedback?.text).length,
-    reflection: ordered.filter((s) => appOf(s.uid)?.reflection?.text).length,
+  const appOf = (u: string) => apps.find((a) => a.uid === u) ?? null
+  const who = (s: MtSlot) => (admin ? `${s.studentId} ${nameOf(s.uid) || s.name || s.nickname}` : s.name || s.nickname)
+  const mine = admin ? null : (ordered.find((s) => s.uid === uid) ?? null)
+  const selected = selectedUid ? (ordered.find((s) => s.uid === selectedUid) ?? null) : null
+  const panel = useRef<HTMLDivElement | null>(null)
+
+  /* 이름을 누르면 오른쪽 판으로 — 좁은 화면에서는 판이 아래에 있어 보이도록 옮긴다 */
+  const pick = (u: string) => {
+    onSelect(u)
+    window.setTimeout(() => {
+      const h = panel.current?.querySelector<HTMLElement>('#mt-panel-title')
+      if (window.matchMedia('(max-width: 767px)').matches) panel.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      h?.focus({ preventScroll: true })
+    }, 0)
   }
 
+  const byDate = schedule.days.map((d) => ({ ...d, rows: Array.from({ length: d.count }, (_, i) => ordered.find((s) => s.date === d.date && s.order === i + 1) ?? null) }))
+  const counts = admin
+    ? { plan: ordered.filter((s) => appOf(s.uid)?.plan).length, video: ordered.filter((s) => appOf(s.uid)?.video).length, fb: ordered.filter((s) => appOf(s.uid)?.feedbackGood?.text || appOf(s.uid)?.feedbackImprove?.text).length }
+    : null
+
   return (
     <div>
       <ColorBlock tone="lime">
         <p className="eyebrow" style={{ margin: 0 }}>
-          마이크로티칭 기록 · {schedule.title}
+          마이크로티칭 · {schedule.title}
         </p>
         <p className="text-body" style={{ margin: '8px 0 0' }}>
-          발표자 {ordered.length}명 · 지도안 {counts.plan} · 지도안 피드백 {counts.planFb} · 영상 {counts.video} · 수업 피드백 {counts.videoFb} · 학생 후기 {counts.reflection}
+          {counts ? `발표자 ${ordered.length}명 · 지도안 ${counts.plan} · 영상 ${counts.video} · 피드백 ${counts.fb}` : schedule.minutes}
         </p>
-        <Caption style={{ marginTop: 8 }}>발표자를 펼치면 지도안을 읽고 피드백을 적고, 수업 영상을 올리고, 동료 의견을 이름과 함께 봅니다. 학생은 자기 것만 보고, 동료 의견은 이름 없이 봅니다.</Caption>
+        <Caption style={{ marginTop: 8 }}>
+          {admin
+            ? '발표자 이름을 누르면 수업 영상을 올리고 피드백을 적습니다. [수업지도안]은 그 사람이 낸 지도안을 내려받습니다.'
+            : '발표자 이름을 누르면 그 수업에 의견을 적습니다. 내 이름을 누르면 내 수업 영상 · 성찰 · 동료 의견 · 교수 피드백이 보입니다. [수업지도안]은 누구 것이든 내려받습니다.'}
+        </Caption>
       </ColorBlock>
       {note ? (
         <div style={{ marginTop: 12 }}>
           <Notice>{note}</Notice>
         </div>
       ) : null}
-      {ordered.length === 0 ? (
-        <p className="text-body" style={{ marginTop: 16, opacity: 0.7 }}>
-          아직 발표를 신청한 학생이 없습니다.
-        </p>
-      ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: '16px 0 0', display: 'grid', gap: 8 }}>
-          {ordered.map((s) => {
-            const a = appOf(s.uid)
-            const saveFor = (field: MtNoteField) => (text: string) => saveMtNote(classId, field, text, s.uid)
-            return (
-              <li key={s.slotId}>
-                <details className="card" style={{ padding: '10px 14px' }}>
-                  <summary className="text-body" style={{ cursor: 'pointer' }}>
-                    <span style={{ fontWeight: 480 }}>{slotLabel(s)}</span> · {who(s)}
-                    {s.topic ? <span style={{ opacity: 0.7 }}> · {s.topic}</span> : null}
-                    <span className="text-body-sm" style={{ opacity: 0.6 }}>
-                      {' '}
-                      · {a?.plan ? '지도안 ○' : '지도안 ×'} · {a?.video ? '영상 ○' : '영상 ×'}
-                    </span>
-                  </summary>
-                  <InstructorPanel classId={classId} slot={s} app={a} nameOf={nameOf} saveFor={saveFor} />
-                </details>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function InstructorPanel({
-  classId,
-  slot,
-  app,
-  nameOf,
-  saveFor,
-}: {
-  classId: string
-  slot: MtSlot
-  app: (MtApplication & { uid: string }) | null
-  nameOf: (uid: string) => string
-  saveFor: (field: MtNoteField) => (text: string) => Promise<{ ok: boolean; message?: string }>
-}) {
-  const detail = [slot.grade ? `${slot.grade}학년` : '', slot.unitTitle ?? '', (slot.methods ?? []).concat(slot.methodOther ? [slot.methodOther] : []).join(' · ')].filter(Boolean).join(' · ')
-  return (
-    <div style={{ marginTop: 8 }}>
-      {detail ? (
-        <p className="text-body-sm" style={{ margin: 0, opacity: 0.8 }}>
-          {detail}
-        </p>
+      {!admin && !mine ? (
+        <div style={{ marginTop: 12 }}>
+          <Notice tone="cream">
+            <p className="text-body-sm" style={{ margin: 0 }}>
+              아직 발표 자리를 신청하지 않았습니다. 자리를 신청하면 이 일정표에 내 이름이 생깁니다.{' '}
+              <Button variant="tertiary" onClick={onGoApply}>
+                발표 신청으로 가기
+              </Button>
+            </p>
+          </Notice>
+        </div>
       ) : null}
-      <p className="eyebrow" style={{ margin: '12px 0 4px' }}>
-        교수학습지도안
-      </p>
-      <PlanLine classId={classId} uid={slot.uid} plan={app?.plan} canView />
-      <NoteBox
-        title="지도안 피드백"
-        note={app?.planFeedback}
-        editable={Boolean(app?.plan)}
-        placeholder="학생이 발표 전에 읽습니다. 고칠 곳과 그 이유, 잘 짠 곳을 적으세요."
-        emptyText="학생이 지도안을 내면 피드백을 적을 수 있습니다."
-        onSave={saveFor('planFeedback')}
-      />
-      <p className="eyebrow" style={{ margin: '20px 0 4px' }}>
-        수업 영상
-      </p>
-      <VideoBox classId={classId} uid={slot.uid} video={app?.video} />
-      <VideoUploadRow classId={classId} uid={slot.uid} hasVideo={Boolean(app?.video)} />
-      <NoteBox title="학생의 후기" note={app?.reflection} editable={false} emptyText="학생이 영상을 보고 후기를 쓰면 여기에 뜹니다." />
-      <NoteBox
-        title="수업 피드백"
-        note={app?.videoFeedback}
-        editable={Boolean(app?.video)}
-        placeholder="영상을 보고 적습니다. 학생이 자기 후기와 나란히 읽습니다."
-        emptyText="영상을 올린 뒤에 수업 피드백을 적을 수 있습니다."
-        onSave={saveFor('videoFeedback')}
-      />
-      <p className="eyebrow" style={{ margin: '20px 0 4px' }}>
-        동료 의견
-      </p>
-      <PeerList classId={classId} presenterUid={slot.uid} nameOf={nameOf} />
+
+      <div className="grid gap-lg md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]" style={{ marginTop: 24, alignItems: 'start' }}>
+        <nav aria-label="발표 일정표">
+          {byDate.map((d) => (
+            <div key={d.date} style={{ marginBottom: 16 }}>
+              <p className="text-body-sm" style={{ margin: '0 0 6px', fontWeight: 480 }}>
+                {mtDateLabel(d.date)}
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6 }}>
+                {d.rows.map((s, i) =>
+                  s ? (
+                    <li key={s.slotId} className="card" style={{ padding: '8px 12px' }}>
+                      <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="tab"
+                          data-selected={s.uid === selectedUid ? 'true' : undefined}
+                          aria-pressed={s.uid === selectedUid}
+                          onClick={() => pick(s.uid)}
+                          style={{ fontSize: 15 }}
+                        >
+                          {i + 1}. {who(s)}
+                          {s.uid === uid ? ' (나)' : ''}
+                        </button>
+                        <PlanButton classId={classId} uid={s.uid} />
+                      </div>
+                      <p className="text-body-sm" style={{ margin: '4px 0 0', opacity: 0.75 }}>
+                        {s.topic ? s.topic : '주제 미정'}
+                        {!admin && myPeer.some((p) => p.presenterUid === s.uid) ? ' · 의견 적음' : ''}
+                        {admin && appOf(s.uid)?.video ? ' · 영상 ○' : ''}
+                      </p>
+                    </li>
+                  ) : (
+                    <li key={`${d.date}_${i + 1}`} className="text-body-sm" style={{ padding: '4px 12px', opacity: 0.55 }}>
+                      {i + 1}. 비어 있음
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        <div ref={panel}>
+          {!selected ? (
+            <Card>
+              <p className="text-body" style={{ margin: 0 }}>
+                {admin ? '왼쪽 일정표에서 발표자 이름을 누르세요.' : mine ? '왼쪽 일정표에서 이름을 누르세요. 다른 사람은 의견을 적는 칸이, 내 이름은 내 수업 기록이 열립니다.' : '왼쪽 일정표에서 발표자 이름을 누르면 그 수업에 의견을 적는 칸이 열립니다.'}
+              </p>
+            </Card>
+          ) : admin ? (
+            <InstructorPanel classId={classId} slot={selected} who={who(selected)} app={appOf(selected.uid)} nameOf={nameOf} />
+          ) : selected.uid === uid ? (
+            <SelfPanel classId={classId} slot={selected} app={appOf(uid)} />
+          ) : (
+            <PeerPanel classId={classId} slot={selected} who={who(selected)} mine={myPeer.find((p) => p.presenterUid === selected.uid) ?? null} />
+          )}
+        </div>
+      </div>
     </div>
   )
 }

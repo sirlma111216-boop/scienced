@@ -108,7 +108,7 @@ export function Home() {
                 마이크로티칭
               </p>
               <p className="text-body-sm" style={{ marginTop: 8 }}>
-                관찰 코드와 재수업 기록
+                발표 일정 · 수업지도안 · 동료 의견 · 내 수업 기록
               </p>
             </Link>
             <Link to="/microteaching/apply" style={{ color: 'inherit' }}>
