@@ -35,6 +35,21 @@ export function sentences(text) {
     .filter(Boolean)
 }
 
+/** 번호 나열의 한 항 — ①…⑳ 으로 시작하는 문장. 「N가지」를 번호로 펼친 것이라 문단 길이를 셀 때 앞 문장에 붙여 한 단위로 센다 (2026-11-02) */
+export const LIST_ITEM_RE = /^[①-⑳]/
+/**
+ * 문단의 뜻 단위 — 문장과 같되, 번호 나열(① ② …)은 앞 문장에 붙여 하나로 센다.
+ * 「다섯 가지 특징이다. ① … ② … ⑤ …」 가 여섯 문장이 아니라 한 단위다. 문장 길이(60자)는 항마다 그대로 본다.
+ */
+export function units(text) {
+  const out = []
+  for (const s of sentences(text)) {
+    if (LIST_ITEM_RE.test(s) && out.length > 0) out[out.length - 1] += ' ' + s
+    else out.push(s)
+  }
+  return out
+}
+
 function endWord(s) {
   return s.replace(/[\s"'”’」』)\]]+$/g, '').replace(/[.!?。…]+$/g, '').replace(/[\s"'”’」』)\]]+$/g, '')
 }
@@ -63,8 +78,8 @@ export function checkText(text, opts = {}) {
   }
   if (theory) {
     for (const para of t.split('\n')) {
-      const n = sentences(para).length
-      if (n > 4) out.push(`문단이 ${n}문장 — 4문장 이하: 「${para.slice(0, 30)}…」`)
+      const n = units(para).length
+      if (n > 4) out.push(`문단이 ${n}문장 — 4문장 이하 (번호 나열은 한 단위): 「${para.slice(0, 30)}…」`)
     }
   }
   for (const s of sentences(t)) {

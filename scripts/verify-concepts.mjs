@@ -2,7 +2,8 @@
  * npm run verify:concepts (8차 11절 · verify:lessons 대체)
  *
  * 개념 카드 (4.4):
- *   · what 3~6문장 · why 2~4문장 · inClass 3~9문장 — 문단 하나씩 (2026-09-22 위를 늘림)
+ *   · what 3~6문장 · why 2~4문장 · inClass 3~9문장 — 문단 하나씩 (2026-09-22 위를 늘림). 번호 나열(① ② …)은 한 단위로 센다 (2026-11-02)
+ *   · what 이 「N가지」라고 말하면 ①…N 을 다 적어 펼친다 — 「앞의 넷 · 뒤의 넷」 금지 (강의자 지시 2026-11-02)
  *   · keyPoints 정확히 3줄. 한 줄은 완전한 문장(「~다」)이고 판단 기준의 꼴이다:
  *       「~이 아니라 ~다」 「~이면 ~다」 「~를 보면 ~를 알 수 있다」 중 하나
  *   · 명사 나열 금지 — 「A: B, C, D」 꼴이나 「다」로 끝나지 않는 줄
@@ -21,7 +22,7 @@
 import { fail, pass, report } from './_report.mjs'
 import { conceptsOf, loadCourses, where } from './_courses.mjs'
 
-const { sentences } = await import('./_wording-rules.mjs')
+const { sentences, units } = await import('./_wording-rules.mjs')
 
 const FORMS = [
   { name: '이 아니라 ~다', re: /(이|가|는|은)? ?아니라|아니다/ },
@@ -126,10 +127,26 @@ for (const course of await loadCourses()) {
           continue
         }
         if (text.includes('\n')) fail('문단', `${at} 의 ${k} 가 여러 문단이다 — 하나여야 한다`)
-        const n = sentences(text).length
-        if (n < lo || n > hi) {
-          fail('문단', `${at} 의 ${k} 가 ${n}문장이다 (${lo}~${hi})`)
+        /* 아래 한계는 문장으로, 위 한계는 단위로 — 번호 나열은 길어도 한 단위지만 짧아지지는 않는다 */
+        const raw = sentences(text).length
+        const n = units(text).length
+        if (raw < lo || n > hi) {
+          fail('문단', `${at} 의 ${k} 가 ${raw}문장 · ${n}단위다 (${lo}~${hi} — 번호 나열 ①… 은 위를 셀 때 한 단위)`)
           bad += 1
+        }
+      }
+      /* 「N가지」라고 말했으면 그 N 개를 ① ② … 번호로 펼친다 — 「앞의 넷 · 뒤의 넷」처럼 뭉뚱그리지 않는다 (강의자 지시 2026-11-02) */
+      {
+        const w = String(c.what ?? '')
+        const m = /(?<!한)(두|세|네|다섯|여섯|일곱|여덟|아홉|열|[2-9]|1\d)\s*가지/.exec(w)
+        if (m) {
+          const n = { 두: 2, 세: 3, 네: 4, 다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10 }[m[1]] ?? Number(m[1])
+          const marks = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫'].slice(0, n)
+          const missing = marks.filter((k) => !w.includes(k))
+          if (missing.length > 0) {
+            fail('나열', `${at} 의 what 이 「${m[0]}」라고 말하고 ${missing.join('')} 을 번호로 펼치지 않았다 — N가지면 ①…${marks[n - 1]} 을 다 적는다`)
+            bad += 1
+          }
         }
       }
       /* 정의 → 예: what 의 첫 문장이 「예를 들면」으로 시작하면 예가 먼저 온 것이다 */
