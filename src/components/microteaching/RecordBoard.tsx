@@ -203,16 +203,29 @@ function PlanButton({ classId, uid, plan, canView, kind = 'plan' }: { classId: s
 function VideoBox({ classId, uid, video, mine }: { classId: string; uid?: string; video: MtFileMeta | null | undefined; mine: boolean }) {
   const [src, setSrc] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const load = useCallback(async () => {
+  const player = useRef<HTMLVideoElement | null>(null)
+  const position = useRef({ time: 0, paused: true })
+  const requestNumber = useRef(0)
+  const invalidate = useCallback(() => { requestNumber.current++ }, [])
+  const recovered = useRef(false)
+  const load = useCallback(async (reset = false) => {
+    const request = ++requestNumber.current
+    if (!reset && player.current) position.current = { time: player.current.currentTime, paused: player.current.paused }
     setErr(null)
     const r = await mtFileUrl(classId, 'video', uid, true)
+    if (request !== requestNumber.current) return
     if (typeof r === 'string') return setErr(r)
     setSrc(r.url)
+    // 같은 밀리초에 같은 주소를 받은 경우에도 재생 요청을 다시 시작한다.
+    if (player.current?.getAttribute('src') === r.url) player.current.load()
   }, [classId, uid])
   useEffect(() => {
     setSrc(null)
-    if (video?.key) void load()
-  }, [video?.key, load])
+    position.current = { time: 0, paused: true }
+    recovered.current = false
+    if (video?.key) void load(true)
+    return invalidate
+  }, [video?.key, load, invalidate])
   if (!video)
     return (
       <p className="text-body-sm" style={{ margin: 0, opacity: 0.65 }}>
@@ -226,22 +239,37 @@ function VideoBox({ classId, uid, video, mine }: { classId: string; uid?: string
       </p>
       {src ? (
         <video
+          ref={player}
           controls
           preload="metadata"
           playsInline
           src={src}
           aria-label={`수업 영상 — ${video.name}`}
           style={{ width: '100%', maxHeight: '70vh', marginTop: 8, background: '#000', borderRadius: 8 }}
-          onError={() => setErr('영상을 재생하지 못했습니다. 주소가 만료됐으면 「다시 불러오기」를 누르세요.')}
+          onLoadedMetadata={() => {
+            const p = player.current
+            if (!p) return
+            if (position.current.time > 0 && Number.isFinite(p.duration)) p.currentTime = Math.min(position.current.time, p.duration)
+            if (!position.current.paused) void p.play().catch((error) => console.warn('[영상] 자동 재생을 재개하지 못했습니다:', error))
+          }}
+          onError={() => {
+            const code = player.current?.error?.code
+            if (!recovered.current) {
+              recovered.current = true
+              void load()
+            } else setErr(code === 3 || code === 4
+              ? '이 브라우저에서 영상 형식을 재생하지 못했거나 접근이 만료됐습니다. 다시 불러와도 같으면 강의자에게 MP4(H.264 영상·AAC 음성)로 변환해 올려 달라고 알려 주세요.'
+              : '영상을 불러오지 못했습니다. 연결과 로그인 상태를 확인하고 다시 불러오세요.')
+          }}
         />
       ) : err ? null : (
         <Caption>영상 주소를 받는 중입니다.</Caption>
       )}
       <div className="flex items-center gap-xs" style={{ marginTop: 6, flexWrap: 'wrap' }}>
-        <Button variant="tertiary" onClick={() => void load()}>
+        <Button variant="tertiary" onClick={() => { recovered.current = false; void load() }}>
           다시 불러오기
         </Button>
-        <Caption style={{ margin: 0 }}>이 영상은 발표한 본인과 강의자만 볼 수 있습니다. 재생 주소는 두 시간 뒤에 만료됩니다.</Caption>
+        <Caption style={{ margin: 0 }}>발표한 본인과 강의자만 로그인한 상태에서 볼 수 있습니다.</Caption>
       </div>
       <Problem text={err} />
     </div>
@@ -250,21 +278,34 @@ function VideoBox({ classId, uid, video, mine }: { classId: string; uid?: string
 
 function VideoUploadRow({ classId, uid, hasVideo }: { classId: string; uid: string; hasVideo: boolean }) {
   const input = useRef<HTMLInputElement | null>(null)
-  const cancel = useRef<{ cancelled: boolean } | null>(null)
+  const cancel = useRef<AbortController | null>(null)
+  const fresh = useRef(false)
   const [progress, setProgress] = useState<{ sent: number; total: number } | null>(null)
+  const [status, setStatus] = useState('')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  useEffect(() => () => cancel.current?.abort(), [])
+  const uploading = progress !== null
+  useEffect(() => {
+    if (!uploading) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [uploading])
 
   async function pick(file: File | null) {
     if (!file) return
+    if (cancel.current) return
     setMsg(null)
     const problem = await checkMtVideo(file)
     if (problem) return setMsg({ ok: false, text: problem })
-    const sig = { cancelled: false }
+    const sig = new AbortController()
     cancel.current = sig
     setProgress({ sent: 0, total: file.size })
-    const r = await uploadMtVideo(classId, uid, file, (sent, total) => setProgress({ sent, total }), sig)
+    const r = await uploadMtVideo(classId, uid, file, (sent, total) => setProgress({ sent, total }), sig.signal, setStatus, fresh.current)
     setProgress(null)
     cancel.current = null
+    setStatus('')
     if (!r.ok) return setMsg({ ok: false, text: r.message ?? '올리지 못했습니다.' })
     setMsg({ ok: true, text: `「${file.name}」을 올렸습니다. 학생의 「내 수업의 모습」에 바로 보입니다.` })
   }
@@ -273,20 +314,23 @@ function VideoUploadRow({ classId, uid, hasVideo }: { classId: string; uid: stri
   return (
     <div style={{ marginTop: 8 }}>
       <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-        <Button variant="secondary" disabled={progress !== null} onClick={() => input.current?.click()}>
+        <Button variant="secondary" disabled={progress !== null} onClick={() => { fresh.current = false; input.current?.click() }}>
           {progress ? `올리는 중 ${pct}% (${fileSizeText(progress.sent)} / ${fileSizeText(progress.total)})` : hasVideo ? '영상 바꾸기' : '수업 영상 올리기'}
         </Button>
         {progress ? (
           <Button
             variant="tertiary"
             onClick={() => {
-              if (cancel.current) cancel.current.cancelled = true
+              cancel.current?.abort()
             }}
           >
-            멈추기
+            잠시 멈추기
           </Button>
         ) : null}
+        {!progress && msg && !msg.ok ? <Button variant="tertiary" onClick={() => { fresh.current = true; input.current?.click() }}>처음부터 올리기</Button> : null}
       </div>
+      <Caption>최대 4 GB. 연결이 끊기거나 잠시 멈췄으면 같은 브라우저에서 같은 파일을 선택해 이어 올리세요. 휴대전화에서도 보려면 MP4(H.264 영상·AAC 음성)를 권합니다.</Caption>
+      {status ? <p role="status" className="text-body-sm">{status}</p> : null}
       {progress ? <progress value={progress.sent} max={progress.total} aria-label="영상 올리기 진행" style={{ width: '100%', marginTop: 6 }} /> : null}
       <input
         ref={input}
@@ -680,7 +724,7 @@ export function MtBoard({
               </p>
             </Card>
           ) : admin ? (
-            <InstructorPanel classId={classId} slot={selected} who={who(selected)} app={appOf(selected.uid)} nameOf={nameOf} />
+            <InstructorPanel key={`${classId}:${selected.uid}`} classId={classId} slot={selected} who={who(selected)} app={appOf(selected.uid)} nameOf={nameOf} />
           ) : selected.uid === uid ? (
             <SelfPanel classId={classId} slot={selected} app={appOf(uid)} />
           ) : (

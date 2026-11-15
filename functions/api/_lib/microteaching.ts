@@ -352,6 +352,8 @@ export async function handleMtUpload(env: MtEnv, request: Request, kind: 'templa
 }
 
 const signText = (classId: string, kind: string, owner: string, key: string, exp: number) => `mt\n${classId}\n${kind}\n${owner}\n${key}\n${exp}`
+const VIDEO_COOKIE = '__Secure-mt-video-session'
+const videoCookie = (token: string, age = 3600) => `${VIDEO_COOKIE}=${token}; Path=/api/microteaching/file; Max-Age=${age}; HttpOnly; Secure; SameSite=Strict`
 
 /**
  * POST /api/microteaching/file-url — { classId, kind: 'template' | 'plan' | 'slides' | 'video', uid? } → { ok, url, name }
@@ -362,11 +364,17 @@ const signText = (classId: string, kind: string, owner: string, key: string, exp
 export async function handleMtFileUrl(env: MtEnv, request: Request, now = Date.now()): Promise<Response> {
   const c = await whoCalls(env, request)
   if (c instanceof Response) return c
-  let b: { classId?: string; kind?: string; uid?: string; inline?: boolean }
+  let b: { classId?: string; kind?: string; uid?: string; inline?: boolean; clearVideoSession?: boolean }
   try {
     b = (await request.json()) as typeof b
   } catch {
     return fail('요청 형식이 올바르지 않습니다.')
+  }
+  if (b.clearVideoSession) {
+    const response = json({ ok: true })
+    response.headers.set('set-cookie', videoCookie('', 0))
+    response.headers.set('cache-control', 'no-store')
+    return response
   }
   if (!b.classId || !CLASS_ID_RE.test(b.classId) || !isFileKind(b.kind)) return fail('요청 형식이 올바르지 않습니다.')
   if (!env.TEXTBOOK_SECRET) return fail('파일 내려받기 설정이 아직 끝나지 않았습니다. 사이트 관리자에게 알려 주세요.')
@@ -387,7 +395,10 @@ export async function handleMtFileUrl(env: MtEnv, request: Request, now = Date.n
   const sig = await hmac(env.TEXTBOOK_SECRET, signText(b.classId, b.kind, owner, meta.key, exp))
   /* inline — 화면 안에서 연다(PDF · 영상). 그 밖의 파일은 내려받기 */
   const inline = b.kind === 'video' || (b.inline === true && meta.ext === 'pdf')
-  return json({ ok: true, name: meta.name, ext: meta.ext, size: meta.size, inline, url: `/api/microteaching/file?c=${encodeURIComponent(b.classId)}&k=${b.kind}&u=${encodeURIComponent(owner)}&exp=${exp}&sig=${sig}${inline ? '&i=1' : ''}` })
+  const response = json({ ok: true, name: meta.name, ext: meta.ext, size: meta.size, inline, url: `/api/microteaching/file?c=${encodeURIComponent(b.classId)}&k=${b.kind}&u=${encodeURIComponent(owner)}&exp=${exp}&sig=${sig}${inline ? '&i=1' : ''}` })
+  response.headers.set('cache-control', 'no-store')
+  if (b.kind === 'video') response.headers.set('set-cookie', videoCookie(request.headers.get('authorization')!.slice(7).trim()))
+  return response
 }
 
 type FileKindName = 'template' | 'plan' | 'slides' | 'video'
@@ -407,8 +418,25 @@ export async function handleMtFile(env: MtEnv, request: Request, now = Date.now(
   if (!CLASS_ID_RE.test(classId) || !isFileKind(kind) || !owner || !Number.isFinite(exp) || !/^[0-9a-f]{64}$/.test(sig)) return plainText(400, '주소가 올바르지 않습니다.')
   if (now > exp) return plainText(403, '주소의 유효 시간이 지났습니다. 화면에서 다시 누르세요.')
   if (!env.TEXTBOOK_SECRET || !env.TEXTBOOK_BUCKET) return plainText(503, '파일 저장소가 아직 연결되지 않았습니다.')
+  // <video>는 Authorization 헤더를 보낼 수 없다. 주소 발급 때 설정한 HttpOnly 쿠키로 매 요청을 확인한다.
+  // 주소만 복사한 사람, 같은 반의 다른 학생은 서명이 유효해도 볼 수 없다.
+  let viewer: { uid: string; instructor: boolean } | undefined
+  if (kind === 'video') {
+    const token = request.headers.get('cookie')?.split(';').map((v) => v.trim()).find((v) => v.startsWith(`${VIDEO_COOKIE}=`))?.slice(VIDEO_COOKIE.length + 1)
+    const auth = new Headers()
+    if (token) auth.set('authorization', `Bearer ${token}`)
+    const caller = await whoCalls(env, new Request(request.url, { headers: auth }))
+    if (caller instanceof Response) return plainText(401, '로그인이 만료됐습니다. 수업 화면에서 영상을 다시 불러오세요.')
+    if (caller.uid !== owner && !caller.instructor) return plainText(403, '발표한 본인과 강사만 볼 수 있습니다.')
+    viewer = caller
+  }
   const rest = await firestoreRest(env)
   if ('error' in rest) return plainText(503, '서버 설정이 없습니다.')
+  if (viewer && !viewer.instructor) {
+    const enrollment = await getDoc(`${rest.docs}/classes/${classId}/enrollments/${viewer.uid}`, rest.headers)
+    if (enrollment === 'error') return plainText(503, '수강 정보를 확인하지 못했습니다. 잠시 뒤 다시 불러오세요.')
+    if (!enrollment || str(enrollment, 'status') !== 'active') return plainText(403, '이 클래스의 수강생만 볼 수 있습니다.')
+  }
   const doc = await getDoc(kind === 'template' ? `${rest.docs}/classes/${classId}` : `${rest.docs}/classes/${classId}/mtApplications/${owner}`, rest.headers)
   const meta = doc && doc !== 'error' ? fileMetaOf(kind === 'template' ? doc.mtTemplate : doc[kind]) : null
   if (!meta) return plainText(404, '파일이 없습니다.')
@@ -428,6 +456,8 @@ export async function handleMtFile(env: MtEnv, request: Request, now = Date.now(
     'content-disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(meta.name || 'file')}`,
     'cache-control': 'private, no-store',
     'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer',
+    'cross-origin-resource-policy': 'same-origin',
   })
   /* 영상은 Range 로 조금씩 받는다 — 되감기 · 건너뛰기가 이것으로 된다 */
   const range = parseRange(request.headers.get('range'), head.size)
@@ -618,7 +648,7 @@ export async function handleMtVideoStart(env: MtEnv, request: Request): Promise<
   const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase() as keyof typeof MT_VIDEO_CONTENT_TYPE
   if (!MT_VIDEO_CONTENT_TYPE[ext]) return fail('mp4 · m4v · mov · webm 영상만 올릴 수 있습니다.')
   const size = Number(b.size)
-  if (!Number.isFinite(size) || size <= 0) return fail('파일 크기를 알 수 없습니다.')
+  if (!Number.isSafeInteger(size) || size <= 0) return fail('파일 크기를 알 수 없습니다.')
   if (size > MT_VIDEO_MAX_MB * 1024 * 1024) return fail(`영상이 너무 큽니다 — ${MT_VIDEO_MAX_MB / 1024} GB 까지 올릴 수 있습니다.`)
   const key = `microteaching/${b.classId}/videos/${b.uid}/${crypto.randomUUID()}.${ext}`
   try {
@@ -626,7 +656,7 @@ export async function handleMtVideoStart(env: MtEnv, request: Request): Promise<
     return json({ ok: true, key, uploadId: mp.uploadId, partSize: MT_VIDEO_PART_MB * 1024 * 1024 })
   } catch (err) {
     console.error('[마이크로티칭] 영상 올리기를 시작하지 못했다:', err)
-    return fail('저장소가 올리기를 시작하지 못했습니다. 잠시 뒤 다시 누르세요.')
+    return json({ ok: false, retryable: true, message: '저장소가 올리기를 시작하지 못했습니다. 잠시 뒤 다시 누르세요.' })
   }
 }
 
@@ -648,28 +678,7 @@ export async function handleMtVideoPart(env: MtEnv, request: Request): Promise<R
   const state = { bad: false }
   if (part === 1) {
     const name = key.slice(key.lastIndexOf('/') + 1)
-    const gate = new TransformStream<Uint8Array, Uint8Array>({
-      transform: (() => {
-        let head = new Uint8Array(0)
-        let checked = false
-        return (chunk: Uint8Array, ctl: TransformStreamDefaultController<Uint8Array>) => {
-          if (checked) return ctl.enqueue(chunk)
-          const merged = new Uint8Array(head.length + chunk.length)
-          merged.set(head)
-          merged.set(chunk, head.length)
-          head = merged
-          if (head.length < 12) return
-          checked = true
-          if (!mtVideoKind(name, head)) {
-            state.bad = true
-            ctl.error(new Error('BAD_VIDEO'))
-            return
-          }
-          ctl.enqueue(head)
-        }
-      })(),
-    })
-    stream = request.body.pipeThrough(gate)
+    stream = request.body.pipeThrough(kindGate(name, state, mtVideoKind))
   }
   if (typeof FixedLengthStream === 'function') {
     const fixed = new FixedLengthStream(len)
@@ -683,7 +692,7 @@ export async function handleMtVideoPart(env: MtEnv, request: Request): Promise<R
   } catch (err) {
     if (state.bad) return fail('영상 파일이 아닙니다. mp4 · mov · webm 파일인지 확인하세요.')
     console.error('[마이크로티칭] 조각을 올리지 못했다:', part, err)
-    return fail(`${part}번째 조각을 올리지 못했습니다. 다시 누르면 처음부터 올립니다.`)
+    return json({ ok: false, retryable: true, message: `${part}번째 조각을 올리지 못했습니다. 같은 파일을 선택해 이어 올리세요.` })
   }
 }
 
@@ -699,35 +708,55 @@ export async function handleMtVideoFinish(env: MtEnv, request: Request, now = Da
   if (A instanceof Response) return A
   const key = String(b.key ?? '')
   if (!VIDEO_KEY_RE.test(key) || !key.includes(`/${b.classId}/videos/${b.uid}/`) || !b.uploadId) return fail('조각 주소가 올바르지 않습니다.')
-  const parts = Array.isArray(b.parts) ? (b.parts as R2UploadedPartLike[]).filter((p) => Number.isInteger(p?.partNumber) && typeof p?.etag === 'string') : []
-  if (!parts.length) return fail('올린 조각이 없습니다.')
+  const parts = Array.isArray(b.parts) ? [...b.parts] as R2UploadedPartLike[] : []
+  if (!parts.length || parts.length > 10000 || parts.some((p) => !Number.isInteger(p?.partNumber) || typeof p?.etag !== 'string' || !p.etag)) return fail('올린 조각 정보가 올바르지 않습니다.')
+  parts.sort((x, y) => x.partNumber - y.partNumber)
+  if (parts.some((p, i) => p.partNumber !== i + 1)) return fail('조각 번호가 중복되거나 빠졌습니다.')
   const size = Number(b.size)
+  if (!Number.isSafeInteger(size) || size <= 0 || size > MT_VIDEO_MAX_MB * 1024 * 1024) return fail('파일 크기가 올바르지 않습니다.')
   const name = String(b.name ?? '').replace(/[\\/\0]/g, '_').slice(-200)
   const ext = key.slice(key.lastIndexOf('.') + 1)
-  const mp = A.bucket.resumeMultipartUpload(key, String(b.uploadId))
-  try {
-    await mp.complete([...parts].sort((x, y) => x.partNumber - y.partNumber))
-  } catch (err) {
-    await mp.abort().catch(() => {})
-    console.error('[마이크로티칭] 영상을 합치지 못했다:', err)
-    return fail('영상을 합치지 못했습니다. 다시 올리세요. 전에 올린 영상은 그대로입니다.')
+  const old = fileMetaOf(A.L.pointer?.video)
+  // complete·DB 저장은 성공했지만 응답이 유실된 경우, 같은 요청이 와도 객체를 지우지 않는다.
+  if (old?.key === key) {
+    if (old.size !== size) return fail('이미 연결된 영상과 크기가 다릅니다.')
+    return json({ ok: true, file: { name: old.name, size: old.size, ext: old.ext, at: old.at } })
   }
-  const head = await A.bucket.head(key).catch(() => null)
-  if (!head || (Number.isFinite(size) && size > 0 && head.size !== size)) {
-    await A.bucket.delete(key).catch(() => {})
-    return fail('영상이 끝까지 올라가지 않았습니다. 다시 올리세요. 전에 올린 영상은 그대로입니다.')
+  let head
+  try {
+    head = await A.bucket.head(key)
+    if (!head) {
+      const mp = A.bucket.resumeMultipartUpload(key, String(b.uploadId))
+      try { await mp.complete(parts) }
+      catch (err) {
+        // 저장소에서 완료 응답만 잃었는지도 확인한다. 실패했다고 즉시 abort하지 않는다.
+        head = await A.bucket.head(key)
+        if (!head) throw err
+      }
+      head = await A.bucket.head(key)
+    }
+  } catch (err) {
+    console.error('[마이크로티칭] 영상 완료 확인 실패:', err)
+    return json({ ok: false, retryable: true, message: '영상 저장을 확인하지 못했습니다. 같은 파일로 다시 확인하세요. 전에 올린 영상은 그대로입니다.' })
+  }
+  if (!head || head.size !== size) {
+    if (head) await A.bucket.delete(key).catch((err) => console.error('[영상] 불완전한 파일 정리 실패:', err))
+    return fail('영상이 끝까지 올라가지 않았습니다. 처음부터 올리기를 선택하세요. 전에 올린 영상은 그대로입니다.')
   }
   const meta: FileMeta = { key, name, size: head.size, ext, at: now }
-  const old = fileMetaOf(A.L.pointer?.video)
-  const res = await fetch(A.L.rest.commit, {
-    method: 'POST',
-    headers: A.L.h,
-    body: JSON.stringify({ writes: [{ update: { name: `${A.L.base}/classes/${b.classId}/mtApplications/${b.uid}`, fields: { video: fileMetaValue(meta) } }, updateMask: { fieldPaths: ['video'] }, currentDocument: { exists: true } }] }),
-  })
-  if (!res.ok) {
-    await A.bucket.delete(key).catch(() => {})
-    console.error('[마이크로티칭] 영상을 연결하지 못했다:', res.status, (await res.text()).slice(0, 300))
-    return fail('영상을 연결하지 못했습니다. 전에 올린 영상은 그대로입니다.')
+  try {
+    const res = await fetch(A.L.rest.commit, {
+      method: 'POST',
+      headers: A.L.h,
+      body: JSON.stringify({ writes: [{ update: { name: `${A.L.base}/classes/${b.classId}/mtApplications/${b.uid}`, fields: { video: fileMetaValue(meta) } }, updateMask: { fieldPaths: ['video'] }, currentDocument: { exists: true } }] }),
+    })
+    if (!res.ok) {
+      console.error('[마이크로티칭] 영상을 연결하지 못했다:', res.status, (await res.text()).slice(0, 300))
+      return json({ ok: false, retryable: true, message: '영상을 학생 기록에 연결하지 못했습니다. 같은 파일로 다시 확인하세요.' })
+    }
+  } catch (err) {
+    console.error('[마이크로티칭] 영상 연결 응답 유실:', err)
+    return json({ ok: false, retryable: true, message: '영상 연결 응답을 받지 못했습니다. 같은 파일로 다시 확인하세요.' })
   }
   if (old && old.key !== key) await A.bucket.delete(old.key).catch((err) => console.error('[마이크로티칭] 옛 영상을 지우지 못했다:', old.key, err))
   return json({ ok: true, file: { name, size: head.size, ext, at: now } })
@@ -744,7 +773,7 @@ export async function handleMtVideoAbort(env: MtEnv, request: Request): Promise<
   const A = await instructorAndStudent(env, request, String(b.classId ?? ''), String(b.uid ?? ''))
   if (A instanceof Response) return A
   const key = String(b.key ?? '')
-  if (!VIDEO_KEY_RE.test(key) || !b.uploadId) return fail('조각 주소가 올바르지 않습니다.')
+  if (!VIDEO_KEY_RE.test(key) || !key.includes(`/${b.classId}/videos/${b.uid}/`) || !b.uploadId) return fail('조각 주소가 올바르지 않습니다.')
   await A.bucket.resumeMultipartUpload(key, String(b.uploadId)).abort().catch(() => {})
   return json({ ok: true })
 }

@@ -95,41 +95,7 @@ export async function checkMtVideo(file: File): Promise<string | null> {
   return null
 }
 
-/**
- * 영상을 조각으로 올린다. 진행률은 전체 바이트 기준. 조각 하나가 실패하면 서버의 조각을 치우고 이유를 돌려준다.
- * 끝나면 서버가 합쳐 신청 기록 video 에 연결하고 옛 영상을 지운다 — 올리는 도중에는 옛 영상이 그대로 보인다.
- */
-export async function uploadMtVideo(
-  classId: string,
-  uid: string,
-  file: File,
-  onProgress?: (sent: number, total: number) => void,
-  signal?: { cancelled: boolean },
-): Promise<{ ok: boolean; message?: string; file?: { name: string; size: number; ext: string; at: number } }> {
-  const start = await apiPost<{ ok: boolean; message?: string; key?: string; uploadId?: string; partSize?: number }>('/api/microteaching/video-start', { classId, uid, name: file.name, size: file.size })
-  if (!start.ok || !start.key || !start.uploadId || !start.partSize) return { ok: false, message: start.message ?? '올리기를 시작하지 못했습니다.' }
-  const { key, uploadId, partSize } = start
-  const parts: Array<{ partNumber: number; etag: string }> = []
-  const abort = () => apiPost('/api/microteaching/video-abort', { classId, uid, key, uploadId })
-  const q = `classId=${encodeURIComponent(classId)}&uid=${encodeURIComponent(uid)}&key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(uploadId)}`
-  for (let n = 1, offset = 0; offset < file.size; n++, offset += partSize) {
-    if (signal?.cancelled) {
-      await abort()
-      return { ok: false, message: '올리기를 멈췄습니다.' }
-    }
-    const chunk = file.slice(offset, Math.min(offset + partSize, file.size))
-    const r = await apiUpload<{ ok: boolean; message?: string; partNumber?: number; etag?: string }>(`/api/microteaching/video-part?${q}&part=${n}`, chunk, { 'content-type': 'application/octet-stream' }, (sent) => onProgress?.(offset + sent, file.size))
-    if (!r.ok || !r.etag) {
-      console.warn('[마이크로티칭] 영상 조각 실패:', n, r.message)
-      await abort()
-      return { ok: false, message: r.message ?? `${n}번째 조각을 올리지 못했습니다.` }
-    }
-    parts.push({ partNumber: r.partNumber ?? n, etag: r.etag })
-  }
-  const fin = await apiPost<{ ok: boolean; message?: string; file?: { name: string; size: number; ext: string; at: number } }>('/api/microteaching/video-finish', { classId, uid, key, uploadId, parts, name: file.name, size: file.size })
-  if (!fin.ok) console.warn('[마이크로티칭] 영상을 합치지 못했다:', fin.message)
-  return fin
-}
+export { uploadMtVideo } from './microteaching-video-upload'
 
 /* ─────────────── 글 (2026-10-17 · 2026-11-02) ─────────────── */
 

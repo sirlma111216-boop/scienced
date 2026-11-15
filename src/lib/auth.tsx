@@ -20,6 +20,7 @@ import { getFirebaseAuth, getDb, studentIdToEmail } from './firebase'
 import { createFirestoreRepo } from './repo-firestore'
 import { createLocalRepo } from './repo-local'
 import { getRepo, setRepo, type Repo } from './repo'
+import { apiPost } from './api'
 import type { AppUser, ClassDoc, Enrollment, StorageMode } from './types'
 
 /**
@@ -427,7 +428,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     const auth = getFirebaseAuth()
-    if (auth) await fbSignOut(auth)
+    if (auth) {
+      const cleared = await apiPost('/api/microteaching/file-url', { clearVideoSession: true }, { timeoutMs: 10_000 })
+      if (!cleared.ok) console.warn('[로그아웃] 영상 재생 세션을 지우지 못했습니다:', cleared.message)
+      await fbSignOut(auth)
+    }
     else writeLocalUser(null)
     setUser(null)
     setIsInstructor(false)

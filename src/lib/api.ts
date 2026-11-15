@@ -29,6 +29,13 @@ async function idToken(): Promise<string | null> {
 export interface ApiResult {
   ok: boolean
   message?: string
+  retryable?: boolean
+  status?: number
+}
+
+export interface ApiOptions {
+  signal?: AbortSignal
+  timeoutMs?: number
 }
 
 /**
@@ -38,8 +45,14 @@ export interface ApiResult {
 export async function apiPost<T extends ApiResult>(
   path: string,
   body: unknown,
+  options: ApiOptions = {},
 ): Promise<T & ApiResult> {
   const token = await idToken()
+  const controller = new AbortController()
+  const cancel = () => controller.abort()
+  options.signal?.addEventListener('abort', cancel, { once: true })
+  if (options.signal?.aborted) controller.abort()
+  const timer = setTimeout(cancel, options.timeoutMs ?? 60_000)
   try {
     const res = await fetch(path, {
       method: 'POST',
@@ -48,13 +61,20 @@ export async function apiPost<T extends ApiResult>(
         ...(token ? { authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     })
-    return (await res.json()) as T & ApiResult
-  } catch {
+    const data = await res.json() as T & ApiResult
+    return { ...data, ok: res.ok && data.ok, status: res.status, retryable: data.retryable ?? (res.status === 408 || res.status === 429 || res.status >= 500) }
+  } catch (err) {
+    console.warn('[서버 호출] 요청을 마치지 못했다:', path, err)
     return {
       ok: false,
-      message: '서버에 닿지 못했습니다. 로컬 저장 모드에서는 이 기능을 쓸 수 없습니다.',
+      retryable: !options.signal?.aborted,
+      message: options.signal?.aborted ? '요청을 멈췄습니다.' : '서버 응답을 받지 못했습니다. 연결을 확인하고 다시 시도하세요.',
     } as T & ApiResult
+  } finally {
+    clearTimeout(timer)
+    options.signal?.removeEventListener('abort', cancel)
   }
 }
 
@@ -69,11 +89,20 @@ export async function apiUpload<T extends ApiResult>(
   file: Blob,
   headers: Record<string, string>,
   onProgress?: (sent: number, total: number) => void,
+  options: ApiOptions = {},
 ): Promise<T & ApiResult> {
   const token = await idToken()
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest()
+    const cancel = () => xhr.abort()
+    const done = (result: T & ApiResult) => {
+      options.signal?.removeEventListener('abort', cancel)
+      resolve(result)
+    }
+    if (options.signal?.aborted) return done({ ok: false, message: '올리기를 멈췄습니다.' } as T & ApiResult)
     xhr.open('PUT', path)
+    xhr.timeout = options.timeoutMs ?? 10 * 60_000
+    options.signal?.addEventListener('abort', cancel, { once: true })
     for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v)
     if (token) xhr.setRequestHeader('authorization', `Bearer ${token}`)
     xhr.upload.onprogress = (e) => {
@@ -81,14 +110,16 @@ export async function apiUpload<T extends ApiResult>(
     }
     xhr.onload = () => {
       try {
-        resolve(JSON.parse(xhr.responseText) as T & ApiResult)
+        const data = JSON.parse(xhr.responseText) as T & ApiResult
+        done({ ...data, ok: xhr.status >= 200 && xhr.status < 300 && data.ok, status: xhr.status, retryable: data.retryable ?? (xhr.status === 408 || xhr.status === 429 || xhr.status >= 500) })
       } catch {
         console.error('[업로드] 서버 응답을 읽지 못했다:', xhr.status, xhr.responseText.slice(0, 200))
-        resolve({ ok: false, message: `서버 응답을 읽지 못했습니다 (${xhr.status}). 파일이 너무 크면 서버가 받지 않습니다.` } as T & ApiResult)
+        done({ ok: false, retryable: xhr.status === 408 || xhr.status === 429 || xhr.status >= 500, message: `서버 응답을 읽지 못했습니다 (${xhr.status}). 연결을 확인하고 다시 시도하세요.` } as T & ApiResult)
       }
     }
-    xhr.onerror = () => resolve({ ok: false, message: '서버에 닿지 못했습니다. 연결을 확인하고 다시 올리세요.' } as T & ApiResult)
-    xhr.onabort = () => resolve({ ok: false, message: '올리기를 멈췄습니다.' } as T & ApiResult)
+    xhr.onerror = () => done({ ok: false, retryable: true, message: '서버에 닿지 못했습니다. 연결을 확인하고 다시 올리세요.' } as T & ApiResult)
+    xhr.ontimeout = () => done({ ok: false, retryable: true, message: '전송 응답이 늦어 중단했습니다. 연결을 확인하고 이어 올리세요.' } as T & ApiResult)
+    xhr.onabort = () => done({ ok: false, message: '올리기를 멈췄습니다.' } as T & ApiResult)
     xhr.send(file)
   })
 }

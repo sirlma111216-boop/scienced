@@ -34,6 +34,9 @@ const T = 'teacher', S1 = 's1', S2 = 's2', OUT = 'outsider'
 
 /* ── Firestore REST 흉내 ── */
 const store = new Map()
+let failCommitOnce = false
+let loseCommitReplyOnce = false
+let loseCompleteReplyOnce = false
 const S = (v) => ({ stringValue: v })
 const I = (v) => ({ integerValue: String(v) })
 store.set(`classes/${CID}`, { status: S('active'), courseId: S('edu'), courseTitle: S('과학교육론'), microteachingOpenAt: I(1) })
@@ -56,6 +59,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (!url.startsWith(`http://${EMU}/`)) return realFetch(input, init)
   const path = url.split('/documents')[1] ?? ''
   if (path === ':commit') {
+    if (failCommitOnce) { failCommitOnce = false; return res(503, { error: 'temporary failure' }) }
     const { writes } = JSON.parse(init.body)
     const staged = new Map(store)
     for (const w of writes) {
@@ -75,6 +79,7 @@ globalThis.fetch = async (input, init = {}) => {
     }
     store.clear()
     for (const [k, v] of staged) store.set(k, v)
+    if (loseCommitReplyOnce) { loseCommitReplyOnce = false; throw new Error('simulated lost commit response') }
     return res(200, {})
   }
   if (path.endsWith(':runQuery')) {
@@ -156,6 +161,7 @@ const bucket = {
         for (const p of parts) if (!u.parts.has(p.partNumber) || u.parts.get(p.partNumber).length + '' !== p.etag.split('-')[1]) throw new Error('bad part')
         objects.set(key, Buffer.concat(parts.map((p) => u.parts.get(p.partNumber))))
         uploads.delete(uploadId)
+        if (loseCompleteReplyOnce) { loseCompleteReplyOnce = false; throw new Error('simulated lost complete response') }
         return { key, size: objects.get(key).length }
       },
       async abort() {
@@ -322,7 +328,7 @@ const vMine = await post(lib.handleMtFileUrl, S1, { classId: CID, kind: 'video' 
 ok(vMine.ok && vMine.inline && /&i=1$/.test(vMine.url), '본인은 화면에서 재생하는 주소를 받는다')
 const vT = await post(lib.handleMtFileUrl, T, { classId: CID, kind: 'video', uid: S1 })
 ok(vT.ok, '강사도 받는다')
-const getR = (url, headers, now) => lib.handleMtFile(env, new Request(`https://x${url}`, { headers }), now)
+const getR = (url, headers, now) => lib.handleMtFile(env, new Request(`https://x${url}`, { headers: { cookie: `__Secure-mt-video-session=${tok[S1]}`, ...headers } }), now)
 const full = await getR(vMine.url)
 ok(full.status === 200 && full.headers.get('content-type') === 'video/mp4' && /^inline/.test(full.headers.get('content-disposition')) && full.headers.get('accept-ranges') === 'bytes' && Buffer.from(await full.arrayBuffer()).equals(mp4), '전체를 inline 으로 받는다')
 const rng = await getR(vMine.url, { range: 'bytes=4-11' })
@@ -330,6 +336,42 @@ ok(rng.status === 206 && (await rng.text()) === 'ftypisom' && rng.headers.get('c
 ok((await getR(vMine.url, { range: 'bytes=999999-' })).status === 416, '범위 밖 Range 는 416')
 ok((await getR(vMine.url, {}, Date.now() + 121 * 60 * 1000)).status === 403, '두 시간이 지나면 403')
 ok((await getR(vMine.url, {}, Date.now() + 100 * 60 * 1000)).status === 200, '두 시간 안에는 살아 있다')
+ok((await getR(vMine.url, { cookie: '' })).status === 401, '영상 주소를 복사해도 로그인 쿠키 없이는 재생할 수 없다')
+ok((await getR(vMine.url, { cookie: `__Secure-mt-video-session=${tok[S2]}` })).status === 403, '같은 반의 다른 학생도 복사한 영상 주소를 재생할 수 없다')
+ok((await getR(vT.url, { cookie: `__Secure-mt-video-session=${tok[T]}` })).status === 200, '강사는 로그인 쿠키로 학생 영상을 재생한다')
+const revoked = store.get(`classes/${CID}/enrollments/${S1}`)
+store.set(`classes/${CID}/enrollments/${S1}`, { ...revoked, status: S('removed') })
+ok((await getR(vMine.url)).status === 403, '발급 후 수강 해제된 학생은 기존 주소로도 재생하지 못한다')
+store.set(`classes/${CID}/enrollments/${S1}`, revoked)
+const sessionResponse = await lib.handleMtFileUrl(env, new Request('https://x/api/microteaching/file-url', { method: 'POST', headers: { authorization: `Bearer ${tok[S1]}`, 'content-type': 'application/json' }, body: JSON.stringify({ classId: CID, kind: 'video' }) }))
+ok(/HttpOnly; Secure; SameSite=Strict/.test(sessionResponse.headers.get('set-cookie')) && sessionResponse.headers.get('cache-control') === 'no-store', '재생 세션은 HttpOnly · Secure · SameSite 쿠키이고 캐시하지 않는다')
+const logoutResponse = await lib.handleMtFileUrl(env, new Request('https://x/api/microteaching/file-url', { method: 'POST', headers: { authorization: `Bearer ${tok[S1]}`, 'content-type': 'application/json' }, body: JSON.stringify({ clearVideoSession: true }) }))
+ok(/Max-Age=0/.test(logoutResponse.headers.get('set-cookie')), '로그아웃 요청이 재생 쿠키를 지운다')
+const tailRange = await getR(vMine.url, { range: 'bytes=-10' })
+ok(tailRange.status === 206 && (await tailRange.arrayBuffer()).byteLength === 10, 'MP4 뒷부분을 찾는 suffix Range를 지원한다')
+const headResponse = await lib.handleMtFile(env, new Request(`https://x${vMine.url}`, { method: 'HEAD', headers: { cookie: `__Secure-mt-video-session=${tok[S1]}` } }))
+ok(headResponse.status === 200 && Number(headResponse.headers.get('content-length')) === mp4.length && (await headResponse.text()) === '', 'HEAD는 영상 본문 없이 전체 크기를 알려 준다')
+
+console.log('영상 완료 재시도 · 오류 복구')
+const recoverStart = await vstart(T)
+const recoverPart = await part(T, 1, mp4, recoverStart.key, recoverStart.uploadId)
+const recoverBody = { classId: CID, uid: S1, key: recoverStart.key, uploadId: recoverStart.uploadId, parts: [recoverPart], name: '복구.mp4', size: mp4.length }
+ok(!(await post(lib.handleMtVideoFinish, T, { ...recoverBody, parts: [recoverPart, recoverPart] })).ok, '중복 조각 번호를 거절한다')
+ok(!(await post(lib.handleMtVideoFinish, T, { ...recoverBody, size: undefined })).ok, '완료 요청에서도 크기 누락을 거절한다')
+ok(!(await post(lib.handleMtVideoFinish, T, { ...recoverBody, size: 5 * 1024 ** 3 })).ok, '완료 요청에서 4GB 제한을 우회할 수 없다')
+loseCompleteReplyOnce = true
+failCommitOnce = true
+const failedLink = await post(lib.handleMtVideoFinish, T, recoverBody)
+ok(!failedLink.ok && failedLink.retryable && objects.has(recoverStart.key) && objects.has(st3.key), '저장소 완료 응답 유실과 DB 장애에도 새 파일과 기존 영상을 보존한다')
+loseCommitReplyOnce = true
+const lostLink = await post(lib.handleMtVideoFinish, T, recoverBody)
+ok(!lostLink.ok && lostLink.retryable && objects.has(recoverStart.key), 'DB는 저장했지만 응답이 유실돼도 영상을 지우지 않는다')
+const recoveredLink = await post(lib.handleMtVideoFinish, T, recoverBody)
+ok(recoveredLink.ok && objects.has(recoverStart.key), '같은 완료 요청을 다시 보내 저장된 영상을 확인한다')
+const again = await post(lib.handleMtVideoFinish, T, recoverBody)
+ok(again.ok && again.file.at === recoveredLink.file.at, '완료 확인은 여러 번 호출해도 같은 결과다')
+const crossKey = recoverStart.key.replace(`/${CID}/`, '/other-class/')
+ok(!(await post(lib.handleMtVideoAbort, T, { classId: CID, uid: S1, key: crossKey, uploadId: recoverStart.uploadId })).ok, '다른 클래스의 업로드 키로 중단할 수 없다')
 const pdfInline = await post(lib.handleMtFileUrl, T, { classId: CID, kind: 'plan', uid: S1, inline: true })
 ok(pdfInline.ok && pdfInline.inline === false, 'PDF 가 아닌 지도안(docx)은 inline 을 청해도 내려받기다')
 
@@ -360,6 +402,7 @@ ok((await peer(S2, { ifMine: '모둠 실험으로 바꾸겠다.' })).ok && doc(`
 ok((await peer(S2, { ifMine: 'x'.repeat(801) })).ok === false, '세 번째 칸도 800자를 넘으면 받지 않는다')
 ok((await peer(S2, { good: 'x'.repeat(801) })).ok === false, '800자를 넘으면 받지 않는다')
 
+await (await import('./test-mt-video-upload.mjs')).testVideoUpload({ lib, env, tok, teacher: T, student: S1, classId: CID, ok })
 console.log('')
 if (failures) {
   console.error(`test:mt-files: 실패 ${failures}건`)
