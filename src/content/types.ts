@@ -144,6 +144,8 @@ export interface ConceptCheck {
 /** 카드 하나는 화면 한 장이다. 넘길 층이 없다. */
 export interface KeyConcept {
   id: string
+  /** 카드 맨 위에 따로 표시하는 핵심 문장. */
+  takeaway?: string
   /** 개념 이름. 학술 용어여도 된다 */
   name: string
   /** 문단 1 — 이것이 무엇인가. 3~4문장. 정의를 문장으로 풀어 쓴다 */

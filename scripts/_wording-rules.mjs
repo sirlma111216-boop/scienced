@@ -84,7 +84,9 @@ export function checkText(text, opts = {}) {
   }
   for (const s of sentences(t)) {
     if (/https?:\/\//.test(s) || /\t|\|/.test(s)) continue
-    if ([...s].length > SENTENCE_MAX) out.push(`문장이 ${[...s].length}자 — ${SENTENCE_MAX}자 이하: 「${s.slice(0, 30)}…」`)
+    /* **강조** 표시는 글자가 아니다 — 길이를 셀 때 뺀다 (2026-11-03) */
+    const bare = s.replace(/\*\*/g, '')
+    if ([...bare].length > SENTENCE_MAX) out.push(`문장이 ${[...bare].length}자 — ${SENTENCE_MAX}자 이하: 「${bare.slice(0, 30)}…」`)
   }
 
   if (!theory) return out

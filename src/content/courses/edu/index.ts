@@ -26,7 +26,7 @@ export const EDU_INDEX: LessonIndexEntry[] = [
   idx('04', 4, 'edu80', '학생의 생각은 왜 실험 하나로 바뀌지 않는가', '예상이 빗나간 것을 본 학생의 생각을 실제로 바꾸는 것은 무엇인가?', false, EDU_LEGACY_STEP_IDS),
   idx('05', 5, 'edu80', '교육과정 문서는 교사에게 무엇을 맡기는가', '성취기준이 도달점을 정해 놓았을 때 교사가 스스로 정해야 하는 것은 무엇인가?', false, EDU_LEGACY_STEP_IDS),
   idx('06', 6, 'edu40', '과학의 방법은 하나가 아니다', '교과서 실험을 순서대로 따라 한 학생은 탐구를 한 것인가?', false, EDU_LEGACY_STEP_IDS),
-  idx('07', 7, 'edu40', '수업 모형의 순서에는 이유가 있다', '수업 모형의 한 단계를 빼야 할 때 무엇을 남겨야 하는가?', false, EDU_LEGACY_STEP_IDS),
+  idx('07', 7, 'edu40', '수업 모형의 순서에는 이유가 있다', '수업 시간이 줄어들 때 학생의 탐색·설명·적용을 어떻게 지킬 것인가?', false, EDU_LEGACY_STEP_IDS),
   idx('08', 8, 'edu40', '좋은 비유에는 한계선이 있다', '학생이 비유를 개념 그 자체로 믿을 때 교사는 무엇을 해야 하는가?', false, EDU_LEGACY_STEP_IDS),
   idx('09', 9, 'edu40', '의견이 논증이 되는 조건', '학생들의 토론이 말싸움으로 끝났을 때 교사는 무엇부터 고쳐야 하는가?', false, EDU_LEGACY_STEP_IDS),
   idx('10', 10, 'edu40', '과학만으로 답이 정해지지 않을 때', '과학으로 답이 정해지지 않는 쟁점에서 과학 교사는 어디까지 가르쳐야 하는가?', false, EDU_LEGACY_STEP_IDS),

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { KeyConcept } from '@/content/types'
 import { Badge, Caption, ColorBlock, type BlockTone } from '@/components/ui'
 import { Rich } from '@/components/theory/Rich'
+import { conceptTextBlocks } from '@/lib/concept-text'
 
 /**
  * 개념 카드 — 화면 한 장, 넘길 층이 없다 (8차 4.4).
@@ -26,6 +27,14 @@ export function ConceptCard({ concept, index, children }: { concept: KeyConcept;
           </h3>
         </div>
 
+        {concept.takeaway ? (
+          <div className="bg-canvas rounded-md" style={{ padding: '14px 18px', marginBottom: 20, borderLeft: '4px solid currentColor' }}>
+            <Caption>핵심</Caption>
+            <p className="text-body-lg" style={{ margin: '6px 0 0', fontWeight: 700, lineHeight: 1.6 }}>
+              <Rich text={concept.takeaway} />
+            </p>
+          </div>
+        ) : null}
         <Paragraph label="무엇인가" text={concept.what} />
         <Terms terms={concept.terms} />
         <Paragraph label="왜 필요한가" text={concept.why} />
@@ -46,9 +55,7 @@ export function ConceptCard({ concept, index, children }: { concept: KeyConcept;
             <summary className="caption" style={{ cursor: 'pointer' }}>
               더 읽기 — {concept.more.title}
             </summary>
-            <p className="text-body" style={{ margin: '8px 0 0', whiteSpace: 'pre-line' }}>
-              <Rich text={concept.more.body} />
-            </p>
+            <ConceptText text={concept.more.body} />
           </details>
         ) : null}
       </ColorBlock>
@@ -100,11 +107,19 @@ function Terms({ terms }: { terms?: Array<{ term: string; plain: string }> }) {
 function Paragraph({ label, text }: { label: string; text: string }) {
   if (!text) return null
   return (
-    <div style={{ marginTop: 12 }}>
+    <div style={{ marginTop: 20 }}>
       <Caption>{label}</Caption>
-      <p className="text-body-lg" style={{ margin: '4px 0 0', whiteSpace: 'pre-line' }}>
-        <Rich text={text} />
-      </p>
+      <ConceptText text={text} />
     </div>
   )
+}
+
+function ConceptText({ text }: { text: string }) {
+  return <div className="text-body-lg" style={{ lineHeight: 1.8, overflowWrap: 'anywhere' }}>
+    {conceptTextBlocks(text).map((block, i) => block.kind === 'list' ? (
+      <ol key={i} start={block.start} style={{ margin: '12px 0', paddingLeft: 28 }}>
+        {block.items.map((item, j) => <li key={j} style={{ marginBottom: 10, paddingLeft: 4 }}><Rich text={item} /></li>)}
+      </ol>
+    ) : <p key={i} style={{ margin: '8px 0' }}><Rich text={block.text} /></p>)}
+  </div>
 }
