@@ -46,7 +46,9 @@ export function TaskCard({ activity, step }: { activity: Activity; step: Step })
         </div>
 
         <p className="text-body-sm" style={{ margin: 0, opacity: 0.8 }}>
-          답은 하나가 아니다. 고른 것보다 고른 까닭이 남는다.
+          {step.id === 'activity-1'
+            ? '선택한 기준의 문제를 확인하고, 새 기준이 평가 목표에 맞는지 설명하세요.'
+            : '선택한 이유를 자료와 연결해 설명하세요. 서로 다른 판단의 근거를 비교합니다.'}
         </p>
       </div>
     </ColorBlock>

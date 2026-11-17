@@ -126,7 +126,8 @@ for (const course of await loadCourses()) {
           bad += 1
           continue
         }
-        if (text.includes('\n')) fail('문단', `${at} 의 ${k} 가 여러 문단이다 — 하나여야 한다`)
+        // 설명을 짧은 문단과 번호 목록으로 나누어 읽도록 한다 (강의자 지시 2026-11-17).
+        // 전체 분량은 아래 RANGE로, 개별 문단의 길이는 verify:wording으로 검사한다.
         /* 아래 한계는 문장으로, 위 한계는 단위로 — 번호 나열은 길어도 한 단위지만 짧아지지는 않는다 */
         const raw = sentences(text).length
         const n = units(text).length
