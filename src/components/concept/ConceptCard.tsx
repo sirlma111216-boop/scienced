@@ -68,7 +68,7 @@ export function KeyPoints({ points, compact = false, name }: { points: readonly 
   return (
     <div className="bg-canvas rounded-md" style={{ padding: compact ? '10px 14px' : '14px 18px', marginTop: compact ? 0 : 20, boxShadow: 'inset 0 0 0 2px #000' }}>
       <Caption>{name ? `${name} · 기준` : '기준'}</Caption>
-      <ol style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+      <ol style={{ margin: '8px 0 0', paddingLeft: 20, listStyleType: 'decimal' }}>
         {points.map((m, i) => (
           <li key={i} className={compact ? 'text-body-sm' : 'text-body'} style={{ marginBottom: 6, fontWeight: 480 }}>
             <Rich text={m} />
@@ -117,7 +117,7 @@ function Paragraph({ label, text }: { label: string; text: string }) {
 function ConceptText({ text }: { text: string }) {
   return <div className="text-body-lg" style={{ lineHeight: 1.8, overflowWrap: 'anywhere' }}>
     {conceptTextBlocks(text).map((block, i) => block.kind === 'list' ? (
-      <ol key={i} start={block.start} style={{ margin: '12px 0', paddingLeft: 28 }}>
+      <ol key={i} start={block.start} style={{ margin: '12px 0', paddingLeft: 28, listStyleType: 'decimal' }}>
         {block.items.map((item, j) => <li key={j} style={{ marginBottom: 10, paddingLeft: 4 }}><Rich text={item} /></li>)}
       </ol>
     ) : <p key={i} style={{ margin: '8px 0' }}><Rich text={block.text} /></p>)}

@@ -35,7 +35,7 @@ export function TaskCard({ activity, step }: { activity: Activity; step: Step })
 
         <div>
           <Caption>무엇을 쓰나</Caption>
-          <ol style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+          <ol style={{ margin: '4px 0 0', paddingLeft: 20, listStyleType: 'decimal' }}>
             {activity.fields.map((f) => (
               <li key={f.key} className="text-body" style={{ marginBottom: 4 }}>
                 <strong>{f.label}</strong>
