@@ -206,7 +206,7 @@ export const t03: LessonTheory = {
         },
       ],
       linkedConceptId: 'c03-diagnosis',
-      plainTerms: ['같은 답 뒤의 다른 이유가 따로 보인다'],
+      plainTerms: ['같은 답 뒤의 다른 이유'],
       oneLine: '답을 고르고 이유도 고르는 두 단계 문항. 이유 선택지는 실제 학생의 말에서 만든다.',
       verified: false,
     },

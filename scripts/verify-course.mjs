@@ -2,7 +2,7 @@
  * npm run verify:course (8차 8절 신설)
  *
  *   · 두 과목의 색인과 내용 파일이 맞는다 — 색인의 모든 차시가 import() 로 불려오고 id·과목·골격·제목이 같다
- *   · 차시 번호는 01 부터 빠짐없이 · 교수법 18 · 교육론 12 (아직 다 쓰지 않았으면 개수를 알린다)
+ *   · 차시 번호는 01 부터 빠짐없이 · 교수법 18 · 교육론 11 (아직 다 쓰지 않았으면 개수를 알린다)
  *   · 두 과목이 자료·상황·과제·개념 문장을 공유하지 않는다 — 문장 단위 대조. 1강은 예외 (강의자 답 4)
  *   · 클래스 폼에 courseId 가 있고 규칙·저장 계층이 과목을 안다
  *   · 새 클래스가 여는 차시(INITIALLY_OPEN)가 색인의 published 와 같다
@@ -15,7 +15,7 @@ import { COURSE_SHORT, activitiesOf, conceptsOf, loadCourses, where } from './_c
 const { INITIALLY_OPEN } = await import('../src/content/types.ts')
 const { sentences, studentStrings } = await import('./_wording-rules.mjs')
 
-const TOTAL = { method: 18, edu: 12 }
+const TOTAL = { method: 18, edu: 11 }
 const courses = await loadCourses()
 
 /* ── 색인 ↔ 내용 ── */
@@ -43,6 +43,7 @@ for (const c of courses) {
     fail('공개 차시', `${c.title} 시드 published [${published}] 와 INITIALLY_OPEN [${INITIALLY_OPEN[c.courseId]}] 이 다르다`)
   }
   console.log(`  · ${c.title}: ${c.lessons.length} / ${TOTAL[c.courseId]}차시 (공개 ${published.length})`)
+  if (c.index.length !== TOTAL[c.courseId]) fail('차시 수', `${c.title}은 ${TOTAL[c.courseId]}강이어야 한다`)
   if (c.lessons.length < TOTAL[c.courseId]) console.log(`    아직 안 쓴 차시 ${TOTAL[c.courseId] - c.lessons.length}개`)
 }
 pass('색인', '두 과목의 색인과 내용 파일이 id · 과목 · 골격 · 제목 · 공개 여부에서 같다')

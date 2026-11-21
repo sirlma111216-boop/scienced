@@ -62,7 +62,7 @@ export const t07: LessonTheory = {
         { title: 'Biggs, J., & Tang, C. (2007). Teaching for Quality Learning at University (3rd ed.). Open University Press.' },
       ],
       linkedConceptId: 'c07-alignment',
-      plainTerms: ['세 곳의 동사가 같으면 정렬된 것이다'],
+      plainTerms: ['세 곳의 동사가 같으면'],
       oneLine: '목표·활동·평가가 같은 동사를 요구해야 한다. 학생은 평가가 요구하는 것을 배운다.',
       verified: false,
     },

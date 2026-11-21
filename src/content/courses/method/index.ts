@@ -34,8 +34,8 @@ export const METHOD_INDEX: LessonIndexEntry[] = [
   idx('14', 14, '협동적이고 포용적인 과학 교실', '한 학생이 다 하고도 결과가 좋은 모둠에 교사는 무엇을 먼저 넣어야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('15', 15, '학습을 움직이는 형성평가', '학생 답의 분포를 본 뒤 교사는 다음 시간을 어디에 얼마나 써야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
   idx('16', 16, '같은 보고서에 다른 점수가 나올 때', '같은 학생 보고서에 교사마다 다른 점수를 줄 때 무엇을 고쳐야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
-  idx('17', 17, 'AI 가 쓴 답을 학생이 그대로 냈을 때', 'AI 가 만든 설명을 학생이 자기 답으로 냈을 때 교사는 무엇부터 시켜야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
-  idx('18', 18, '같은 수업을 다시 할 때 무엇부터 고치는가', '학생의 반응을 보고 같은 수업을 다시 할 때 무엇부터 고쳐야 하는가?', false, ['step-open', 'step-concepts', 'step-module', 'step-wrapup']),
+  idx('17', 17, 'AI와 시뮬레이션의 설명을 검증하는 수업', '디지털 도구의 답을 학생이 검토하고 자기 설명으로 고치게 하려면 어떻게 가르쳐야 하는가?', false, ["step-open","step-concepts","step-module","step-wrapup"]),
+  idx('18', 18, '수업의 증거를 보고 다시 가르치기', '학생의 반응을 근거로 수업의 무엇을 바꾸고, 효과를 어떻게 다시 확인할 것인가?', false, ["step-open","step-concepts","step-module","step-wrapup"]),
 ]
 
 const loaders: Record<string, () => Promise<{ lesson: Lesson }>> = {

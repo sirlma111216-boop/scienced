@@ -33,7 +33,7 @@ export function Home() {
         {user?.nickname ? `${user.nickname} 님의 강의실` : '강의실'}
       </h1>
       <p className="text-subhead" style={{ marginTop: 16, maxWidth: 760 }}>
-        오늘 적는 답은 지워지지 않고 포트폴리오에 쌓인다.
+        수업에서 제출한 답은 각 차시의 활동 기록에 저장됩니다.
       </p>
 
       <section style={{ marginTop: 48 }}>
@@ -77,30 +77,14 @@ export function Home() {
 
       <div style={{ marginTop: 96 }}>
         <ColorBlock tone="lilac">
-          <p className="eyebrow">한 학기 산출물</p>
+          <p className="eyebrow">수업 자료와 활동</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24, marginTop: 24 }}>
-            <Link to="/portfolio" style={{ color: 'inherit' }}>
-              <p className="text-headline" style={{ margin: 0 }}>
-                포트폴리오
-              </p>
-              <p className="text-body-sm" style={{ marginTop: 8 }}>
-                차시마다 낸 답이 그대로 남는다
-              </p>
-            </Link>
-            <Link to="/concept-map" style={{ color: 'inherit' }}>
-              <p className="text-headline" style={{ margin: 0 }}>
-                개념 연결 지도
-              </p>
-              <p className="text-body-sm" style={{ marginTop: 8 }}>
-                개념을 잇고 선마다 관계를 적는다
-              </p>
-            </Link>
             <Link to="/curriculum" style={{ color: 'inherit' }}>
               <p className="text-headline" style={{ margin: 0 }}>
                 교육과정 찾기
               </p>
               <p className="text-body-sm" style={{ marginTop: 8 }}>
-                성취기준 · 핵심 아이디어 · 선수와 후속 개념
+                2022 개정 과학과 교육과정 원문 · 과목별 열람 · 검색
               </p>
             </Link>
             <Link to="/microteaching" style={{ color: 'inherit' }}>

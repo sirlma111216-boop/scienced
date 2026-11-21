@@ -275,7 +275,7 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
  */
 {
   const EXPECT = {
-    edu: { form: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'], follow: {} },
+    edu: { form: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'], follow: {} },
     method: {
       form: ['01', '03', '05', '07', '09', '11', '13', '15', '16', '17', '18'],
       /* 따르는 차시 → 따라야 할 차시 */
@@ -321,7 +321,7 @@ function simulate(n, g, rounds, seedBase, fast, categories) {
       }
     }
   }
-  if (bad === 0) pass('전수조사', `교육론 12차시는 매 차시 나누고, 교수법은 ${METHOD_PAIRED_UNTIL}강까지 홀수에 나눈 뒤 짝수가 따르며 15강부터 매 차시 나눈다 — 30차시 전부 확인`)
+  if (bad === 0) pass('전수조사', `교육론 11차시는 매 차시 나누고, 교수법은 ${METHOD_PAIRED_UNTIL}강까지 홀수에 나눈 뒤 짝수가 따르며 15강부터 매 차시 나눈다 — 29차시 전부 확인`)
 }
 
 report('verify:groups')

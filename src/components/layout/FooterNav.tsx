@@ -1,8 +1,6 @@
 import { NavLink } from 'react-router-dom'
 
 const links = [
-  { to: '/portfolio', label: '포트폴리오', tone: 'study' },
-  { to: '/concept-map', label: '개념 지도', tone: 'study' },
   { to: '/curriculum', label: '교육과정', tone: 'study' },
   { to: '/textbook', label: '교과서', tone: 'study' },
   { to: '/microteaching', label: '마이크로티칭', tone: 'teaching' },

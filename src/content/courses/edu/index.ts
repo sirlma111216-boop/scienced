@@ -1,9 +1,9 @@
 import type { Lesson, LessonId, LessonIndexEntry } from '../../types'
 
 /**
- * 과학교육론 12차시 — 색인과 내용 불러오기 (8차 8.2).
+ * 과학교육론 11차시 — 색인과 내용 불러오기 (8차 8.2).
  *
- * 1강은 교과교수법 1강과 같다 (강의자 답 4). 2~5강은 80분, 6~12강은 40분.
+ * 1강은 교과교수법 1강과 같다 (강의자 답 4). 2~5강은 80분, 6~11강은 40분.
  */
 const idx = (id: LessonId, order: number, layout: 'method' | 'edu80' | 'edu40', title: string, centralQuestion: string, published: boolean, legacyStepIds?: string[]): LessonIndexEntry => ({
   id,
@@ -27,11 +27,10 @@ export const EDU_INDEX: LessonIndexEntry[] = [
   idx('05', 5, 'edu80', '교육과정 문서는 교사에게 무엇을 맡기는가', '성취기준이 도달점을 정해 놓았을 때 교사가 스스로 정해야 하는 것은 무엇인가?', false, EDU_LEGACY_STEP_IDS),
   idx('06', 6, 'edu40', '과학의 방법은 하나가 아니다', '교과서 실험을 순서대로 따라 한 학생은 탐구를 한 것인가?', false, EDU_LEGACY_STEP_IDS),
   idx('07', 7, 'edu40', '수업 모형의 순서에는 이유가 있다', '수업 시간이 줄어들 때 학생의 탐색·설명·적용을 어떻게 지킬 것인가?', false, EDU_LEGACY_STEP_IDS),
-  idx('08', 8, 'edu40', '좋은 비유에는 한계선이 있다', '학생이 비유를 개념 그 자체로 믿을 때 교사는 무엇을 해야 하는가?', false, EDU_LEGACY_STEP_IDS),
-  idx('09', 9, 'edu40', '의견이 논증이 되는 조건', '학생들의 토론이 말싸움으로 끝났을 때 교사는 무엇부터 고쳐야 하는가?', false, EDU_LEGACY_STEP_IDS),
-  idx('10', 10, 'edu40', '과학만으로 답이 정해지지 않을 때', '과학으로 답이 정해지지 않는 쟁점에서 과학 교사는 어디까지 가르쳐야 하는가?', false, EDU_LEGACY_STEP_IDS),
-  idx('11', 11, 'edu40', '모둠을 만들었다고 협동이 되지는 않는다', '모둠 실험에서 한 명이 다 하고 한 명은 기다릴 때 교사는 무엇을 바꿔야 하는가?', false, EDU_LEGACY_STEP_IDS),
-  idx('12', 12, 'edu40', '평가는 점수를 남기는 일이 아니다', '탐구 보고서의 100점을 어디에 두어야 평가가 학생의 배움을 바꾸는가?', false, EDU_LEGACY_STEP_IDS),
+  idx('08', 8, 'edu40', '좋은 비유에는 한계선이 있다', '비유와 모형 때문에 생긴 오해를 학생이 스스로 고치도록 어떻게 도울 것인가?', false, EDU_LEGACY_STEP_IDS),
+  idx('09', 9, 'edu40', '모두가 근거를 말하는 모둠 토론', '모둠 토론에서 모든 학생이 자료를 근거로 설명하게 하려면 무엇이 필요한가?', false, EDU_LEGACY_STEP_IDS),
+  idx('10', 10, 'edu40', '과학만으로 답이 정해지지 않을 때', '과학 자료와 서로 다른 가치를 함께 고려하는 쟁점 수업을 어떻게 운영할 것인가?', false, EDU_LEGACY_STEP_IDS),
+  idx('11', 11, 'edu40', '평가로 확인하고 다음 배움을 돕기', '학생의 탐구를 무엇으로 평가하고, 그 결과를 다음 학습에 어떻게 활용할 것인가?', false, EDU_LEGACY_STEP_IDS),
 ]
 
 const loaders: Record<string, () => Promise<{ lesson: Lesson }>> = {
@@ -46,6 +45,7 @@ const loaders: Record<string, () => Promise<{ lesson: Lesson }>> = {
   '09': () => import('./lesson09'),
   '10': () => import('./lesson10'),
   '11': () => import('./lesson11'),
+  // 과거 12강의 저장된 학습 기록을 읽는 경로는 보존한다. 현재 강의 목록에는 포함하지 않는다.
   '12': () => import('./lesson12'),
 }
 

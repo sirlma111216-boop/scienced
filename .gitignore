@@ -26,3 +26,6 @@ reference/
 /shared/**/*.js
 /functions/**/*.js
 /vite.config.js
+
+# 요청받은 공개 교육과정 원문은 앱 자료로 배포한다
+!/public/curriculum/science-2022.pdf
