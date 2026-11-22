@@ -8,17 +8,7 @@ import { ClassAdminHeader } from '@/components/instructor/ClassAdmin'
 import { useRosterNames } from '@/components/instructor/roster-names'
 import { MtBoard } from '@/components/microteaching/RecordBoard'
 
-/**
- * 마이크로티칭 (강의자 지시 2026-10-17 · 2026-11-02 — 한 화면으로).
- *
- *   /microteaching                               아래 메뉴 「마이크로티칭」. 학생은 일정표(이름 · [수업지도안]) + 누른 사람에 따라 동료 의견 칸 또는 내 기록.
- *                                                강사가 이 주소로 들어오면 지금 고른 클래스의 강사 화면이다 — 학생 분기를 보이지 않는다 (강의자 지적 2026-11-02)
- *   /instructor/class/:classId/mtrecord          강사 — 클래스 관리의 한 탭. 같은 일정표 + 영상 올리기 · 피드백
- *
- * 누구를 눌렀는지는 주소의 ?who= 에 둔다 — 새로 고쳐도 그 사람이 열려 있다.
- * 쓰기는 전부 서버 함수(functions/api/microteaching/*)가 한다. 이 화면은 자리 · 신청 기록 · 내 동료 의견을 구독해 그린다.
- */
-export function MicroteachingRecord({ admin: adminTab = false }: { admin?: boolean }) {
+export function MicroteachingRecord({ admin: adminTab = false, view }: { admin?: boolean; view?: 'mine' | 'feedback' }) {
   const params = useParams()
   const navigate = useNavigate()
   const [search, setSearch] = useSearchParams()
@@ -50,8 +40,16 @@ export function MicroteachingRecord({ admin: adminTab = false }: { admin?: boole
   if (adminTab && !isInstructor) return <Navigate to="/" replace />
   if (!classId) return <Navigate to={isInstructor ? '/instructor/classes' : '/class'} replace />
 
+  if (isInstructor && view) return <Navigate to="/microteaching" replace />
+  if (!admin && !view) {
+    const who = search.get('who')
+    return <Navigate to={who && who !== user?.uid ? '/microteaching/feedback?' + search.toString() : '/microteaching/mine'} replace />
+  }
+
   const board = (
     <MtBoard
+      key={JSON.stringify([classId, user?.uid, view])}
+      personal={view === 'mine'}
       classId={classId}
       courseId={courseId}
       uid={user?.uid ?? ''}
@@ -75,5 +73,5 @@ export function MicroteachingRecord({ admin: adminTab = false }: { admin?: boole
       </AppShell>
     )
   }
-  return <AppShell title="마이크로티칭">{board}</AppShell>
+  return <AppShell title={admin ? "마이크로티칭" : view === "mine" ? "나의 마이크로티칭" : "마이크로티칭 피드백"}>{board}</AppShell>
 }

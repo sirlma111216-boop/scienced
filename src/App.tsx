@@ -220,6 +220,8 @@ export function App() {
             }
           />
           {/* 옛 「발표 기록」 주소 — 2026-11-02 부터 마이크로티칭 화면 하나에 합쳤다. 즐겨찾기가 남아 있을 수 있어 돌려보낸다 */}
+          <Route path="/microteaching/mine" element={<Guard><Microteaching view="mine" /></Guard>} />
+          <Route path="/microteaching/feedback" element={<Guard><Microteaching view="feedback" /></Guard>} />
           <Route path="/microteaching/record" element={<Navigate to="/microteaching" replace />} />
 
           {/* 강사 — 수업 화면 하나 */}

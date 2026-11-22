@@ -595,6 +595,7 @@ export function MtBoard({
   myPeer,
   nameOf,
   note,
+  personal,
   selectedUid,
   onSelect,
   onGoApply,
@@ -613,6 +614,7 @@ export function MtBoard({
   /** 강사만 실명 — 학생은 자리 문서의 이름 */
   nameOf: (uid: string) => string
   note: string | null
+  personal: boolean
   selectedUid: string | null
   onSelect: (uid: string | null) => void
   onGoApply: () => void
@@ -622,7 +624,8 @@ export function MtBoard({
   const appOf = (u: string) => apps.find((a) => a.uid === u) ?? null
   const who = (s: MtSlot) => (admin ? `${s.studentId} ${nameOf(s.uid) || s.name || s.nickname}` : s.name || s.nickname)
   const mine = admin ? null : (ordered.find((s) => s.uid === uid) ?? null)
-  const selected = selectedUid ? (ordered.find((s) => s.uid === selectedUid) ?? null) : null
+  const presenters = admin ? ordered : ordered.filter(s => s.uid !== uid)
+  const selected = selectedUid ? (presenters.find((s) => s.uid === selectedUid) ?? null) : null
   const panel = useRef<HTMLDivElement | null>(null)
 
   /* 이름을 누르면 오른쪽 판으로 — 좁은 화면에서는 판이 아래에 있어 보이도록 옮긴다 */
@@ -635,7 +638,20 @@ export function MtBoard({
     }, 0)
   }
 
-  const byDate = schedule.days.map((d) => ({ ...d, rows: Array.from({ length: d.count }, (_, i) => ordered.find((s) => s.date === d.date && s.order === i + 1) ?? null) }))
+  if (personal && !admin) return (
+    <section>
+      <h1 className="text-headline">나의 마이크로티칭</h1>
+      {note && <Notice>{note}</Notice>}
+      {mine ? <SelfPanel classId={classId} slot={mine} app={appOf(uid)} /> : (
+        <Notice>아직 신청한 발표가 없습니다. <Button variant="tertiary" onClick={onGoApply}>발표 신청으로 가기</Button></Notice>
+      )}
+    </section>
+  )
+  const byDate = schedule.days.map(d => ({
+    ...d,
+    rows: admin ? Array.from({ length: d.count }, (_, i) => presenters.find(s => s.date === d.date && s.order === i + 1) ?? null)
+      : presenters.filter(s => s.date === d.date),
+  })).filter(d => d.rows.length > 0)
   const counts = admin
     ? { plan: ordered.filter((s) => appOf(s.uid)?.plan).length, slides: ordered.filter((s) => appOf(s.uid)?.slides).length, video: ordered.filter((s) => appOf(s.uid)?.video).length, fb: ordered.filter((s) => appOf(s.uid)?.feedbackGood?.text || appOf(s.uid)?.feedbackImprove?.text).length }
     : null
@@ -644,7 +660,7 @@ export function MtBoard({
     <div>
       <ColorBlock tone="lime">
         <p className="eyebrow" style={{ margin: 0 }}>
-          마이크로티칭 · {schedule.title}
+          {admin ? '마이크로티칭' : '마이크로티칭 피드백'} · {schedule.title}
         </p>
         <p className="text-body" style={{ margin: '8px 0 0' }}>
           {counts ? `발표자 ${ordered.length}명 · 지도안 ${counts.plan} · PT ${counts.slides} · 영상 ${counts.video} · 피드백 ${counts.fb}` : schedule.minutes}
@@ -652,7 +668,7 @@ export function MtBoard({
         <Caption style={{ marginTop: 8 }}>
           {admin
             ? '발표자 이름을 누르면 수업 영상을 올리고 피드백을 적습니다. [수업지도안] · [강의 PT]는 그 사람이 낸 파일을 내려받습니다.'
-            : '발표자 이름을 누르면 그 수업에 의견을 적습니다. 내 이름을 누르면 내 수업 영상 · 성찰 · 동료 의견 · 교수 피드백이 보입니다. [수업지도안] · [강의 PT]는 누구 것이든 내려받습니다.'}
+            : '동료 발표자를 선택해 수업지도안과 강의 자료를 확인하고 피드백을 작성하세요.'}
         </Caption>
       </ColorBlock>
       {note ? (
@@ -660,19 +676,6 @@ export function MtBoard({
           <Notice>{note}</Notice>
         </div>
       ) : null}
-      {!admin && !mine ? (
-        <div style={{ marginTop: 12 }}>
-          <Notice tone="cream">
-            <p className="text-body-sm" style={{ margin: 0 }}>
-              아직 발표 자리를 신청하지 않았습니다. 자리를 신청하면 이 일정표에 내 이름이 생깁니다.{' '}
-              <Button variant="tertiary" onClick={onGoApply}>
-                발표 신청으로 가기
-              </Button>
-            </p>
-          </Notice>
-        </div>
-      ) : null}
-
       <div className="grid gap-lg md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]" style={{ marginTop: 24, alignItems: 'start' }}>
         <nav aria-label="발표 일정표">
           {byDate.map((d) => (
@@ -693,7 +696,7 @@ export function MtBoard({
                           onClick={() => pick(s.uid)}
                           style={{ fontSize: 15 }}
                         >
-                          {i + 1}. {who(s)}
+                          {s.order}. {who(s)}
                           {s.uid === uid ? ' (나)' : ''}
                         </button>
                         <PlanButton classId={classId} uid={s.uid} />
@@ -720,15 +723,13 @@ export function MtBoard({
           {!selected ? (
             <Card>
               <p className="text-body" style={{ margin: 0 }}>
-                {admin ? '왼쪽 일정표에서 발표자 이름을 누르세요.' : mine ? '왼쪽 일정표에서 이름을 누르세요. 다른 사람은 의견을 적는 칸이, 내 이름은 내 수업 기록이 열립니다.' : '왼쪽 일정표에서 발표자 이름을 누르면 그 수업에 의견을 적는 칸이 열립니다.'}
+                {admin ? '왼쪽 일정표에서 발표자 이름을 누르세요.' : !presenters.length ? '아직 피드백을 작성할 동료 발표자가 없습니다.' : '왼쪽 일정표에서 발표자 이름을 누르면 그 수업에 의견을 적는 칸이 열립니다.'}
               </p>
             </Card>
           ) : admin ? (
             <InstructorPanel key={`${classId}:${selected.uid}`} classId={classId} slot={selected} who={who(selected)} app={appOf(selected.uid)} nameOf={nameOf} />
-          ) : selected.uid === uid ? (
-            <SelfPanel classId={classId} slot={selected} app={appOf(uid)} />
           ) : (
-            <PeerPanel classId={classId} slot={selected} who={who(selected)} mine={myPeer.find((p) => p.presenterUid === selected.uid) ?? null} />
+            <PeerPanel key={selected.uid} classId={classId} slot={selected} who={who(selected)} mine={myPeer.find((p) => p.presenterUid === selected.uid) ?? null} />
           )}
         </div>
       </div>
