@@ -74,38 +74,6 @@ export function Home() {
           </ul>
         )}
       </section>
-
-      <div style={{ marginTop: 96 }}>
-        <ColorBlock tone="lilac">
-          <p className="eyebrow">수업 자료와 활동</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24, marginTop: 24 }}>
-            <Link to="/curriculum" style={{ color: 'inherit' }}>
-              <p className="text-headline" style={{ margin: 0 }}>
-                교육과정 찾기
-              </p>
-              <p className="text-body-sm" style={{ marginTop: 8 }}>
-                2022 개정 과학과 교육과정 원문 · 과목별 열람 · 검색
-              </p>
-            </Link>
-            <Link to="/microteaching" style={{ color: 'inherit' }}>
-              <p className="text-headline" style={{ margin: 0 }}>
-                마이크로티칭
-              </p>
-              <p className="text-body-sm" style={{ marginTop: 8 }}>
-                발표 일정 · 수업지도안 · 동료 의견 · 내 수업 기록
-              </p>
-            </Link>
-            <Link to="/microteaching/apply" style={{ color: 'inherit' }}>
-              <p className="text-headline" style={{ margin: 0 }}>
-                발표 신청
-              </p>
-              <p className="text-body-sm" style={{ marginTop: 8 }}>
-                마이크로티칭 날짜와 순서를 고른다
-              </p>
-            </Link>
-          </div>
-        </ColorBlock>
-      </div>
     </AppShell>
   )
 }
