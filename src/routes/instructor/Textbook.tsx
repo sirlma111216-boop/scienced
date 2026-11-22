@@ -136,7 +136,7 @@ export function InstructorTextbook() {
         <h1 className="text-display-lg" style={{ margin: '8px 0 0' }}>
           교과서 보기 관리
         </h1>
-        <p className="text-body" style={{ marginTop: 12, maxWidth: 720 }}>
+        <p className="text-body" style={{ marginTop: 12 }}>
           학년 → 단원 → 소단원으로 들어가 소단원마다 PDF 한 개를 붙입니다. PDF 가 올라가면 바로 학생 화면(아래 메뉴 「교과서」)에 같은 나무로 보입니다.
         </p>
 

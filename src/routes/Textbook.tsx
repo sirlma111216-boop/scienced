@@ -78,7 +78,7 @@ export function Textbook() {
       <h1 className="text-display-lg" style={{ margin: '8px 0 0' }}>
         중학교 과학 교과서
       </h1>
-      <p className="text-body" style={{ marginTop: 12, maxWidth: 720 }}>
+      <p className="text-body" style={{ marginTop: 12 }}>
         학년과 단원을 펼쳐 소단원을 누르면 그 부분의 교과서가 열립니다. 1·2학년은 2022 개정, 3학년은 2015 개정 교육과정 교과서입니다.
       </p>
 

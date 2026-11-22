@@ -13,6 +13,11 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  :where(h1, h2, h3, p, li) {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
   body {
     @apply bg-canvas text-ink font-sans text-body antialiased;
     /* 2026-09-22 본문 20px — 프로젝터에서 읽히게 */

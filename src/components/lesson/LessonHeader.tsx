@@ -13,7 +13,7 @@ export function LessonHeader({ lesson }: { lesson: Lesson }) {
       <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
         {lesson.title}
       </h1>
-      <p className="text-subhead" style={{ marginTop: 24, maxWidth: 760 }}>
+      <p className="text-subhead" style={{ marginTop: 24 }}>
         {lesson.centralQuestion}
       </p>
       <div style={{ marginTop: 24 }}>

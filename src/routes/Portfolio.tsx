@@ -66,7 +66,7 @@ export function Portfolio() {
       <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
         포트폴리오
       </h1>
-      <p className="text-subhead" style={{ marginTop: 16, maxWidth: 760 }}>
+      <p className="text-subhead" style={{ marginTop: 16 }}>
         차시마다 낸 답이 그대로 남는다.
       </p>
 
@@ -125,7 +125,7 @@ export function Portfolio() {
       <div style={{ marginTop: 96 }}>
         <ColorBlock tone="lilac">
           <p className="eyebrow">보관과 삭제</p>
-          <p className="text-subhead" style={{ marginTop: 12, maxWidth: 700 }}>
+          <p className="text-subhead" style={{ marginTop: 12 }}>
             응답은 학기 종료 후 180일이 지나면 삭제된다. 그 전에도 요청하면 지울 수 있다. 내려받기로 자기 자료를 언제든 가져갈 수 있다.
           </p>
         </ColorBlock>

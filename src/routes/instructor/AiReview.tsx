@@ -355,7 +355,7 @@ export function InstructorAiReview() {
       <div style={{ marginTop: 96 }}>
         <ColorBlock tone="navy">
           <p className="eyebrow">이 관문이 있는 이유</p>
-          <p className="text-subhead" style={{ marginTop: 12, maxWidth: 720 }}>
+          <p className="text-subhead" style={{ marginTop: 12 }}>
             AI 가 유창하게 설명했다는 이유로 과학적 타당성을 인정하지 않습니다. 학생의 최종 판단과
             교사의 평가 책임을 보존하기 위해, AI 결과는 언제나 제안으로만 들어오고 사람이 채택한
             것만 학생에게 갑니다.

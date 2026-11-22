@@ -32,7 +32,7 @@ export function Home() {
       <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
         {user?.nickname ? `${user.nickname} 님의 강의실` : '강의실'}
       </h1>
-      <p className="text-subhead" style={{ marginTop: 16, maxWidth: 760 }}>
+      <p className="text-subhead" style={{ marginTop: 16 }}>
         수업에서 제출한 답은 각 차시의 활동 기록에 저장됩니다.
       </p>
 

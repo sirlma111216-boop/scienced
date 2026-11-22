@@ -177,7 +177,7 @@ export function ApplyBoard({
                       <td key={i} style={{ ...td, fontWeight: taken?.uid === uid ? 600 : 400 }}>
                         {taken ? label(taken) : '—'}
                         {taken?.topic ? (
-                          <span className="text-body-sm" style={{ display: 'block', fontWeight: 400, opacity: 0.75, whiteSpace: 'normal', maxWidth: 220 }}>
+                          <span className="text-body-sm" style={{ display: 'block', fontWeight: 400, opacity: 0.75, whiteSpace: 'normal' }}>
                             {detailLine(taken)}
                           </span>
                         ) : null}

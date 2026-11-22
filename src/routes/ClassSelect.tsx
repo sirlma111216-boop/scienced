@@ -64,7 +64,7 @@ export function ClassSelect() {
       <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
         어느 수업으로 들어갈까요
       </h1>
-      <p className="text-subhead" style={{ marginTop: 16, maxWidth: 700 }}>
+      <p className="text-subhead" style={{ marginTop: 16 }}>
         수업은 학기마다 따로 열립니다. 고른 클래스 안에서만 응답과 의견이 오갑니다.
       </p>
 

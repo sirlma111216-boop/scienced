@@ -106,7 +106,7 @@ export function ConceptMap() {
       <h1 className="text-display-lg" style={{ margin: '12px 0 0' }}>
         개념 연결 지도
       </h1>
-      <p className="text-subhead" style={{ marginTop: 16, maxWidth: 760 }}>
+      <p className="text-subhead" style={{ marginTop: 16 }}>
         개념을 잇되, 선마다 관계를 나타내는 말을 적는다. 단어만 이어 놓으면 무엇을 인과로 보고 있는지 드러나지 않는다.
       </p>
 

@@ -186,7 +186,7 @@ export function InstructorAnalytics() {
       <div style={{ marginTop: 96 }}>
         <ColorBlock tone="navy">
           <p className="eyebrow">이 숫자들의 한계</p>
-          <p className="text-subhead" style={{ marginTop: 12, maxWidth: 720 }}>
+          <p className="text-subhead" style={{ marginTop: 12 }}>
             여기 있는 것은 전부 대리 지표다. 제출했다가 잘 썼다는 뜻은 아니다. 이 화면은 어떤 응답을 직접 읽어 볼지 고르는 데 쓰고, 판정은 읽고 나서 사람이 한다.
           </p>
         </ColorBlock>
