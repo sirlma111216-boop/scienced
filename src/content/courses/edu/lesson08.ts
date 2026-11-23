@@ -32,9 +32,55 @@ export const lesson: Lesson = {
     "stimulus": {
       "id": "intro-scene",
       "title": "폐 모형의 고무막을 당기면",
-      "format": "card",
+      "format": "image",
       "label": "수업용으로 만든 가상 자료",
-      "body": "중학교 호흡 수업에서 교사가 병 안에 풍선을 달고 병 아래에 고무막을 붙인 모형을 보여 준다. 고무막을 아래로 당기니 풍선이 부푼다. 교사는 풍선을 폐, 고무막을 횡격막에 대응시킨다.\n\n학생은 「우리 몸에도 횡격막을 아래로 잡아당기는 손 같은 것이 있나요?」라고 묻는다. 다른 학생은 「병은 딱딱하니 갈비뼈도 움직이지 않겠네요」라고 말한다.\n\n두 학생은 부품 이름은 외웠지만 모형에서 실제 몸으로 옮겨도 되는 관계를 혼동하고 있다. 교사는 몸의 움직임 그림을 준비해 두었다."
+      "imageSpec": {
+        "purpose": "고무막을 당길 때와 밀 때 풍선이 어떻게 달라지는지 눈으로 견주어야 모형의 어느 부분이 몸의 무엇에 대응하는지 따질 수 있다.",
+        "mustShow": [
+          "아래를 자른 투명한 병 안에 달린 풍선 두 개",
+          "병 아래를 막은 고무막",
+          "고무막을 아래로 당긴 장면과 위로 민 장면"
+        ],
+        "mustNotShow": [
+          "사람의 몸 그림",
+          "그림 안의 어떤 설명 문구도"
+        ],
+        "labels": [
+          {
+            "text": "고무막을 아래로 당김",
+            "position": "왼쪽 사진의 위쪽 빈 곳",
+            "x": 25,
+            "y": 7
+          },
+          {
+            "text": "고무막을 위로 밂",
+            "position": "오른쪽 사진의 위쪽 빈 곳",
+            "x": 75,
+            "y": 7
+          },
+          {
+            "text": "풍선이 부푼다",
+            "position": "왼쪽 사진의 풍선 옆",
+            "x": 12,
+            "y": 45
+          },
+          {
+            "text": "풍선이 오므라든다",
+            "position": "오른쪽 사진의 풍선 옆",
+            "x": 87,
+            "y": 45
+          }
+        ],
+        "legend": "왼쪽은 들숨, 오른쪽은 날숨에 대응한다. 분홍 화살표는 손이 고무막을 움직인 방향이다.",
+        "genPrompt": "Two photographs side by side of a bell-jar lung model: a clear plastic bottle with the bottom cut off, two small balloons hanging inside from a Y-shaped tube through the cap, and a rubber sheet stretched over the bottom. Left: a hand pulls the rubber sheet down and the balloons are inflated. Right: the hand pushes the rubber sheet up and the balloons are limp. Plain white background, no text, no labels.",
+        "altText": "폐 모형 사진 두 장이 나란히 있다. 모형은 아래를 잘라 낸 투명한 병이다. 병 안에는 Y자 관 끝에 초록 풍선 두 개가 달려 있다. 병 아래는 주황색 고무막으로 막혀 있다. 왼쪽 사진에서는 손이 고무막 가운데를 아래로 잡아당겼고 풍선 두 개가 부풀어 있다. 오른쪽 사진에서는 손이 고무막을 위로 밀어 올렸고 풍선 두 개가 쭈그러들어 늘어져 있다.",
+        "differsFromReality": "모형의 병은 딱딱해서 움직이지 않지만 실제 갈비뼈는 숨을 쉴 때 위아래로 움직인다. 모형의 고무막은 손이 당기지만 실제 횡격막은 근육이라 스스로 수축해 내려간다. 모형에는 폐와 가슴 벽 사이에 빈 공간이 넓지만 실제 폐는 가슴 속을 거의 채운다.",
+        "fallback": "같은 내용을 표로 준다 — 고무막을 움직인 방향 / 병 속 공간의 크기 / 풍선의 모양 / 대응하는 숨.",
+        "license": "촬영 필요",
+        "src": "/figures/edu08-lung-model.png?v=1",
+        "maxWidth": 714
+      },
+      "body": "중학교 호흡 수업에서 교사가 병 안에 풍선을 달고 병 아래에 고무막을 붙인 모형을 보여 준다. 왼쪽 사진처럼 고무막을 아래로 당기니 풍선이 부푼다. 오른쪽 사진처럼 고무막을 위로 밀어 올리니 풍선이 오므라든다. 교사는 풍선을 폐, 고무막을 횡격막, 병을 가슴 속 공간에 대응시킨다.\n\n학생은 「우리 몸에도 횡격막을 아래로 잡아당기는 손 같은 것이 있나요?」라고 묻는다. 다른 학생은 「병은 딱딱하니 갈비뼈도 움직이지 않겠네요」라고 말한다.\n\n두 학생은 부품 이름은 외웠지만 모형에서 실제 몸으로 옮겨도 되는 관계를 혼동하고 있다. 교사는 몸의 움직임 그림을 준비해 두었다."
     }
   },
   "concepts": [
@@ -138,8 +184,54 @@ export const lesson: Lesson = {
     "situation": {
       "id": "act-scene",
       "title": "호흡 모형의 오해를 다음 활동에서 확인하기",
-      "format": "card",
+      "format": "image",
       "label": "수업용으로 만든 가상 자료",
+      "imageSpec": {
+        "purpose": "학생의 두 오해(누가 횡격막을 당기는가 · 갈비뼈는 가만히 있는가)가 모형의 어느 부분에서 나왔는지 사진에서 짚어야 다음 활동을 정할 수 있다.",
+        "mustShow": [
+          "아래를 자른 투명한 병 안에 달린 풍선 두 개",
+          "병 아래를 막은 고무막",
+          "고무막을 아래로 당긴 장면과 위로 민 장면"
+        ],
+        "mustNotShow": [
+          "사람의 몸 그림",
+          "그림 안의 어떤 설명 문구도"
+        ],
+        "labels": [
+          {
+            "text": "고무막을 아래로 당김",
+            "position": "왼쪽 사진의 위쪽 빈 곳",
+            "x": 25,
+            "y": 7
+          },
+          {
+            "text": "고무막을 위로 밂",
+            "position": "오른쪽 사진의 위쪽 빈 곳",
+            "x": 75,
+            "y": 7
+          },
+          {
+            "text": "풍선이 부푼다",
+            "position": "왼쪽 사진의 풍선 옆",
+            "x": 12,
+            "y": 45
+          },
+          {
+            "text": "풍선이 오므라든다",
+            "position": "오른쪽 사진의 풍선 옆",
+            "x": 87,
+            "y": 45
+          }
+        ],
+        "legend": "왼쪽은 들숨, 오른쪽은 날숨에 대응한다. 분홍 화살표는 손이 고무막을 움직인 방향이다.",
+        "genPrompt": "Two photographs side by side of a bell-jar lung model: a clear plastic bottle with the bottom cut off, two small balloons hanging inside from a Y-shaped tube through the cap, and a rubber sheet stretched over the bottom. Left: a hand pulls the rubber sheet down and the balloons are inflated. Right: the hand pushes the rubber sheet up and the balloons are limp. Plain white background, no text, no labels.",
+        "altText": "폐 모형 사진 두 장이 나란히 있다. 모형은 아래를 잘라 낸 투명한 병이다. 병 안에는 Y자 관 끝에 초록 풍선 두 개가 달려 있다. 병 아래는 주황색 고무막으로 막혀 있다. 왼쪽 사진에서는 손이 고무막 가운데를 아래로 잡아당겼고 풍선 두 개가 부풀어 있다. 오른쪽 사진에서는 손이 고무막을 위로 밀어 올렸고 풍선 두 개가 쭈그러들어 늘어져 있다.",
+        "differsFromReality": "모형의 병은 딱딱해서 움직이지 않지만 실제 갈비뼈는 숨을 쉴 때 위아래로 움직인다. 모형의 고무막은 손이 당기지만 실제 횡격막은 근육이라 스스로 수축해 내려간다. 모형에는 폐와 가슴 벽 사이에 빈 공간이 넓지만 실제 폐는 가슴 속을 거의 채운다.",
+        "fallback": "같은 내용을 표로 준다 — 고무막을 움직인 방향 / 병 속 공간의 크기 / 풍선의 모양 / 대응하는 숨.",
+        "license": "촬영 필요",
+        "src": "/figures/edu08-lung-model.png?v=1",
+        "maxWidth": 714
+      },
       "body": "중학교 호흡 수업에서 병·풍선·고무막 모형을 사용했다. 학생들은 고무막을 내릴 때 풍선이 부푸는 것을 보았다. 한 학생은 「몸에서도 누군가 횡격막을 잡아당겨요」라고 썼다.\n\n다른 학생은 「병 벽이 움직이지 않으니 갈비뼈도 가만히 있어요」라고 썼다. 교사는 실제 들숨의 흉곽·횡격막 그림과 모형 사진을 갖고 있다. 수업을 마치기 전에 오해 한 가지를 확인할 수 있다.\n\n학생이 쓴 설명을 고치게 하려 한다. 대응표 만들기, 그림에 차이 표시하기, 모형을 쓰지 않고 다시 설명하기 중 하나를 먼저 할 수 있다. 활동 뒤에는 무엇을 고쳤는지 한 문장으로 확인한다."
     },
     "task": "호흡 모형에서 생긴 오해 하나를 고르고, 남은 시간 동안 할 활동과 이해를 확인할 질문을 쓰세요.",

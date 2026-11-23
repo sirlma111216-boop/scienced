@@ -71,6 +71,8 @@ export interface ImageSpec {
   fallback: string
   license: '직접 제작' | '공개 라이선스' | '촬영 필요'
   src?: string
+  /** 그림이 차지할 가장 큰 폭(px). 원본이 작은 사진은 카드 폭까지 늘리면 흐려진다 — 원본 폭을 적는다. 없으면 카드 폭을 다 쓴다 */
+  maxWidth?: number
 }
 
 /** 블록을 여는 조건. 잠긴 블록은 입력 요소를 아예 그리지 않는다. */

@@ -173,7 +173,7 @@ export function FigureBlock({ spec, isInstructor }: { spec: ImageSpec; isInstruc
   return (
     <div style={{ marginTop: 12 }}>
       {showImage ? (
-        <figure style={{ margin: 0 }}>
+        <figure style={{ margin: '0 auto', width: '100%', maxWidth: spec.maxWidth }}>
           {/*
             라벨은 그림 위에 얹는다 (J.2 ①). 그림 아래에만 늘어놓으면
             「A 발자국」이 어느 줄인지 알 수 없다 — 라벨이 아니라 목록이 된다.
