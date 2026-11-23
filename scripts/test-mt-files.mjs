@@ -403,6 +403,17 @@ ok((await peer(S2, { ifMine: 'x'.repeat(801) })).ok === false, '세 번째 칸�
 ok((await peer(S2, { good: 'x'.repeat(801) })).ok === false, '800자를 넘으면 받지 않는다')
 
 await (await import('./test-mt-video-upload.mjs')).testVideoUpload({ lib, env, tok, teacher: T, student: S1, classId: CID, ok })
+console.log('제출 여부 — 일정표 단추')
+const st1 = await post(lib.handleMtFileStatus, S2, { classId: CID })
+ok(st1.ok && typeof st1.files === 'object', '같은 반 수강생이 제출 여부를 받는다')
+const planNow = Boolean(doc(`classes/${CID}/mtApplications/${S1}`)?.plan)
+const slidesNow = Boolean(doc(`classes/${CID}/mtApplications/${S1}`)?.slides)
+ok(st1.files[S1]?.plan === planNow && st1.files[S1]?.slides === slidesNow, `s1 의 지도안(${planNow}) · PT(${slidesNow}) 여부가 신청 기록과 같다`)
+ok(!JSON.stringify(st1).includes('microteaching/') && !JSON.stringify(st1).includes('.pdf') && !JSON.stringify(st1).includes('.docx'), '파일 이름 · 저장 키는 응답에 없다')
+ok(!JSON.stringify(st1).includes('video') && !JSON.stringify(st1).includes('reflection') && !JSON.stringify(st1).includes('feedback'), '영상 · 성찰 · 피드백에 관한 것은 응답에 없다')
+ok((await post(lib.handleMtFileStatus, T, { classId: CID })).ok, '강사도 받는다')
+ok((await post(lib.handleMtFileStatus, OUT, { classId: CID })).ok === false, '수강생이 아니면 받지 못한다')
+
 console.log('')
 if (failures) {
   console.error(`test:mt-files: 실패 ${failures}건`)

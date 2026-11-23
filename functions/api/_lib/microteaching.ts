@@ -618,6 +618,44 @@ export async function handleMtPeerList(env: MtEnv, request: Request): Promise<Re
   return json({ ok: true, comments })
 }
 
+/**
+ * POST /api/microteaching/file-status — { classId } → { ok, files: { [uid]: { plan, slides } } }
+ * 일정표의 [수업지도안] · [강의 PT] 단추가 「냈다 · 아직 안 냈다」를 누르기 전에 보이도록 (강의자 지시 2026-11-23).
+ * 같은 반 수강생과 강사가 받는다 — 지도안 · PT 는 같은 반 누구나 내려받는 파일이라 「있다 · 없다」도 같은 범위다.
+ * 파일 이름 · 크기 · 저장 키는 주지 않는다. 영상 · 성찰 · 피드백에 관한 것도 주지 않는다(본인과 강사만의 것).
+ */
+export async function handleMtFileStatus(env: MtEnv, request: Request): Promise<Response> {
+  const c = await whoCalls(env, request)
+  if (c instanceof Response) return c
+  let b: { classId?: string }
+  try {
+    b = (await request.json()) as typeof b
+  } catch {
+    return fail('요청 형식이 올바르지 않습니다.')
+  }
+  if (!b.classId || !CLASS_ID_RE.test(b.classId)) return fail('클래스 id 가 없습니다.')
+  const L = await load(env, b.classId, c.uid)
+  if ('error' in L) return fail(L.error ?? '클래스를 읽지 못했습니다.')
+  if (!c.instructor && (!L.enrollment || str(L.enrollment, 'status') !== 'active')) return fail('이 클래스의 수강생만 볼 수 있습니다.')
+  const res = await fetch(`${L.fs}/classes/${b.classId}:runQuery`, {
+    method: 'POST',
+    headers: L.h,
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'mtApplications' }] } }),
+  })
+  if (!res.ok) {
+    console.error('[마이크로티칭] 제출 여부를 읽지 못했다:', res.status, (await res.text()).slice(0, 300))
+    return fail(`제출 여부를 읽지 못했습니다 (${res.status}).`)
+  }
+  const files: Record<string, { plan: boolean; slides: boolean }> = {}
+  for (const r of (await res.json()) as Array<{ document?: { name?: string; fields?: Record<string, Value> } }>) {
+    const uid = r.document?.name?.split('/').pop()
+    const f = r.document?.fields
+    if (!uid || !f) continue
+    files[uid] = { plan: Boolean(fileMetaOf(f.plan)), slides: Boolean(fileMetaOf(f.slides)) }
+  }
+  return json({ ok: true, files })
+}
+
 /* ─────────────────────── 수업 영상 — 조각 올리기 (2026-10-17) ─────────────────────── */
 
 const VIDEO_KEY_RE = /^microteaching\/[A-Za-z0-9_-]{1,64}\/videos\/[^/]{1,128}\/[0-9a-f-]{36}\.(mp4|m4v|mov|webm)$/

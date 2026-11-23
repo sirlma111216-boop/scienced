@@ -16,7 +16,7 @@ import {
   type MtPeerField,
 } from '@shared/microteaching'
 import { fileSizeText } from '@shared/textbook'
-import { checkMtVideo, mtFileUrl, mtPeerList, openMtFile, saveMtNote, saveMtPeer, uploadMtVideo } from '@/lib/microteaching-files'
+import { checkMtVideo, mtFileStatus, mtFileUrl, mtPeerList, openMtFile, saveMtNote, saveMtPeer, uploadMtVideo, type MtFileStatus } from '@/lib/microteaching-files'
 import type { MtApplication, MtFileMeta, MtNote, MtPeerDoc, MtPeerView, MtSlot } from '@/lib/types'
 import { Button, Caption, Card, ColorBlock, Notice } from '@/components/ui'
 
@@ -150,8 +150,13 @@ function NoteBox({
 /* ─────────────── 수업지도안 — 내려받기 (같은 반 누구나) · 강사는 화면에서 보기 ─────────────── */
 
 /** [수업지도안] · [강의 PT] — 같은 반 누구나 내려받는다. 파일 정보(plan)는 본인과 강사에게만 있다 */
-function PlanButton({ classId, uid, plan, canView, kind = 'plan' }: { classId: string; uid: string; plan?: MtFileMeta | null; canView?: boolean; kind?: 'plan' | 'slides' }) {
+/**
+ * has — 냈는지. true 면 테두리 단추, false 면 누를 수 없는 「미제출」 표시(점선 테두리 + 글자 — 색만으로 가르지 않는다).
+ * undefined 는 아직 모른다는 뜻이다(읽는 중 · 읽지 못함) — 그때는 단추를 그대로 두고 눌렀을 때 서버가 답한다.
+ */
+function PlanButton({ classId, uid, plan, canView, kind = 'plan', has }: { classId: string; uid: string; plan?: MtFileMeta | null; canView?: boolean; kind?: 'plan' | 'slides'; has?: boolean }) {
   const label = kind === 'slides' ? '강의 PT' : '수업지도안'
+  const missing = has === false && !plan
   const [err, setErr] = useState<string | null>(null)
   const [view, setView] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -167,20 +172,27 @@ function PlanButton({ classId, uid, plan, canView, kind = 'plan' }: { classId: s
   return (
     <div>
       <div className="flex items-center gap-xs" style={{ flexWrap: 'wrap' }}>
-        <Button
-          variant="tertiary"
-          disabled={busy}
-          onClick={() => {
-            setErr(null)
-            setBusy(true)
-            void openMtFile(classId, kind, uid).then((e) => {
-              setBusy(false)
-              if (e) setErr(e)
-            })
-          }}
-        >
-          {label}
-        </Button>
+        {missing ? (
+          <span className="text-body-sm" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 14px', border: '1px dashed currentColor', borderRadius: 999, opacity: 0.6 }}>
+            {label} 미제출
+          </span>
+        ) : (
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              setErr(null)
+              setBusy(true)
+              void openMtFile(classId, kind, uid).then((e) => {
+                setBusy(false)
+                if (e) setErr(e)
+              })
+            }}
+          >
+            {label}
+            {has || plan ? ' 받기' : ''}
+          </Button>
+        )}
         {plan ? (
           <Caption style={{ margin: 0 }}>
             {plan.name} ({fileSizeText(plan.size)} · {when(plan.at)})
@@ -627,6 +639,23 @@ export function MtBoard({
   const presenters = admin ? ordered : ordered.filter(s => s.uid !== uid)
   const selected = selectedUid ? (presenters.find((s) => s.uid === selectedUid) ?? null) : null
   const panel = useRef<HTMLDivElement | null>(null)
+  /* 누가 지도안 · PT 를 냈는지 — 강사는 구독 중인 신청 기록에서, 학생은 서버에 물어서 안다(남의 신청 기록은 읽지 못한다).
+     화면을 열 때와 자리가 바뀔 때 다시 묻는다. 읽지 못하면 단추를 그대로 두고 콘솔에 이유를 남긴다 */
+  const [status, setStatus] = useState<MtFileStatus | null>(null)
+  const slotKey = slots.map((s) => s.uid).sort().join()
+  useEffect(() => {
+    if (admin || !classId) return
+    let alive = true
+    void mtFileStatus(classId).then((r) => {
+      if (!alive) return
+      if (!r.ok || !r.files) return console.warn('[마이크로티칭] 제출 여부를 읽지 못했다 — 단추는 누르면 서버가 답한다:', r.message)
+      setStatus(r.files)
+    })
+    return () => {
+      alive = false
+    }
+  }, [admin, classId, slotKey])
+  const hasFile = (u: string, kind: 'plan' | 'slides'): boolean | undefined => (admin ? Boolean(apps.find((a) => a.uid === u)?.[kind]) : status ? Boolean(status[u]?.[kind]) : undefined)
 
   /* 이름을 누르면 오른쪽 판으로 — 좁은 화면에서는 판이 아래에 있어 보이도록 옮긴다 */
   const pick = (u: string) => {
@@ -699,8 +728,8 @@ export function MtBoard({
                           {s.order}. {who(s)}
                           {s.uid === uid ? ' (나)' : ''}
                         </button>
-                        <PlanButton classId={classId} uid={s.uid} />
-                        <PlanButton classId={classId} uid={s.uid} kind="slides" />
+                        <PlanButton classId={classId} uid={s.uid} has={hasFile(s.uid, 'plan')} />
+                        <PlanButton classId={classId} uid={s.uid} kind="slides" has={hasFile(s.uid, 'slides')} />
                       </div>
                       <p className="text-body-sm" style={{ margin: '4px 0 0', opacity: 0.75 }}>
                         {s.topic ? s.topic : '주제 미정'}

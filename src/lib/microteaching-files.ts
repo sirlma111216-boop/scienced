@@ -107,3 +107,7 @@ export const saveMtPeer = (classId: string, presenterUid: string, texts: Record<
 
 /** 발표자 본인(presenterUid 없음)은 익명 번호만, 강사는 쓴 사람과 함께 */
 export const mtPeerList = (classId: string, presenterUid?: string) => apiPost<{ ok: boolean; message?: string; comments?: MtPeerView[] }>('/api/microteaching/peer-list', { classId, ...(presenterUid ? { presenterUid } : null) })
+
+/** 발표자마다 지도안 · 강의 PT 를 냈는지 — 일정표 단추가 누르기 전에 「냈다 · 미제출」을 가른다 (2026-11-23). 같은 반 수강생과 강사가 받는다 */
+export type MtFileStatus = Record<string, { plan: boolean; slides: boolean }>
+export const mtFileStatus = (classId: string) => apiPost<{ ok: boolean; message?: string; files?: MtFileStatus }>('/api/microteaching/file-status', { classId })

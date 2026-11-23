@@ -121,7 +121,7 @@ const files = await walk('src', ['.ts', '.tsx'])
     return lib.slice(at, next < 0 ? undefined : next)
   }
   let bad = 0
-  for (const name of ['handleMtUpload', 'handleMtFileUrl', 'handleMtDetail', 'handleMtNote', 'handleMtPeer', 'handleMtPeerList']) {
+  for (const name of ['handleMtUpload', 'handleMtFileUrl', 'handleMtDetail', 'handleMtNote', 'handleMtPeer', 'handleMtPeerList', 'handleMtFileStatus']) {
     if (!/await whoCalls\(env, request\)/.test(fnBody(name))) {
       fail('마이크로티칭 호출자', `${name} 이 로그인을 확인하지 않는다`)
       bad++
