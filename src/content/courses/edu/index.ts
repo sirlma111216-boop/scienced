@@ -45,8 +45,7 @@ const loaders: Record<string, () => Promise<{ lesson: Lesson }>> = {
   '09': () => import('./lesson09'),
   '10': () => import('./lesson10'),
   '11': () => import('./lesson11'),
-  // 과거 12강의 저장된 학습 기록을 읽는 경로는 보존한다. 현재 강의 목록에는 포함하지 않는다.
-  '12': () => import('./lesson12'),
+  // 12강은 차시도 파일도 없다 (강의자 지시 2026-11-23). 옛 12강 응답이 있다면 내용 없이 응답만 남는다.
 }
 
 export async function loadEduLesson(id: LessonId): Promise<Lesson | undefined> {
